@@ -13,6 +13,15 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+      - name: Checkout pinned upstream TradingAgents contract
+        uses: actions/checkout@v4
+        with:
+          repository: TauricResearch/TradingAgents
+          ref: a33fd4c0f134485a43553a2c23a63cb14adbd88f
+          path: upstream-tradingagents
+          persist-credentials: false
+      - name: Expose upstream checkout to conformance tests
+        run: ln -s "$GITHUB_WORKSPACE/upstream-tradingagents" "$GITHUB_WORKSPACE/../tradingAgents"
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
