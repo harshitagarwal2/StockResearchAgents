@@ -5,8 +5,8 @@ import types
 
 import pytest
 
-from tradingagents_portable.errors import CapabilitySetupError
-from tradingagents_portable.legacy import LegacyTradingAgentsAdapter
+from tradingrearchagents.errors import CapabilitySetupError
+from tradingrearchagents.legacy import LegacyTradingAgentsAdapter
 
 
 def test_explicit_legacy_path_rejects_an_already_loaded_different_checkout(
@@ -46,7 +46,7 @@ def test_explicit_legacy_path_is_promoted_ahead_of_installed_packages(
 def test_resolve_subject_propagates_normalization_failures(monkeypatch: pytest.MonkeyPatch) -> None:
     adapter = LegacyTradingAgentsAdapter()
     symbol_module = types.SimpleNamespace(normalize_symbol=lambda _raw: (_ for _ in ()).throw(ValueError("bad symbol")))
-    monkeypatch.setattr("tradingagents_portable.legacy.importlib.import_module", lambda _name: symbol_module)
+    monkeypatch.setattr("tradingrearchagents.legacy.importlib.import_module", lambda _name: symbol_module)
 
     with pytest.raises(ValueError, match="bad symbol"):
         adapter.resolve_subject("not valid")
@@ -59,7 +59,7 @@ def test_resolve_subject_does_not_hide_import_errors_from_the_normalizer(monkeyp
         raise ImportError("normalizer dependency failed")
 
     symbol_module = types.SimpleNamespace(normalize_symbol=broken_normalizer)
-    monkeypatch.setattr("tradingagents_portable.legacy.importlib.import_module", lambda _name: symbol_module)
+    monkeypatch.setattr("tradingrearchagents.legacy.importlib.import_module", lambda _name: symbol_module)
 
     with pytest.raises(ImportError, match="normalizer dependency failed"):
         adapter.resolve_subject("ORCL")
@@ -74,7 +74,7 @@ def test_resolve_subject_falls_back_only_when_symbol_module_is_unavailable(monke
             name="tradingagents.dataflows.symbol_utils",
         )
 
-    monkeypatch.setattr("tradingagents_portable.legacy.importlib.import_module", missing_module)
+    monkeypatch.setattr("tradingrearchagents.legacy.importlib.import_module", missing_module)
 
     assert adapter.resolve_subject(" orcl ") == ("ORCL", "stock")
 
@@ -85,7 +85,7 @@ def test_resolve_subject_propagates_missing_transitive_dependencies(monkeypatch:
     def missing_dependency(_name: str) -> object:
         raise ModuleNotFoundError("dependency unavailable", name="upstream_optional_dependency")
 
-    monkeypatch.setattr("tradingagents_portable.legacy.importlib.import_module", missing_dependency)
+    monkeypatch.setattr("tradingrearchagents.legacy.importlib.import_module", missing_dependency)
 
     with pytest.raises(ModuleNotFoundError, match="dependency unavailable"):
         adapter.resolve_subject("ORCL")

@@ -1,4 +1,6 @@
-# TradingAgents Portable architecture
+# tradingrearchagents architecture
+
+This project is an independent harness-neutral integration for the upstream [TauricResearch/TradingAgents](https://github.com/TauricResearch/TradingAgents) repository. The pinned upstream checkout remains an adapter dependency and conformance reference; it is not copied into this project.
 
 ## Purpose
 
@@ -8,7 +10,7 @@ The portable layer owns workflow contracts, validation, and projection, not mode
 
 ## Boundary
 
-TradingAgents Portable owns:
+tradingrearchagents owns:
 
 - versioned run, workflow, event, evidence, decision, artifact, and dashboard contracts;
 - the deterministic ORCL demonstration fixture;

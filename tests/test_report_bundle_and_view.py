@@ -7,13 +7,13 @@ from threading import Thread
 from typing import Any
 from urllib.request import urlopen
 
-from tradingagents_portable.contracts import RunRequest
-from tradingagents_portable.dashboard import create_dashboard_server
-from tradingagents_portable.fixture import run_fixture
-from tradingagents_portable.legacy import LegacyTradingAgentsAdapter
-from tradingagents_portable.projection import LegacyStateProjector
-from tradingagents_portable.store import RunStore
-from tradingagents_portable.view import build_run_view
+from tradingrearchagents.contracts import RunRequest
+from tradingrearchagents.dashboard import create_dashboard_server
+from tradingrearchagents.fixture import run_fixture
+from tradingrearchagents.legacy import LegacyTradingAgentsAdapter
+from tradingrearchagents.projection import LegacyStateProjector
+from tradingrearchagents.store import RunStore
+from tradingrearchagents.view import build_run_view
 
 EXPECTED_FIXTURE_ARTIFACTS = {
     "report.group.1.analysts",
@@ -138,7 +138,7 @@ def test_run_view_projects_full_fixture_intelligence_without_inventing_sources()
         "news": 1,
         "social": 1,
     }
-    assert intelligence["source_mix"]["providers"] == {"portable-fixture": 4}
+    assert intelligence["source_mix"]["providers"] == {"tradingrearchagents-fixture": 4}
     assert intelligence["freshness"] == {
         "cutoff": result.request.as_of_date,
         "oldest_source_date": result.request.as_of_date,

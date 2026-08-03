@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from tradingagents_portable import RunRequest, build_legacy_topology, run_fixture
+from tradingrearchagents import RunRequest, build_legacy_topology, run_fixture
 
 
 def main() -> None:

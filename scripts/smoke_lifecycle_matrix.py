@@ -10,12 +10,12 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
-from tradingagents_portable.conformance import evaluate_conformance
-from tradingagents_portable.contracts import RunRequest, StageKind
-from tradingagents_portable.export import export_run_bundle
-from tradingagents_portable.lifecycle import HostRunCoordinator, LifecycleStore
-from tradingagents_portable.memory import DecisionMemoryStore
-from tradingagents_portable.store import RunStore
+from tradingrearchagents.conformance import evaluate_conformance
+from tradingrearchagents.contracts import RunRequest, StageKind
+from tradingrearchagents.export import export_run_bundle
+from tradingrearchagents.lifecycle import HostRunCoordinator, LifecycleStore
+from tradingrearchagents.memory import DecisionMemoryStore
+from tradingrearchagents.store import RunStore
 
 
 def _request(payload: dict[str, Any]) -> RunRequest:

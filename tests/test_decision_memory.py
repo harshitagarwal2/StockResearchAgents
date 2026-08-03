@@ -5,10 +5,10 @@ from pathlib import Path
 
 import pytest
 
-from tradingagents_portable.contracts import RunRequest
-from tradingagents_portable.fixture import run_fixture
-from tradingagents_portable.memory import DecisionMemoryStore
-from tradingagents_portable.store import RunStore
+from tradingrearchagents.contracts import RunRequest
+from tradingrearchagents.fixture import run_fixture
+from tradingrearchagents.memory import DecisionMemoryStore
+from tradingrearchagents.store import RunStore
 
 
 def _append(memory: DecisionMemoryStore, run_id: str, symbol: str, sequence: int) -> str:

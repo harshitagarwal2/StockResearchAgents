@@ -186,7 +186,7 @@ def _add_host_commands(commands: argparse._SubParsersAction[argparse.ArgumentPar
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="tradingagents-portable",
+        prog="tradingrearchagents",
         description="Harness-neutral research capability; never an order executor.",
     )
     commands = parser.add_subparsers(dest="command", required=True)
@@ -224,7 +224,7 @@ def _serve_dashboard(host: str, port: int, run_id: str | None = None) -> None:
     bound_host = str(server.server_address[0])
     bound_port = int(server.server_address[1])
     suffix = f"?run={run_id}" if run_id else ""
-    print(f"TradingAgents Portable dashboard: http://{bound_host}:{bound_port}/{suffix}")
+    print(f"tradingrearchagents dashboard: http://{bound_host}:{bound_port}/{suffix}")
     print("Final research projection only; not financial advice. Press Ctrl-C to stop.")
     try:
         server.serve_forever()

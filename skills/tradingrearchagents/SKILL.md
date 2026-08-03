@@ -1,11 +1,11 @@
 ---
-name: tradingagents-portable
+name: tradingrearchagents
 description: Research any supported financial instrument through the durable credential-free lifecycle, publish safe receipts and stage checkpoints, finalize the result, and inspect it as a read-only dossier. The atomic import and optional legacy adapter remain available for backward compatibility.
 ---
 
-# TradingAgents Portable
+# tradingrearchagents
 
-Use this plugin's durable host-native lifecycle by default. The current Codex task supplies reasoning, subagents, concrete research tools, and hard interruption; TradingAgents Portable supplies topology, stage-boundary persistence, safe receipts, typed validation, decision/report persistence, export, and the final UI. The server must not request or accept an API key. The browser UI and inline view are finalized-result readers, not workflow executors.
+Use this plugin's durable host-native lifecycle by default. The current Codex task supplies reasoning, subagents, concrete research tools, and hard interruption; tradingrearchagents supplies topology, stage-boundary persistence, safe receipts, typed validation, decision/report persistence, export, and the final UI. The server must not request or accept an API key. The browser UI and inline view are finalized-result readers, not workflow executors.
 
 ## Internal Codex task run (preferred)
 
@@ -41,7 +41,7 @@ The fixture covers all configured analysts, exactly `2 × debate_rounds` Bull/Be
 
 ## Standalone legacy compatibility (outside this plugin)
 
-The credential-free Codex plugin does not register `run_legacy` and does not import the legacy adapter. For explicit backward compatibility outside Codex, the standalone `research` CLI and opt-in `tradingagents-portable-legacy-mcp` executable can delegate Yahoo-style symbols such as `AAPL`, `0700.HK`, `^GSPC`, `EURUSD=X`, `GC=F`, and `BTC-USD` to `TradingAgentsGraph`. Those surfaces are not the current-task execution path and may require environment-owned provider credentials.
+The credential-free Codex plugin does not register `run_legacy` and does not import the legacy adapter. For explicit backward compatibility outside Codex, the standalone `research` CLI and opt-in `tradingrearchagents-legacy-mcp` executable can delegate Yahoo-style symbols such as `AAPL`, `0700.HK`, `^GSPC`, `EURUSD=X`, `GC=F`, and `BTC-USD` to `TradingAgentsGraph`. Those surfaces are not the current-task execution path and may require environment-owned provider credentials.
 
 - Provider credentials are environment-only. Never put an API key, token, password, cookie, authorization value, or other credential in a tool argument, run request, event, result, report, or dashboard field.
 - `openai_codex` is accepted when the configured upstream checkout contains PR #1195. Let upstream read its Codex auth file directly (optionally via `TRADINGAGENTS_CODEX_AUTH_PATH`); never copy OAuth contents into a tool argument or result. Treat this unmerged, undocumented provider as runtime-unverified.

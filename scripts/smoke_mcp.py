@@ -46,7 +46,7 @@ EXPECTED_TOOLS = {
 
 def _server_parameters() -> StdioServerParameters:
     manifest = json.loads((ROOT / ".mcp.json").read_text(encoding="utf-8"))
-    server = manifest["mcpServers"]["tradingagents-portable"]
+    server = manifest["mcpServers"]["tradingrearchagents"]
     environment = os.environ.copy()
     environment.update(server.get("env", {}))
     for name in server.get("env_vars", ()):

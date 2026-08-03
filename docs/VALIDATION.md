@@ -6,7 +6,7 @@ Fresh evidence on `2026-08-02`: `215 passed` from the credential-free local suit
 
 ## Verified credential-free proof
 
-- [x] `uv run tradingagents-portable fixture --events` completes the deterministic synthetic ORCL run without provider credentials.
+- [x] `uv run tradingrearchagents fixture --events` completes the deterministic synthetic ORCL run without provider credentials.
 - [x] Fixture tests confirm all configured analyst, research-debate, manager, trader, risk-debate, and portfolio stages.
 - [x] Tests confirm the fixture produces typed result data, ordered events, the five report groups, and JSON/Markdown artifacts.
 - [x] `run-lifecycle.v1` tests confirm SQLite/WAL restart recovery, optimistic revision conflicts, create/start/receipt/commit/pause/resume/cancel-ack/finalize transitions, and replay of only the interrupted incomplete stage.

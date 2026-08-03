@@ -22,13 +22,13 @@ _RUN_ID_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}\Z")
 
 
 def _default_state_dir() -> Path:
-    configured = os.environ.get("TRADINGAGENTS_PORTABLE_STATE_DIR")
+    configured = os.environ.get("TRADINGREARCHAGENTS_STATE_DIR")
     if configured:
         return Path(configured).expanduser()
     xdg_state_home = os.environ.get("XDG_STATE_HOME")
     if xdg_state_home:
-        return Path(xdg_state_home).expanduser() / "tradingagents-portable"
-    return Path.home() / ".local" / "state" / "tradingagents-portable"
+        return Path(xdg_state_home).expanduser() / "tradingrearchagents"
+    return Path.home() / ".local" / "state" / "tradingrearchagents"
 
 
 def _validate_run_id(run_id: str) -> str:

@@ -3,10 +3,10 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from tradingagents_portable import cli
-from tradingagents_portable.contracts import InstrumentIdentity, RunRequest, RunResult
-from tradingagents_portable.legacy import LegacyTradingAgentsAdapter
-from tradingagents_portable.store import RunStore
+from tradingrearchagents import cli
+from tradingrearchagents.contracts import InstrumentIdentity, RunRequest, RunResult
+from tradingrearchagents.legacy import LegacyTradingAgentsAdapter
+from tradingrearchagents.store import RunStore
 
 
 class FakeUpstreamAdapter:

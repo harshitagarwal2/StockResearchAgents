@@ -4,10 +4,10 @@ from dataclasses import asdict
 
 import pytest
 
-from tradingagents_portable.contracts import EventKind, RunRequest, RunResult, RunStatus, StageKind
-from tradingagents_portable.fixture import prepare_fixture, run_fixture
-from tradingagents_portable.store import RunStore
-from tradingagents_portable.topology import build_legacy_topology
+from tradingrearchagents.contracts import EventKind, RunRequest, RunResult, RunStatus, StageKind
+from tradingrearchagents.fixture import prepare_fixture, run_fixture
+from tradingrearchagents.store import RunStore
+from tradingrearchagents.topology import build_legacy_topology
 
 
 @pytest.mark.parametrize("rounds", [1, 3, 5])

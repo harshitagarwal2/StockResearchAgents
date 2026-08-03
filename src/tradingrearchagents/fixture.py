@@ -70,7 +70,7 @@ def _fixture_evidence(request: RunRequest) -> tuple[EvidenceItem, ...]:
 
     def provenance(source_type: str, source_uri: str) -> Provenance:
         return Provenance(
-            provider="portable-fixture",
+            provider="tradingrearchagents-fixture",
             source_type=source_type,
             source_uri=source_uri,
             retrieved_at=retrieved,

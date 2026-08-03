@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "tradingagents-portable": {
+    "tradingrearchagents": {
       "command": "uv",
       "args": [
         "run",
@@ -9,7 +9,7 @@
         "mcp>=2.0,<3",
         "python",
         "-m",
-        "tradingagents_portable.mcp_server"
+        "tradingrearchagents.mcp_server"
       ],
       "cwd": ".",
       "env": {

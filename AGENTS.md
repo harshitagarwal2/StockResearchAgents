@@ -1,4 +1,4 @@
-# TradingAgents Portable — repository guidance
+# tradingrearchagents — repository guidance
 
 This repository is an incubation environment for a harness-neutral TradingAgents capability. It must validate independently before any production integration into the sibling repository at `/Users/harshitagarwal/projects/tradingAgents`.
 

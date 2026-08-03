@@ -1,16 +1,24 @@
 {
-  "name": "tradingagents-portable",
-  "version": "0.1.0+codex.20260803071157",
+  "name": "tradingrearchagents",
+  "version": "0.1.0+codex.20260803082559",
   "description": "Run durable TradingAgents research with any host harness and inspect the completed read-only dossier.",
   "author": {
-    "name": "TradingAgents Portable contributors"
+    "name": "tradingrearchagents contributors"
   },
+  "homepage": "https://github.com/harshitagarwal2/tradingrearchagents",
+  "repository": "https://github.com/harshitagarwal2/tradingrearchagents",
+  "keywords": [
+    "tradingagents",
+    "financial-research",
+    "mcp",
+    "codex"
+  ],
   "skills": "./skills/",
   "interface": {
-    "displayName": "TradingAgents Portable",
+    "displayName": "tradingrearchagents",
     "shortDescription": "Durable host-run research and final dossier.",
-    "longDescription": "A credential-free, harness-neutral research capability with the complete TradingAgents topology, live safe receipts, stage checkpoints and resume, cooperative cancellation, decision memory, report export, conformance checks, and a completed-result-only dossier.",
-    "developerName": "TradingAgents Portable contributors",
+    "longDescription": "An independent, credential-free, harness-neutral integration for TauricResearch/TradingAgents with its complete topology, safe receipts, checkpoints and resume, decision memory, report export, conformance checks, and a completed-result-only dossier.",
+    "developerName": "tradingrearchagents contributors",
     "category": "Developer Tools",
     "capabilities": [
       "Interactive",

@@ -9,20 +9,20 @@ from pathlib import Path
 
 import pytest
 
-from tradingagents_portable.capabilities import discovery
+from tradingrearchagents.capabilities import discovery
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_plugin_manifest_and_skill_are_complete() -> None:
     plugin = json.loads((ROOT / ".codex-plugin" / "plugin.json").read_text(encoding="utf-8"))
-    skill = (ROOT / "skills" / "tradingagents-portable" / "SKILL.md").read_text(encoding="utf-8")
+    skill = (ROOT / "skills" / "tradingrearchagents" / "SKILL.md").read_text(encoding="utf-8")
 
-    assert plugin["name"] == "tradingagents-portable"
+    assert plugin["name"] == "tradingrearchagents"
     assert plugin["version"]
     assert plugin["skills"] == "./skills/"
     assert plugin["mcpServers"] == "./.mcp.json"
-    assert skill.startswith("---\nname: tradingagents-portable\n")
+    assert skill.startswith("---\nname: tradingrearchagents\n")
     assert "run_fixture" in skill
     assert "launch_local_dashboard" in skill
     assert "checkpoint_enabled" in skill
@@ -32,7 +32,7 @@ def test_plugin_manifest_and_skill_are_complete() -> None:
 
 def test_mcp_manifest_has_exact_local_stdio_launch_command() -> None:
     manifest = json.loads((ROOT / ".mcp.json").read_text(encoding="utf-8"))
-    server = manifest["mcpServers"]["tradingagents-portable"]
+    server = manifest["mcpServers"]["tradingrearchagents"]
 
     assert server["command"] == "uv"
     assert server["args"] == [
@@ -42,7 +42,7 @@ def test_mcp_manifest_has_exact_local_stdio_launch_command() -> None:
         "mcp>=2.0,<3",
         "python",
         "-m",
-        "tradingagents_portable.mcp_server",
+        "tradingrearchagents.mcp_server",
     ]
     assert server["cwd"] == "."
     assert server["env"]["PYTHONPATH"] == "src"
@@ -88,7 +88,7 @@ def test_mcp_discovery_and_function_schemas_cover_required_surface() -> None:
     assert payload["default_fixture"] == {"symbol": "ORCL", "external_credentials_required": False}
     assert payload["executors"] == {"fixture": True, "host_native": True, "legacy": False}
 
-    source = (ROOT / "src" / "tradingagents_portable" / "mcp_server.py").read_text(encoding="utf-8")
+    source = (ROOT / "src" / "tradingrearchagents" / "mcp_server.py").read_text(encoding="utf-8")
     module = ast.parse(source)
     schemas = {
         node.name: node for node in module.body if isinstance(node, ast.FunctionDef) and node.name in expected_tools
@@ -122,7 +122,7 @@ def test_mcp_discovery_and_function_schemas_cover_required_surface() -> None:
 
 def test_registered_mcp_tool_names_match_discovery() -> None:
     pytest.importorskip("mcp")
-    mcp_server = importlib.import_module("tradingagents_portable.mcp_server")
+    mcp_server = importlib.import_module("tradingrearchagents.mcp_server")
     registered = mcp_server.mcp._tool_manager.list_tools()
     names = {tool.name for tool in registered}
 
@@ -132,7 +132,7 @@ def test_registered_mcp_tool_names_match_discovery() -> None:
 
 def test_export_mcp_tool_truthfully_declares_destructive_non_idempotent_behavior() -> None:
     pytest.importorskip("mcp")
-    mcp_server = importlib.import_module("tradingagents_portable.mcp_server")
+    mcp_server = importlib.import_module("tradingrearchagents.mcp_server")
     export_tool = next(
         tool for tool in mcp_server.mcp._tool_manager.list_tools() if tool.name == "export_completed_run"
     )
@@ -146,7 +146,7 @@ def test_export_mcp_tool_truthfully_declares_destructive_non_idempotent_behavior
 
 def test_mutating_mcp_tools_do_not_invite_automatic_idempotent_retries() -> None:
     pytest.importorskip("mcp")
-    mcp_server = importlib.import_module("tradingagents_portable.mcp_server")
+    mcp_server = importlib.import_module("tradingrearchagents.mcp_server")
     mutating = [
         tool
         for tool in mcp_server.mcp._tool_manager.list_tools()
@@ -159,8 +159,8 @@ def test_mutating_mcp_tools_do_not_invite_automatic_idempotent_retries() -> None
 
 def test_opt_in_legacy_mcp_adds_only_the_explicit_legacy_tool() -> None:
     pytest.importorskip("mcp")
-    safe_server = importlib.import_module("tradingagents_portable.mcp_server")
-    legacy_server = importlib.import_module("tradingagents_portable.legacy_mcp_server")
+    safe_server = importlib.import_module("tradingrearchagents.mcp_server")
+    legacy_server = importlib.import_module("tradingrearchagents.legacy_mcp_server")
     safe_names = {tool.name for tool in safe_server.mcp._tool_manager.list_tools()}
     legacy_names = {tool.name for tool in legacy_server.mcp._tool_manager.list_tools()}
 
@@ -172,10 +172,10 @@ def test_safe_mcp_import_does_not_load_legacy_or_upstream_modules() -> None:
 import importlib
 import json
 import sys
-importlib.import_module('tradingagents_portable.mcp_server')
+importlib.import_module('tradingrearchagents.mcp_server')
 loaded = sorted(
     name for name in sys.modules
-    if name == 'tradingagents_portable.legacy' or name == 'tradingagents' or name.startswith('tradingagents.')
+    if name == 'tradingrearchagents.legacy' or name == 'tradingagents' or name.startswith('tradingagents.')
 )
 print(json.dumps(loaded))
 """
@@ -194,10 +194,10 @@ def test_legacy_adapter_top_level_export_is_lazy() -> None:
     script = """
 import json
 import sys
-import tradingagents_portable
-before = 'tradingagents_portable.legacy' in sys.modules
-adapter = tradingagents_portable.LegacyTradingAgentsAdapter
-after = 'tradingagents_portable.legacy' in sys.modules
+import tradingrearchagents
+before = 'tradingrearchagents.legacy' in sys.modules
+adapter = tradingrearchagents.LegacyTradingAgentsAdapter
+after = 'tradingrearchagents.legacy' in sys.modules
 print(json.dumps({'before': before, 'after': after, 'name': adapter.__name__}))
 """
     completed = subprocess.run(  # noqa: S603 - fixed interpreter and test-owned script

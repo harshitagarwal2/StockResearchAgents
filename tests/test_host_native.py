@@ -6,11 +6,11 @@ from pathlib import Path
 
 import pytest
 
-from tradingagents_portable.cli import main
-from tradingagents_portable.contracts import EventKind, RunRequest, RunStatus
-from tradingagents_portable.host_native import prepare_host_run, submit_host_run
-from tradingagents_portable.store import RunStore
-from tradingagents_portable.workflow import load_host_submission_schema
+from tradingrearchagents.cli import main
+from tradingrearchagents.contracts import EventKind, RunRequest, RunStatus
+from tradingrearchagents.host_native import prepare_host_run, submit_host_run
+from tradingrearchagents.store import RunStore
+from tradingrearchagents.workflow import load_host_submission_schema
 
 
 def _payload() -> dict[str, object]:

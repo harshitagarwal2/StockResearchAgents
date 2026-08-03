@@ -5,9 +5,9 @@ import json
 
 import pytest
 
-from tradingagents_portable.capabilities import feature_matrix
-from tradingagents_portable.contracts import RunRequest, reject_secret_shaped_keys
-from tradingagents_portable.legacy_mcp_server import (
+from tradingrearchagents.capabilities import feature_matrix
+from tradingrearchagents.contracts import RunRequest, reject_secret_shaped_keys
+from tradingrearchagents.legacy_mcp_server import (
     _reject_secret_shaped_keys,
     _request,
     _safe_legacy_config,

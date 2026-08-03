@@ -84,7 +84,7 @@ def _handler(
     coordinator: PublicationCoordinator | None,
 ) -> type[BaseHTTPRequestHandler]:
     class DashboardHandler(BaseHTTPRequestHandler):
-        server_version = "TradingAgentsPortable/0.1"
+        server_version = "tradingrearchagents/0.1"
 
         def log_message(self, _format: str, *_args: object) -> None:
             return

@@ -9,10 +9,10 @@ from pathlib import Path
 
 import pytest
 
-from tradingagents_portable.contracts import RunRequest
-from tradingagents_portable.export import export_run_bundle
-from tradingagents_portable.fixture import run_fixture
-from tradingagents_portable.store import RunStore
+from tradingrearchagents.contracts import RunRequest
+from tradingrearchagents.export import export_run_bundle
+from tradingrearchagents.fixture import run_fixture
+from tradingrearchagents.store import RunStore
 
 EXPECTED_REPORTS = {
     "1_analysts/market.md",
@@ -40,10 +40,10 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path.cwd() / "src"))
-import tradingagents_portable.export as export_module
-from tradingagents_portable.contracts import RunRequest
-from tradingagents_portable.fixture import run_fixture
-from tradingagents_portable.store import RunStore
+import tradingrearchagents.export as export_module
+from tradingrearchagents.contracts import RunRequest
+from tradingrearchagents.fixture import run_fixture
+from tradingrearchagents.store import RunStore
 
 target = Path(sys.argv[1])
 real_replace = export_module.os.replace

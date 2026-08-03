@@ -17,8 +17,8 @@ from .contracts import SCHEMA_VERSION, RunEvent, RunResult, reject_secret_shaped
 from .reporting import build_report_artifacts
 from .serialization import deserialize_run_event, deserialize_run_result, serialize_run_event, serialize_run_result
 
-_BUNDLE_FORMAT = "tradingagents-portable-run-bundle-v1"
-_OVERWRITE_JOURNAL_FORMAT = "tradingagents-portable-overwrite-journal-v1"
+_BUNDLE_FORMAT = "tradingrearchagents-run-bundle-v1"
+_OVERWRITE_JOURNAL_FORMAT = "tradingrearchagents-overwrite-journal-v1"
 _SHA256_PATTERN = re.compile(r"[0-9a-f]{64}")
 
 
@@ -131,7 +131,7 @@ def _fsync_directory(path: Path) -> None:
 
 def _validate_prior_export_bundle(target: Path) -> str:
     if target.is_symlink() or not target.is_dir():
-        raise ValueError(f"overwrite target is not a prior TradingAgents portable export bundle: {target}")
+        raise ValueError(f"overwrite target is not a prior tradingrearchagents export bundle: {target}")
     manifest_path = target / "manifest.json"
     if manifest_path.is_symlink() or not manifest_path.is_file():
         raise ValueError(f"overwrite target has no valid export manifest: {target}")
@@ -140,7 +140,7 @@ def _validate_prior_export_bundle(target: Path) -> str:
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise ValueError(f"overwrite target has no valid export manifest: {target}") from exc
     if not isinstance(manifest, dict) or manifest.get("bundle_format") != _BUNDLE_FORMAT:
-        raise ValueError(f"overwrite target is not a TradingAgents portable export bundle: {target}")
+        raise ValueError(f"overwrite target is not a tradingrearchagents export bundle: {target}")
     if manifest.get("schema_version") != SCHEMA_VERSION or not isinstance(manifest.get("run_id"), str):
         raise ValueError(f"overwrite target has an invalid export manifest: {target}")
     entries = manifest.get("files")

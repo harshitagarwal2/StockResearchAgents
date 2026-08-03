@@ -9,14 +9,14 @@ from urllib.request import urlopen
 
 import pytest
 
-from tradingagents_portable import dashboard
-from tradingagents_portable.contracts import RunRequest
-from tradingagents_portable.dashboard import create_dashboard_server, dashboard_report, launch_dashboard
-from tradingagents_portable.fixture import run_fixture
-from tradingagents_portable.store import RunStore
+from tradingrearchagents import dashboard
+from tradingrearchagents.contracts import RunRequest
+from tradingrearchagents.dashboard import create_dashboard_server, dashboard_report, launch_dashboard
+from tradingrearchagents.fixture import run_fixture
+from tradingrearchagents.store import RunStore
 
 ROOT = Path(__file__).resolve().parents[1]
-WEB_ROOT = ROOT / "src" / "tradingagents_portable" / "web"
+WEB_ROOT = ROOT / "src" / "tradingrearchagents" / "web"
 
 
 class PublicationCoordinatorStub:
@@ -164,7 +164,7 @@ def test_loopback_dashboard_serves_html_json_result_and_events() -> None:
             html = response.read().decode("utf-8")
             assert response.headers["Cache-Control"] == "no-store"
             assert response.headers["X-Content-Type-Options"] == "nosniff"
-            assert "TradingAgents" in html
+            assert "tradingrearchagents" in html
 
         with urlopen(f"{base}/api/runs/{result.run_id}", timeout=5) as response:  # noqa: S310
             report = json.load(response)

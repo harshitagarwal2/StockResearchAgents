@@ -12,7 +12,7 @@ from typing import Any, Literal, TypeVar, Union, cast, get_args, get_origin, get
 from .contracts import SCHEMA_VERSION, RunEvent, RunResult
 
 _T = TypeVar("_T")
-_TYPE_MARKER = "__tradingagents_portable_json_type__"
+_TYPE_MARKER = "__tradingrearchagents_json_type__"
 
 
 def _json_text(value: object) -> str:

@@ -5,7 +5,7 @@ import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-WEB_ROOT = ROOT / "src" / "tradingagents_portable" / "web"
+WEB_ROOT = ROOT / "src" / "tradingrearchagents" / "web"
 
 
 def test_ui_is_a_final_report_projection_not_a_run_harness() -> None:
@@ -90,7 +90,7 @@ def test_ui_loads_only_the_canonical_final_view_without_fabricated_fallback() ->
     assert "AAPL" not in combined
     assert "BTC-USD" not in combined
     assert "fixture://" not in combined
-    assert "portable-fixture" not in combined
+    assert "tradingrearchagents-fixture" not in combined
     assert "197.42" not in combined
     assert "No report loaded" in combined
 
@@ -124,7 +124,7 @@ def _run_debate_projection(script: str) -> dict[str, object]:
 def test_ui_falls_back_to_legacy_research_role_histories_without_duplication() -> None:
     result = _run_debate_projection(
         """
-        const ui = require('./src/tradingagents_portable/web/app.js');
+        const ui = require('./src/tradingrearchagents/web/app.js');
         const snapshot = {role_histories: {bull: 'BULL HISTORY', bear: 'BEAR HISTORY'}};
         const fallback = ui.resolveDebateEntries([], snapshot, ui.RESEARCH_SNAPSHOT_ROLES);
         const normalized = [{speaker: 'Bull Researcher', position: 'NORMALIZED TURN'}];
@@ -143,7 +143,7 @@ def test_ui_falls_back_to_legacy_research_role_histories_without_duplication() -
 def test_ui_falls_back_to_all_three_legacy_risk_role_histories_without_duplication() -> None:
     result = _run_debate_projection(
         """
-        const ui = require('./src/tradingagents_portable/web/app.js');
+        const ui = require('./src/tradingrearchagents/web/app.js');
         const snapshot = {role_histories: {
           aggressive: 'AGGRESSIVE HISTORY',
           conservative: 'CONSERVATIVE HISTORY',
@@ -167,7 +167,7 @@ def test_ui_falls_back_to_all_three_legacy_risk_role_histories_without_duplicati
 def test_ui_resolves_saved_run_urls_without_falling_forward_to_current() -> None:
     result = _run_debate_projection(
         """
-        const ui = require('./src/tradingagents_portable/web/app.js');
+        const ui = require('./src/tradingrearchagents/web/app.js');
         process.stdout.write(JSON.stringify({
           current: ui.resolveViewEndpoint(''),
           saved: ui.resolveViewEndpoint('?run=host-dc2616f0e2c2'),

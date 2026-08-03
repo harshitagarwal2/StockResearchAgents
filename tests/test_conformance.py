@@ -4,15 +4,15 @@ import hashlib
 from dataclasses import replace
 from pathlib import Path
 
-from tradingagents_portable.conformance import (
+from tradingrearchagents.conformance import (
     PINNED_UPSTREAM_REVISION,
     conformance_digest,
     evaluate_conformance,
     upstream_revision,
 )
-from tradingagents_portable.contracts import RunRequest
-from tradingagents_portable.fixture import run_fixture
-from tradingagents_portable.store import RunStore
+from tradingrearchagents.contracts import RunRequest
+from tradingrearchagents.fixture import run_fixture
+from tradingrearchagents.store import RunStore
 
 ROOT = Path(__file__).resolve().parents[1]
 UPSTREAM = ROOT.parent / "tradingAgents"

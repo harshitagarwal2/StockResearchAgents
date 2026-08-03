@@ -4,9 +4,9 @@ import json
 
 import pytest
 
-from tradingagents_portable.contracts import RunRequest
-from tradingagents_portable.topology import build_legacy_topology
-from tradingagents_portable.workflow import (
+from tradingrearchagents.contracts import RunRequest
+from tradingrearchagents.topology import build_legacy_topology
+from tradingrearchagents.workflow import (
     DEFAULT_MANIFEST,
     expand_workflow,
     load_host_submission_schema,
@@ -23,7 +23,7 @@ def test_versioned_manifest_expands_the_exact_legacy_topology() -> None:
 
     assert [stage.to_dict() for stage in expanded.stages] == [stage.to_dict() for stage in legacy.stages]
     assert expanded.terminal_stage == "portfolio"
-    assert expanded.name == "tradingagents.financial-research"
+    assert expanded.name == "tradingrearchagents.financial-research"
 
 
 def test_manifest_is_generic_and_declares_sequential_fallback() -> None:

@@ -3,19 +3,23 @@ requires = ["setuptools>=69"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "tradingagents-portable"
+name = "tradingrearchagents"
 version = "0.1.0"
-description = "Harness-neutral TradingAgents adapter with a final read-only research dossier"
+description = "Harness-neutral adapter and final research dossier for TauricResearch/TradingAgents"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "Apache-2.0"
-authors = [{name = "TradingAgents Portable contributors"}]
+authors = [{name = "tradingrearchagents contributors"}]
 dependencies = ["mcp>=2.0,<3"]
 
+[project.urls]
+Repository = "https://github.com/harshitagarwal2/tradingrearchagents"
+"Upstream TradingAgents" = "https://github.com/TauricResearch/TradingAgents"
+
 [project.scripts]
-tradingagents-portable = "tradingagents_portable.cli:main"
-tradingagents-portable-mcp = "tradingagents_portable.mcp_server:main"
-tradingagents-portable-legacy-mcp = "tradingagents_portable.legacy_mcp_server:main"
+tradingrearchagents = "tradingrearchagents.cli:main"
+tradingrearchagents-mcp = "tradingrearchagents.mcp_server:main"
+tradingrearchagents-legacy-mcp = "tradingrearchagents.legacy_mcp_server:main"
 
 [project.optional-dependencies]
 dev = ["pytest>=8", "ruff>=0.9"]
@@ -27,7 +31,7 @@ upstream = [
 where = ["src"]
 
 [tool.setuptools.package-data]
-tradingagents_portable = ["web/*.html", "web/*.js", "web/*.css", "workflow/*.json"]
+tradingrearchagents = ["web/*.html", "web/*.js", "web/*.css", "workflow/*.json"]
 
 [tool.ruff]
 target-version = "py311"

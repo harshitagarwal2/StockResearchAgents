@@ -5,9 +5,9 @@ from types import MappingProxyType
 
 import pytest
 
-from tradingagents_portable.contracts import RunRequest
-from tradingagents_portable.fixture import run_fixture
-from tradingagents_portable.projection import LegacyStateProjector
+from tradingrearchagents.contracts import RunRequest
+from tradingrearchagents.fixture import run_fixture
+from tradingrearchagents.projection import LegacyStateProjector
 
 
 def _legacy_state() -> dict[str, object]:

@@ -15,9 +15,11 @@ jobs:
       - uses: actions/checkout@v4
       - name: Checkout pinned upstream TradingAgents contract
         run: |
+          UPSTREAM_REVISION="$(python3 scripts/upstream_pin.py --print-revision)"
+          UPSTREAM_REPOSITORY="$(python3 scripts/upstream_pin.py --print-repository)"
           git init "$GITHUB_WORKSPACE/../tradingAgents"
-          git -C "$GITHUB_WORKSPACE/../tradingAgents" remote add origin https://github.com/TauricResearch/TradingAgents.git
-          git -C "$GITHUB_WORKSPACE/../tradingAgents" fetch --depth=1 origin a33fd4c0f134485a43553a2c23a63cb14adbd88f
+          git -C "$GITHUB_WORKSPACE/../tradingAgents" remote add origin "https://github.com/$UPSTREAM_REPOSITORY.git"
+          git -C "$GITHUB_WORKSPACE/../tradingAgents" fetch --depth=1 origin "$UPSTREAM_REVISION"
           git -C "$GITHUB_WORKSPACE/../tradingAgents" checkout --detach FETCH_HEAD
       - uses: actions/setup-python@v5
         with:
@@ -25,12 +27,14 @@ jobs:
           cache: pip
       - name: Install
         run: python -m pip install -e ".[dev]" build uv
+      - name: Upstream pin
+        run: python scripts/upstream_pin.py --check
       - name: Ruff
         run: ruff check .
       - name: Format
         run: ruff format --check .
       - name: Browser JavaScript
-        run: node --check src/tradingagents_portable/web/app.js
+        run: node --check src/tradingrearchagents/web/app.js
       - name: Tests
         run: pytest -q
       - name: Backend smoke

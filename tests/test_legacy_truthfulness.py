@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from tradingagents_portable.contracts import RunRequest
-from tradingagents_portable.legacy import LegacyTradingAgentsAdapter
-from tradingagents_portable.store import RunStore
+from tradingrearchagents.contracts import RunRequest
+from tradingrearchagents.legacy import LegacyTradingAgentsAdapter
+from tradingrearchagents.store import RunStore
 
 
 class _MissingOutputGraph:

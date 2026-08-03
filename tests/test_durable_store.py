@@ -6,16 +6,16 @@ from pathlib import Path
 
 import pytest
 
-import tradingagents_portable.store as store_module
-from tradingagents_portable.contracts import EventKind, RunEvent, RunRequest, RunResult
-from tradingagents_portable.fixture import run_fixture
-from tradingagents_portable.serialization import (
+import tradingrearchagents.store as store_module
+from tradingrearchagents.contracts import EventKind, RunEvent, RunRequest, RunResult
+from tradingrearchagents.fixture import run_fixture
+from tradingrearchagents.serialization import (
     deserialize_run_event,
     deserialize_run_result,
     serialize_run_event,
     serialize_run_result,
 )
-from tradingagents_portable.store import RunStore
+from tradingrearchagents.store import RunStore
 
 
 def _completed_run() -> tuple[RunResult, tuple[RunEvent, ...]]:
@@ -103,7 +103,7 @@ def test_event_cursor_is_exclusive_bounded_and_validated() -> None:
 
 def test_in_memory_store_does_not_create_default_state(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     configured = tmp_path / "must-not-exist"
-    monkeypatch.setenv("TRADINGAGENTS_PORTABLE_STATE_DIR", str(configured))
+    monkeypatch.setenv("TRADINGREARCHAGENTS_STATE_DIR", str(configured))
 
     store = RunStore()
     assert store.state_dir is None

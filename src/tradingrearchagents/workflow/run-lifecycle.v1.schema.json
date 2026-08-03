@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://tradingagents-portable.local/schemas/run-lifecycle.v1.json",
-  "title": "TradingAgents Portable host lifecycle",
+  "$id": "https://tradingrearchagents.local/schemas/run-lifecycle.v1.json",
+  "title": "tradingrearchagents host lifecycle",
   "description": "Stage-boundary control and safe-observation protocol. This is separate from the terminal host-submission.v2 dossier.",
   "type": "object",
   "additionalProperties": false,

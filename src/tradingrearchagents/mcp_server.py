@@ -1,4 +1,4 @@
-"""MCP stdio surface for the portable TradingAgents capability."""
+"""MCP stdio surface for tradingrearchagents."""
 
 from __future__ import annotations
 
@@ -371,7 +371,7 @@ def get_dashboard_report(run_id: str) -> dict[str, object]:
 
 def create_server(*, include_legacy_metadata: bool = False) -> MCPServer:
     server = MCPServer(
-        "TradingAgents Portable",
+        "tradingrearchagents",
         version="0.1.0",
         instructions=(
             "Prototype financial research only. Fixture values are synthetic. "

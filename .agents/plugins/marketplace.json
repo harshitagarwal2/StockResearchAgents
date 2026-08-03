@@ -1,11 +1,11 @@
 {
-  "name": "tradingagents-portable-local",
+  "name": "tradingrearchagents-local",
   "interface": {
-    "displayName": "TradingAgents Portable local"
+    "displayName": "tradingrearchagents local"
   },
   "plugins": [
     {
-      "name": "tradingagents-portable",
+      "name": "tradingrearchagents",
       "source": {
         "source": "local",
         "path": "./"

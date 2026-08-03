@@ -1,4 +1,4 @@
-"""Side-effect-free wire contracts for the portable TradingAgents prototype."""
+"""Side-effect-free wire contracts for tradingrearchagents."""
 
 from __future__ import annotations
 
@@ -227,7 +227,7 @@ class CapabilityFeature(Contract):
 
 @dataclass(frozen=True, slots=True)
 class FeatureCapabilityMatrix(Contract):
-    capability: str = "tradingagents-portable"
+    capability: str = "tradingrearchagents"
     prototype: bool = True
     default_executor: str = "fixture"
     features: tuple[CapabilityFeature, ...] = ()

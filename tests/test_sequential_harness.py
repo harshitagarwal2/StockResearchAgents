@@ -4,9 +4,9 @@ from typing import Any
 
 import pytest
 
-from tradingagents_portable.contracts import RunRequest, StageKind, StageSpec
-from tradingagents_portable.harness import run_sequential_host_workflow
-from tradingagents_portable.store import RunStore
+from tradingrearchagents.contracts import RunRequest, StageKind, StageSpec
+from tradingrearchagents.harness import run_sequential_host_workflow
+from tradingrearchagents.store import RunStore
 
 
 class FakeGenericHarness:

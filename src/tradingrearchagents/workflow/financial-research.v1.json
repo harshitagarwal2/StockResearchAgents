@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0.0",
-  "id": "tradingagents.financial-research",
-  "name": "TradingAgents financial research",
+  "id": "tradingrearchagents.financial-research",
+  "name": "tradingrearchagents financial research",
   "description": "Packaged harness-neutral stage semantics for the complete TradingAgents research topology.",
   "analyst_roles": {
     "market": "Market Analyst",
@@ -30,7 +30,7 @@
     "research_manager_output": "host-submission.v2.schema.json#/$defs/researchManagerOutput",
     "trader_output": "host-submission.v2.schema.json#/$defs/traderOutput",
     "portfolio_stage_output": "host-submission.v2.schema.json#/$defs/portfolioStageOutput",
-    "normalized_output": "tradingagents_portable.contracts.RunResult"
+    "normalized_output": "tradingrearchagents.contracts.RunResult"
   },
   "capability_negotiation": {
     "full": {

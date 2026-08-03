@@ -1,13 +1,15 @@
-# TradingAgents Portable
+# tradingrearchagents
 
-An isolated, harness-neutral TradingAgents capability that lets the active host harness perform the reasoning and then presents the completed result as a portable dossier.
+An isolated, harness-neutral research capability that lets the active host harness perform the reasoning and then presents the completed result as a portable dossier.
+
+> Upstream project: [TauricResearch/TradingAgents](https://github.com/TauricResearch/TradingAgents). `tradingrearchagents` is an independent adapter, Codex plugin, MCP surface, and dossier UI; it integrates with the pinned upstream project without copying or replacing its workflow business logic.
 
 > **Prototype research only. Not financial advice.** The capability may preserve analytical ratings, targets, stops, and sizing scenarios, but it has no broker integration or authority to submit, modify, cancel, approve, or fill an order.
 
 ## Product boundary
 
 - The preferred Codex and generic-harness path is the durable `host_native` lifecycle: create, start, append safe receipts, commit each completed stage, optionally pause/resume or request/acknowledge cancellation, then finalize one validated result. The portable boundary accepts no API keys or model-provider configuration; concrete tools and any tool authentication remain host-owned.
-- The optional `research` CLI and explicit `tradingagents-portable-legacy-mcp` executable retain backward-compatible delegation to upstream `TradingAgentsGraph`; neither is registered by the Codex plugin.
+- The optional `research` CLI and explicit `tradingrearchagents-legacy-mcp` executable retain backward-compatible delegation to upstream `TradingAgentsGraph`; neither is registered by the Codex plugin.
 - This repository does not copy analyst, debate, trader, risk, portfolio-manager, provider, or checkpoint business logic from upstream.
 - The UI is a strictly completed-result, read-only dossier. Lifecycle-backed runs stay absent from every dashboard surface while `get_run_control` or `poll_run_events` reports `finalizing` with `publication_pending=true`; direct fixture/import runs remain available without a lifecycle record. Lifecycle control and cursor polling are CLI/MCP concerns, and the browser does not configure, start, orchestrate, monitor, cancel, or resume a run.
 - The deterministic ORCL fixture is the credential-free local proof. It uses synthetic data, executes every declared fixture stage, and emits ordered events without network access.
@@ -17,16 +19,30 @@ An isolated, harness-neutral TradingAgents capability that lets the active host 
 
 The feature matrix separates implementation from runtime readiness. `runtime_readiness.legacy_upstream.ready` reports whether upstream is importable, not whether credentials, data access, checkpoint resume, or a live run are working. Exact model text and token-level continuation remain harness-specific. Broker/order execution is prohibited.
 
+## Keeping upstream current
+
+`upstream.lock.json` is the single declared upstream source of truth. It pins the exact `TauricResearch/TradingAgents` `main` revision used by the optional dependency, conformance checks, lockfile, and CI checkout.
+
+The `sync upstream TradingAgents` workflow runs weekly and can also be started manually. It compares the pin with upstream `main`; when a newer commit exists, it updates every pinned surface, regenerates `uv.lock`, checks the proposed upstream checkout, runs formatting, lint, all tests, both smoke checks, and the package build, then opens a review PR. It never auto-merges an upstream change.
+
+Local maintenance commands are:
+
+```bash
+python scripts/upstream_pin.py --check
+python scripts/upstream_pin.py --set-revision <full-upstream-sha>
+uv lock
+```
+
 ## Quick start
 
 Python 3.11+ and `uv` are recommended.
 
 ```bash
-uv run tradingagents-portable fixture --events
-uv run tradingagents-portable dashboard --fixture
-uv run tradingagents-portable host-init ORCL --date 2026-08-01 --interactive
-uv run tradingagents-portable host-plan ORCL --date 2026-08-01
-uv run tradingagents-portable host-import --input ./orcl-host-run.json --dashboard
+uv run tradingrearchagents fixture --events
+uv run tradingrearchagents dashboard --fixture
+uv run tradingrearchagents host-init ORCL --date 2026-08-01 --interactive
+uv run tradingrearchagents host-plan ORCL --date 2026-08-01
+uv run tradingrearchagents host-import --input ./orcl-host-run.json --dashboard
 ```
 
 `host-init` starts the durable path and may prompt for portable, non-secret research settings with `--interactive`. The host then owns reasoning, agent spawning, concrete tool calls, and hard interruption. The portable layer owns stage order, safe receipts, checkpoint commits, cursor-readable events, validation, and publication.
@@ -47,8 +63,8 @@ uv run tradingagents-portable host-import --input ./orcl-host-run.json --dashboa
 The stateless plan/import seam remains supported for callers that already produce one complete payload:
 
 ```bash
-uv run tradingagents-portable host-plan ORCL --date 2026-08-01 --output ./plan.json
-uv run tradingagents-portable host-import --input ./orcl-host-run.json --output ./result.json
+uv run tradingrearchagents host-plan ORCL --date 2026-08-01 --output ./plan.json
+uv run tradingrearchagents host-import --input ./orcl-host-run.json --output ./result.json
 ```
 
 `host-import` validates the frozen `host-submission.v2` schema, provenance cutoff, evidence references, non-execution invariants, and credential-shaped keys before publishing anything. It does not provide partial checkpoints or live receipts; new Codex tasks should use the durable lifecycle above.
@@ -57,7 +73,7 @@ Install the pinned official upstream runtime before delegated research:
 
 ```bash
 uv sync --extra upstream
-uv run tradingagents-portable research AAPL --date 2026-07-03
+uv run tradingrearchagents research AAPL --date 2026-07-03
 ```
 
 The `upstream` extra is pinned to the official TradingAgents base commit used for this adapter. `--legacy-path` may point to another compatible checkout and takes precedence, while the pinned extra supplies the upstream runtime dependencies.
@@ -71,7 +87,7 @@ PYTHONPATH=src python scripts/smoke_backend.py
 Start the MCP server directly:
 
 ```bash
-uv run tradingagents-portable-mcp
+uv run tradingrearchagents-mcp
 ```
 
 The included `.mcp.json` starts the 27-tool credential-free server from the plugin root with `PYTHONPATH=src`. It covers discovery, fixture execution, legacy-compatible plan/import, durable lifecycle control, cursor receipts, decision memory, report export, conformance, completed-run reads, and final dashboard launch. It registers no legacy/provider executor and imports no legacy/upstream module.
@@ -79,7 +95,7 @@ The included `.mcp.json` starts the 27-tool credential-free server from the plug
 ## Python API
 
 ```python
-from tradingagents_portable import RunRequest, run_fixture
+from tradingrearchagents import RunRequest, run_fixture
 
 result, events = run_fixture(RunRequest(debate_rounds=2, risk_rounds=2))
 assert len(result.research_debate) == 4
@@ -100,14 +116,14 @@ Install TradingAgents so `tradingagents.graph.trading_graph` is importable, or s
 
 The adapter maps portable, non-secret options into the upstream graph and projects its completed state into portable contracts. Checkpointing remains off by the upstream default unless an explicit argument or the upstream environment overlay enables it. Upstream's ordinary decision logs and report files are still written; that persistence is distinct from checkpoint resume. Credentialed execution and checkpoint resume remain runtime-unverified here.
 
-An explicit MCP compatibility server is also available as `uv run tradingagents-portable-legacy-mcp`. It is intentionally absent from `.mcp.json` and the Codex plugin because it may inherit provider credentials from its own environment.
+An explicit MCP compatibility server is also available as `uv run tradingrearchagents-legacy-mcp`. It is intentionally absent from `.mcp.json` and the Codex plugin because it may inherit provider credentials from its own environment.
 
 ### Non-interactive research CLI
 
 `research` delegates the complete analysis to upstream `TradingAgentsGraph`; this repository does not recreate its business logic. It accepts Yahoo-style company and instrument symbols, including exchange-qualified stocks (`0700.HK`), indices (`^GSPC`), FX/futures (`EURUSD=X`, `GC=F`), and crypto (`BTC-USD`). `--asset-type auto` uses the upstream-compatible crypto suffix rule; all other instruments use the stock pipeline.
 
 ```bash
-uv run tradingagents-portable research 0700.HK \
+uv run tradingrearchagents research 0700.HK \
   --date 2026-07-03 \
   --analyst market --analyst news --analyst fundamentals \
   --debate-rounds 2 --risk-rounds 2 \
@@ -125,7 +141,7 @@ The adapter also accepts `--provider openai_codex` when the selected upstream ch
 Add `--dashboard` to serve the completed, stored run from the same process after graph execution finishes:
 
 ```bash
-uv run tradingagents-portable research AAPL --date 2026-07-03 \
+uv run tradingrearchagents research AAPL --date 2026-07-03 \
   --legacy-path ../tradingAgents --dashboard
 ```
 
@@ -143,7 +159,7 @@ The server rejects non-loopback bind addresses. Its read-only endpoints are:
 - `GET /api/runs/{run_id}/view`
 - `GET /api/runs/current/view`
 
-The `/view` response is the merged, UI-ready post-run dossier. `current` resolves to the latest stored run and also works with the run, events, and result endpoints. A saved `/?run=<run_id>` URL stays pinned to that completed run even after a later run becomes current. Everything else is served from the packaged `tradingagents_portable/web/` assets, with SPA fallback to `index.html` and path traversal protection.
+The `/view` response is the merged, UI-ready post-run dossier. `current` resolves to the latest stored run and also works with the run, events, and result endpoints. A saved `/?run=<run_id>` URL stays pinned to that completed run even after a later run becomes current. Everything else is served from the packaged `tradingrearchagents/web/` assets, with SPA fallback to `index.html` and path traversal protection.
 
 Durable host-native runs use private SQLite/WAL lifecycle state plus canonical atomic result/event bundles and compatibility projections under the configured state directory. The browser still reads completed results only; lifecycle status and live cursor receipts remain on CLI/MCP surfaces. Preserve exported bundles when a portable, independently verifiable archive is required.
 

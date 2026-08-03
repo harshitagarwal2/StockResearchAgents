@@ -103,13 +103,13 @@ def _utc_now() -> str:
 
 
 def _default_state_dir() -> Path:
-    configured = os.environ.get("TRADINGAGENTS_PORTABLE_STATE_DIR")
+    configured = os.environ.get("TRADINGREARCHAGENTS_STATE_DIR")
     if configured:
         return Path(configured).expanduser()
     xdg_state_home = os.environ.get("XDG_STATE_HOME")
     if xdg_state_home:
-        return Path(xdg_state_home).expanduser() / "tradingagents-portable"
-    return Path.home() / ".local" / "state" / "tradingagents-portable"
+        return Path(xdg_state_home).expanduser() / "tradingrearchagents"
+    return Path.home() / ".local" / "state" / "tradingrearchagents"
 
 
 def _json_copy(value: object) -> Any:

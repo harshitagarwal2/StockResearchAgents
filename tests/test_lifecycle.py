@@ -11,16 +11,16 @@ from urllib.request import urlopen
 
 import pytest
 
-from tradingagents_portable import dashboard
-from tradingagents_portable.contracts import RunRequest, StageKind
-from tradingagents_portable.dashboard import create_dashboard_server, dashboard_report, launch_dashboard
-from tradingagents_portable.lifecycle import HostRunCoordinator, LifecycleStatus, LifecycleStore, RevisionConflict
-from tradingagents_portable.memory import DecisionMemoryStore
-from tradingagents_portable.store import RunStore
-from tradingagents_portable.view import build_run_view
+from tradingrearchagents import dashboard
+from tradingrearchagents.contracts import RunRequest, StageKind
+from tradingrearchagents.dashboard import create_dashboard_server, dashboard_report, launch_dashboard
+from tradingrearchagents.lifecycle import HostRunCoordinator, LifecycleStatus, LifecycleStore, RevisionConflict
+from tradingrearchagents.memory import DecisionMemoryStore
+from tradingrearchagents.store import RunStore
+from tradingrearchagents.view import build_run_view
 
 ROOT = Path(__file__).resolve().parents[1]
-WEB_ROOT = ROOT / "src" / "tradingagents_portable" / "web"
+WEB_ROOT = ROOT / "src" / "tradingrearchagents" / "web"
 
 
 def _request(symbol: str = "ORCL") -> RunRequest:

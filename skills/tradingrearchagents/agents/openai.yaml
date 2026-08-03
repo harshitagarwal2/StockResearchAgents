@@ -1,0 +1,4 @@
+interface:
+  display_name: "tradingrearchagents"
+  short_description: "Run keyless host-native market research"
+  default_prompt: "Use $tradingrearchagents to research ORCL with this Codex task and show the completed dossier."

@@ -8,10 +8,10 @@ from pathlib import Path
 
 import pytest
 
-from tradingagents_portable.capabilities import discovery, feature_matrix
-from tradingagents_portable.contracts import PROTOTYPE_NOTICE, RunRequest
-from tradingagents_portable.errors import CapabilitySetupError
-from tradingagents_portable.legacy import LegacyTradingAgentsAdapter
+from tradingrearchagents.capabilities import discovery, feature_matrix
+from tradingrearchagents.contracts import PROTOTYPE_NOTICE, RunRequest
+from tradingrearchagents.errors import CapabilitySetupError
+from tradingrearchagents.legacy import LegacyTradingAgentsAdapter
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -60,8 +60,8 @@ def test_contract_imports_are_side_effect_free() -> None:
     script = """
 import json
 import sys
-import tradingagents_portable.contracts
-import tradingagents_portable.topology
+import tradingrearchagents.contracts
+import tradingrearchagents.topology
 blocked = sorted(
     name for name in sys.modules
     if name == 'tradingagents' or name.startswith(('tradingagents.', 'langgraph', 'langchain', 'dotenv'))

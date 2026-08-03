@@ -3,9 +3,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from tradingagents_portable import cli
-from tradingagents_portable.lifecycle import HostRunCoordinator, LifecycleStore
-from tradingagents_portable.store import RunStore
+from tradingrearchagents import cli
+from tradingrearchagents.lifecycle import HostRunCoordinator, LifecycleStore
+from tradingrearchagents.store import RunStore
 
 
 def _payload(capsys: object) -> dict[str, object]:

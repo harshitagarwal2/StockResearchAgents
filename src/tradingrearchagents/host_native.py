@@ -841,7 +841,7 @@ def submit_host_run(
             upstream_business_logic=False,
         ),
         warnings=(
-            "Reasoning was supplied by the active host harness; TradingAgents Portable accepted no model API key.",
+            "Reasoning was supplied by the active host harness; tradingrearchagents accepted no model API key.",
             "Evidence provenance was supplied by the host and structurally validated; the importer did not fetch it.",
             "Host-native events are validated completion receipts, not token-by-token model telemetry.",
             *warnings,

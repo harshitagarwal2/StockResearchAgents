@@ -5,10 +5,10 @@ from typing import Any
 
 import pytest
 
-from tradingagents_portable import cli, legacy_mcp_server
-from tradingagents_portable.contracts import RunRequest
-from tradingagents_portable.legacy import LegacyTradingAgentsAdapter
-from tradingagents_portable.store import RunStore
+from tradingrearchagents import cli, legacy_mcp_server
+from tradingrearchagents.contracts import RunRequest
+from tradingrearchagents.legacy import LegacyTradingAgentsAdapter
+from tradingrearchagents.store import RunStore
 
 FULL_UPSTREAM_STATE: dict[str, object] = {
     "market_report": "MARKET REPORT",

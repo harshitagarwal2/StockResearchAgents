@@ -1,4 +1,0 @@
-interface:
-  display_name: "TradingAgents Portable"
-  short_description: "Run keyless host-native market research"
-  default_prompt: "Use $tradingagents-portable to research ORCL with this Codex task and show the completed dossier."
