@@ -95,9 +95,7 @@ def _fixture_evidence(request: RunRequest) -> tuple[EvidenceItem, ...]:
                     {"name": "sma_50_usd", "value": 156.1, "unit": "USD"},
                     {"name": "rsi_14", "value": 58.2},
                 ],
-                "catalysts": [
-                    {"catalyst": "Synthetic momentum remains above the fixture 50-day average", "rank": 2}
-                ],
+                "catalysts": [{"catalyst": "Synthetic momentum remains above the fixture 50-day average", "rank": 2}],
                 "risks": [{"risk": "Fixture momentum reversal", "rank": 3}],
                 "monitoring_conditions": ["Compare the fixture close with cutoff-valid live pricing"],
             },
@@ -119,9 +117,7 @@ def _fixture_evidence(request: RunRequest) -> tuple[EvidenceItem, ...]:
                     "positive_mentions": {"value": 7, "unit": "mentions"},
                     "sample_size": {"value": 12, "unit": "mentions"},
                 },
-                "conflicts": [
-                    "Synthetic positive discussion conflicts with synthetic valuation concern"
-                ],
+                "conflicts": ["Synthetic positive discussion conflicts with synthetic valuation concern"],
                 "unknowns": ["Whether a live, representative sample would reproduce fixture sentiment"],
             },
             provenance=provenance("synthetic_sentiment", "fixture://orcl/social"),
@@ -188,9 +184,7 @@ def _fixture_evidence(request: RunRequest) -> tuple[EvidenceItem, ...]:
                 ],
                 "catalysts": [{"catalyst": "Synthetic recurring-revenue durability", "rank": 3}],
                 "risks": [{"risk": "Synthetic leverage and valuation compression", "rank": 1}],
-                "conflicts": [
-                    {"conflict": "Synthetic margin strength coexists with synthetic leverage risk"}
-                ],
+                "conflicts": [{"conflict": "Synthetic margin strength coexists with synthetic leverage risk"}],
                 "unknowns": ["Cutoff-valid valuation and balance-sheet inputs"],
                 "monitoring_conditions": ["Recalculate leverage from live point-in-time filings"],
             },

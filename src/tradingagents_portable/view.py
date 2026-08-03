@@ -90,9 +90,7 @@ def _intelligence_projection(result: RunResult) -> dict[str, Any]:
     providers = Counter(item.provenance.provider or "unknown" for item in result.evidence)
     source_types = Counter(item.provenance.source_type or "unknown" for item in result.evidence)
     source_urls = [
-        source_url
-        for item in result.evidence
-        if (source_url := _safe_web_url(item.provenance.source_uri)) is not None
+        source_url for item in result.evidence if (source_url := _safe_web_url(item.provenance.source_uri)) is not None
     ]
     source_dates = [item.provenance.source_date for item in result.evidence if item.provenance.source_date]
     retrieved_dates = [item.provenance.retrieved_at for item in result.evidence if item.provenance.retrieved_at]
@@ -110,28 +108,16 @@ def _intelligence_projection(result: RunResult) -> dict[str, Any]:
                         source_urls.append(safe_url)
             news.append(article)
 
-    risk_register = [
-        record
-        for item in result.evidence
-        for record in _normalize_records(item, "risks", "risk")
-    ]
+    risk_register = [record for item in result.evidence for record in _normalize_records(item, "risks", "risk")]
     risk_register.extend(
-        {"risk": constraint, "source": "risk_decision.constraints"}
-        for constraint in result.risk_decision.constraints
+        {"risk": constraint, "source": "risk_decision.constraints"} for constraint in result.risk_decision.constraints
     )
-    unknowns = [
-        record
-        for item in result.evidence
-        for record in _normalize_records(item, "unknowns", "unknown")
-    ]
+    unknowns = [record for item in result.evidence for record in _normalize_records(item, "unknowns", "unknown")]
     unknowns.extend(
-        {"unknown": unresolved, "source": "risk_decision.unresolved"}
-        for unresolved in result.risk_decision.unresolved
+        {"unknown": unresolved, "source": "risk_decision.unresolved"} for unresolved in result.risk_decision.unresolved
     )
     monitoring_conditions = [
-        record
-        for item in result.evidence
-        for record in _normalize_records(item, "monitoring_conditions", "condition")
+        record for item in result.evidence for record in _normalize_records(item, "monitoring_conditions", "condition")
     ]
     if result.research_decision.strategic_actions:
         monitoring_conditions.append(
@@ -162,20 +148,14 @@ def _intelligence_projection(result: RunResult) -> dict[str, Any]:
             "oldest_retrieved_at": min(retrieved_dates, default=None),
             "latest_retrieved_at": max(retrieved_dates, default=None),
         },
-        "evidence_metrics": [
-            record for item in result.evidence for record in _normalize_metrics(item)
-        ],
+        "evidence_metrics": [record for item in result.evidence for record in _normalize_metrics(item)],
         "news": news,
         "catalysts": [
-            record
-            for item in result.evidence
-            for record in _normalize_records(item, "catalysts", "catalyst")
+            record for item in result.evidence for record in _normalize_records(item, "catalysts", "catalyst")
         ],
         "risk_register": risk_register,
         "conflicts": [
-            record
-            for item in result.evidence
-            for record in _normalize_records(item, "conflicts", "conflict")
+            record for item in result.evidence for record in _normalize_records(item, "conflicts", "conflict")
         ],
         "unknowns": unknowns,
         "monitoring_conditions": monitoring_conditions,
