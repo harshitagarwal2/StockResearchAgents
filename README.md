@@ -40,7 +40,8 @@ The proposed long-term boundary with TradingAgents is documented in
 asks whether the portable workflow contract should live upstream, remain in
 this independent repository, or be split between a thin upstream contract and
 external harness adapters. No upstream merge is assumed without maintainer
-buy-in.
+buy-in. Upstream discussion is tracked in
+[TauricResearch/TradingAgents#1198](https://github.com/TauricResearch/TradingAgents/issues/1198).
 
 ## Quick start
 

@@ -6,6 +6,8 @@ Upstream: [TauricResearch/TradingAgents](https://github.com/TauricResearch/Tradi
 
 Prototype: [harshitagarwal2/tradingrearchagents](https://github.com/harshitagarwal2/tradingrearchagents)
 
+Upstream discussion: [TauricResearch/TradingAgents#1198](https://github.com/TauricResearch/TradingAgents/issues/1198)
+
 ## Summary
 
 TradingAgents has a complete multi-agent research workflow, but its workflow
