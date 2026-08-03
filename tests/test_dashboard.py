@@ -1,0 +1,187 @@
+from __future__ import annotations
+
+import json
+from html.parser import HTMLParser
+from pathlib import Path
+from threading import Thread
+from urllib.error import HTTPError
+from urllib.request import urlopen
+
+import pytest
+
+from tradingagents_portable.contracts import RunRequest
+from tradingagents_portable.dashboard import create_dashboard_server
+from tradingagents_portable.fixture import run_fixture
+from tradingagents_portable.store import RunStore
+
+ROOT = Path(__file__).resolve().parents[1]
+WEB_ROOT = ROOT / "src" / "tradingagents_portable" / "web"
+
+
+class DashboardMarkup(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.ids: set[str] = set()
+        self.aria_controls: set[str] = set()
+        self.demo_actions: set[str] = set()
+        self.external_assets: list[str] = []
+        self.local_assets: list[str] = []
+        self.inline_handlers: list[str] = []
+        self.tables = 0
+        self.captions = 0
+        self.status_regions = 0
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        values = dict(attrs)
+        if values.get("id"):
+            self.ids.add(str(values["id"]))
+        if values.get("aria-controls"):
+            self.aria_controls.add(str(values["aria-controls"]))
+        if values.get("data-demo-action"):
+            self.demo_actions.add(str(values["data-demo-action"]))
+        if tag in {"script", "link"}:
+            source = values.get("src") or values.get("href")
+            if source and str(source).startswith(("http://", "https://", "//")):
+                self.external_assets.append(str(source))
+            elif source:
+                self.local_assets.append(str(source))
+        self.inline_handlers.extend(name for name, _ in attrs if name.lower().startswith("on"))
+        if tag == "table":
+            self.tables += 1
+        elif tag == "caption":
+            self.captions += 1
+        if values.get("role") == "status" or values.get("aria-live"):
+            self.status_regions += 1
+
+
+def test_dashboard_markup_contains_complete_final_report_information() -> None:
+    html = (WEB_ROOT / "index.html").read_text(encoding="utf-8")
+    parser = DashboardMarkup()
+    parser.feed(html)
+
+    required_information_ids = {
+        "warning-list",
+        "analyst-grid",
+        "research-debate-list",
+        "trader",
+        "risk-perspectives",
+        "risk-manager-judgment",
+        "evidence-provenance",
+        "transparency",
+        "artifacts",
+        "topology-list",
+        "event-summary",
+    }
+    assert required_information_ids <= parser.ids
+    assert parser.aria_controls <= parser.ids
+    assert parser.demo_actions == set()
+
+
+def test_dashboard_markup_has_basic_accessibility_and_static_safety() -> None:
+    html = (WEB_ROOT / "index.html").read_text(encoding="utf-8")
+    parser = DashboardMarkup()
+    parser.feed(html)
+
+    assert parser.external_assets == []
+    assert parser.local_assets
+    assert all((WEB_ROOT / asset.removeprefix("./")).is_file() for asset in parser.local_assets)
+    assert parser.inline_handlers == []
+    assert parser.tables == parser.captions
+    assert parser.status_regions >= 1
+    assert "NON-EXECUTABLE" in html
+    assert "no broker connection" in html.lower()
+    assert "Capability and persistence transparency" in html
+    assert 'id="persistence-grid"' in html
+
+    javascript = (WEB_ROOT / "app.js").read_text(encoding="utf-8")
+    assert "innerHTML" not in javascript
+    assert "insertAdjacentHTML" not in javascript
+    assert "localStorage" not in javascript
+    assert "sessionStorage" not in javascript
+    assert "document.cookie" not in javascript
+    assert "eval(" not in javascript
+    assert "new Function" not in javascript
+    assert "https://" not in javascript
+    assert "http://" not in javascript
+
+
+def test_loopback_dashboard_serves_html_json_result_and_events() -> None:
+    store = RunStore()
+    result, events = run_fixture(RunRequest(), store)
+    server = create_dashboard_server("127.0.0.1", 0, WEB_ROOT, store)
+    thread = Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    host, port = server.server_address[:2]
+    base = f"http://{host}:{port}"
+    try:
+        with urlopen(f"{base}/", timeout=5) as response:  # noqa: S310 - verified loopback server
+            html = response.read().decode("utf-8")
+            assert response.headers["Cache-Control"] == "no-store"
+            assert response.headers["X-Content-Type-Options"] == "nosniff"
+            assert "TradingAgents" in html
+
+        with urlopen(f"{base}/api/runs/{result.run_id}", timeout=5) as response:  # noqa: S310
+            report = json.load(response)
+            assert report["ok"] is True
+            assert report["run_id"] == result.run_id
+            assert report["stage_count"] == len(result.topology.stages)
+
+        with urlopen(f"{base}/api/runs/{result.run_id}/result", timeout=5) as response:  # noqa: S310
+            payload = json.load(response)
+            assert payload["ok"] is True
+            assert payload["result"]["run_id"] == result.run_id
+            assert payload["result"]["portfolio_decision"]["executable"] is False
+
+        with urlopen(f"{base}/api/runs/{result.run_id}/events", timeout=5) as response:  # noqa: S310
+            payload = json.load(response)
+            assert payload["ok"] is True
+            assert len(payload["events"]) == len(events)
+            assert [event["sequence"] for event in payload["events"]] == list(range(1, len(events) + 1))
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
+def test_dashboard_current_alias_resolves_the_run_requested_by_the_frontend() -> None:
+    store = RunStore()
+    result, events = run_fixture(RunRequest(), store)
+    server = create_dashboard_server("127.0.0.1", 0, WEB_ROOT, store)
+    thread = Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    host, port = server.server_address[:2]
+    base = f"http://{host}:{port}"
+    try:
+        with urlopen(f"{base}/api/runs/current", timeout=5) as response:  # noqa: S310
+            payload = json.load(response)
+            assert payload["ok"] is True
+            assert payload["run_id"] == result.run_id
+        with urlopen(f"{base}/api/runs/current/events", timeout=5) as response:  # noqa: S310
+            payload = json.load(response)
+            assert payload["ok"] is True
+            assert len(payload["events"]) == len(events)
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
+@pytest.mark.parametrize("host", ["0.0.0.0", "8.8.8.8", "localhost"])
+def test_dashboard_rejects_non_explicit_loopback_hosts(host: str) -> None:
+    with pytest.raises(ValueError, match="loopback"):
+        create_dashboard_server(host, 0, WEB_ROOT, RunStore())
+
+
+def test_dashboard_rejects_path_traversal() -> None:
+    server = create_dashboard_server("127.0.0.1", 0, WEB_ROOT, RunStore())
+    thread = Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    host, port = server.server_address[:2]
+    try:
+        with pytest.raises(HTTPError) as captured:
+            urlopen(f"http://{host}:{port}/%2e%2e/pyproject.toml", timeout=5)  # noqa: S310
+        assert captured.value.code == 403
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)

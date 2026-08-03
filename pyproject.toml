@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tradingagents-portable"
+version = "0.1.0"
+description = "Harness-neutral TradingAgents adapter with a final read-only research dossier"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+authors = [{name = "TradingAgents Portable contributors"}]
+dependencies = ["mcp>=2.0,<3"]
+
+[project.scripts]
+tradingagents-portable = "tradingagents_portable.cli:main"
+tradingagents-portable-mcp = "tradingagents_portable.mcp_server:main"
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.9"]
+upstream = [
+    "tradingagents @ git+https://github.com/TauricResearch/TradingAgents.git@a33fd4c0f134485a43553a2c23a63cb14adbd88f",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+tradingagents_portable = ["web/*.html", "web/*.js", "web/*.css", "workflow/*.json"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]

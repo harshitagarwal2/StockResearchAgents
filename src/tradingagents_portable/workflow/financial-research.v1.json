@@ -1,0 +1,30 @@
+{
+  "schema_version": "1.0.0",
+  "id": "tradingagents.financial-research",
+  "name": "TradingAgents financial research",
+  "description": "Packaged harness-neutral stage semantics for the complete TradingAgents research topology.",
+  "analyst_roles": {
+    "market": "Market Analyst",
+    "social": "Sentiment Analyst",
+    "news": "News Analyst",
+    "fundamentals": "Fundamentals Analyst"
+  },
+  "research_debate": [
+    {"slug": "bull", "role": "Bull Researcher"},
+    {"slug": "bear", "role": "Bear Researcher"}
+  ],
+  "research_manager": {"id": "research.manager", "role": "Research Manager"},
+  "trader": {"id": "trader", "role": "Trader"},
+  "risk_debate": [
+    {"slug": "aggressive", "role": "Aggressive Analyst"},
+    {"slug": "conservative", "role": "Conservative Analyst"},
+    {"slug": "neutral", "role": "Neutral Analyst"}
+  ],
+  "portfolio_manager": {"id": "portfolio", "role": "Portfolio Manager"},
+  "contracts": {
+    "input": "tradingagents_portable.contracts.RunRequest",
+    "output": "tradingagents_portable.contracts.RunResult",
+    "stage_result": "mapping"
+  },
+  "fallback": "sequential"
+}

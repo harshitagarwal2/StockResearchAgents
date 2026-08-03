@@ -1,0 +1,24 @@
+{
+  "name": "tradingagents-portable",
+  "version": "0.1.0",
+  "description": "Delegate TradingAgents research and inspect the completed read-only dossier.",
+  "author": {
+    "name": "TradingAgents Portable contributors"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "TradingAgents Portable",
+    "shortDescription": "Run upstream research and inspect its final dossier.",
+    "longDescription": "A research-only adapter that delegates arbitrary Yahoo-style instruments to upstream TradingAgentsGraph and presents the completed result as a read-only dossier. Includes a verified credential-free synthetic ORCL fixture; live provider execution is credential-gated and runtime-unverified.",
+    "developerName": "TradingAgents Portable contributors",
+    "category": "Developer Tools",
+    "capabilities": ["Interactive", "Read"],
+    "defaultPrompt": [
+      "Run the verified credential-free ORCL fixture.",
+      "Delegate a Yahoo-style instrument to upstream TradingAgentsGraph when its environment is configured.",
+      "Inspect a completed run through the merged read-only dossier."
+    ],
+    "brandColor": "#2563EB"
+  },
+  "mcpServers": "./.mcp.json"
+}

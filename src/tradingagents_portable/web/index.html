@@ -1,0 +1,235 @@
+<!doctype html>
+<!-- Packaged final-dossier shell. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light">
+    <meta name="description" content="A human-readable, non-executable TradingAgents research dossier.">
+    <title>TradingAgents · Research dossier</title>
+    <link rel="stylesheet" href="./styles.css">
+    <script src="./app.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#report">Skip to research report</a>
+
+    <header class="masthead">
+      <a class="wordmark" href="#report" aria-label="TradingAgents research dossier home">
+        <span class="wordmark-mark" aria-hidden="true">TA</span>
+        <span><b>TradingAgents</b><small>Research dossier</small></span>
+      </a>
+      <div class="masthead-receipt" aria-label="Report source and status">
+        <span id="data-source-label">No report loaded</span>
+        <span class="status-chip" id="run-status">Offline</span>
+      </div>
+    </header>
+
+    <main id="report">
+      <section class="empty-state" id="empty-state" aria-labelledby="empty-title">
+        <span class="empty-glyph" aria-hidden="true">◇</span>
+        <p class="eyebrow">Research report</p>
+        <h1 id="empty-title">No completed dossier is available.</h1>
+        <p id="empty-copy">Start the local report server after a research run. This page reads only the canonical final RunView and does not run research itself.</p>
+      </section>
+
+      <div class="report-shell" id="report-shell" hidden>
+        <section class="report-hero" aria-labelledby="report-title">
+          <div class="report-identity">
+            <p class="eyebrow">Company research · <span id="asset-class">—</span></p>
+            <div class="subject-lockup">
+              <span class="symbol-medallion" id="symbol">—</span>
+              <div>
+                <h1 id="report-title">Research dossier</h1>
+                <p class="report-deck" id="decision-summary">—</p>
+              </div>
+            </div>
+            <dl class="run-facts">
+              <div><dt>Research date</dt><dd id="analysis-date">—</dd></div>
+              <div><dt>Run</dt><dd id="run-id">—</dd></div>
+              <div><dt>Completed</dt><dd id="completed-at">—</dd></div>
+              <div><dt>Research confidence</dt><dd id="research-confidence">—</dd></div>
+            </dl>
+          </div>
+
+          <aside class="decision-aperture" aria-label="Executive decision summary">
+            <p>Portfolio judgment</p>
+            <strong id="decision-action">—</strong>
+            <div class="decision-rule" aria-hidden="true"><span></span><i></i></div>
+            <dl>
+              <div><dt>Risk level</dt><dd id="risk-level">—</dd></div>
+              <div><dt>Derived signal</dt><dd id="processed-signal">—</dd></div>
+            </dl>
+            <div class="non-executable" role="note">
+              <b>NON-EXECUTABLE</b>
+              <span id="signal-meaning">Research output only. No order authority.</span>
+            </div>
+          </aside>
+        </section>
+
+        <nav class="report-index" aria-label="Research dossier sections">
+          <a href="#executive">Executive case</a>
+          <a href="#analysts">Analyst reports</a>
+          <a href="#research-debate">Research debate</a>
+          <a href="#trader">Trader plan</a>
+          <a href="#risk">Risk review</a>
+          <a href="#evidence">Evidence</a>
+          <a href="#transparency">Transparency</a>
+        </nav>
+
+        <article class="dossier">
+          <section class="report-section executive-section" id="executive" aria-labelledby="executive-title">
+            <header class="section-lead">
+              <p class="section-code">Decision case</p>
+              <h2 id="executive-title">What the research supports</h2>
+              <p>The final judgment is shown beside the reasoning that survived research and risk review.</p>
+            </header>
+            <div class="executive-grid">
+              <div class="judgment-panel">
+                <span class="eyebrow">Portfolio manager</span>
+                <p class="large-copy" id="portfolio-decision">—</p>
+                <p id="portfolio-output">—</p>
+                <p class="disclaimer" id="portfolio-disclaimer">—</p>
+              </div>
+              <div class="rationale-panel">
+                <span class="eyebrow">Research manager</span>
+                <h3 id="research-decision">—</h3>
+                <p id="research-rationale">—</p>
+                <dl class="compact-facts">
+                  <div><dt>Supporting turns</dt><dd id="supporting-turns">—</dd></div>
+                  <div><dt>Final trade decision text</dt><dd id="final-trade-decision">—</dd></div>
+                </dl>
+              </div>
+            </div>
+          </section>
+
+          <section class="report-section" id="analysts" aria-labelledby="analysts-title">
+            <header class="section-lead">
+              <p class="section-code">Independent reads</p>
+              <h2 id="analysts-title">Analyst reports</h2>
+              <p>Market, sentiment, news, and fundamentals are kept separate so their evidence can be audited.</p>
+            </header>
+            <div class="analyst-grid" id="analyst-grid"></div>
+          </section>
+
+          <section class="report-section split-section" id="research-debate" aria-labelledby="research-debate-title">
+            <header class="section-lead sticky-lead">
+              <p class="section-code">Bull · bear · synthesis</p>
+              <h2 id="research-debate-title">Research debate</h2>
+              <p>The debate history is preserved before the manager's ruling.</p>
+              <div class="manager-note">
+                <span>Manager synthesis</span>
+                <p id="research-manager">—</p>
+              </div>
+            </header>
+            <ol class="debate-thread" id="research-debate-list"></ol>
+          </section>
+
+          <section class="report-section" id="trader" aria-labelledby="trader-title">
+            <header class="section-lead">
+              <p class="section-code">Analytical plan</p>
+              <h2 id="trader-title">Trader interpretation</h2>
+              <p>A scenario plan derived from the research case—not a ticket, allocation, or instruction to trade.</p>
+            </header>
+            <div class="trader-sheet">
+              <div class="stance-block">
+                <span>Analytical stance</span>
+                <strong id="trader-stance">—</strong>
+                <small id="trader-executable">—</small>
+              </div>
+              <div class="plan-block">
+                <h3>Plan</h3>
+                <p id="trader-plan">—</p>
+                <h3>Investment-plan handoff</h3>
+                <p id="investment-plan">—</p>
+              </div>
+              <div class="caveat-block">
+                <h3>Caveats</h3>
+                <ul id="trader-caveats"></ul>
+              </div>
+            </div>
+          </section>
+
+          <section class="report-section split-section" id="risk" aria-labelledby="risk-title">
+            <header class="section-lead sticky-lead">
+              <p class="section-code">Three-perspective challenge</p>
+              <h2 id="risk-title">Risk review</h2>
+              <p>Aggressive, conservative, and neutral perspectives are shown before the portfolio-manager judgment.</p>
+              <div class="risk-resolution">
+                <span>Portfolio-manager judgment</span>
+                <p id="risk-manager-judgment">—</p>
+              </div>
+            </header>
+            <div>
+              <div class="risk-perspectives" id="risk-perspectives"></div>
+              <div class="constraint-grid">
+                <section><h3>Constraints</h3><ul id="risk-constraints"></ul></section>
+                <section><h3>Unresolved</h3><ul id="risk-unresolved"></ul></section>
+              </div>
+            </div>
+          </section>
+
+          <section class="report-section" id="evidence" aria-labelledby="evidence-title">
+            <header class="section-lead">
+              <p class="section-code">Source ledger</p>
+              <h2 id="evidence-title">Evidence and provenance</h2>
+              <p>Each record retains its provider, retrieval context, values, and declared limitations.</p>
+            </header>
+            <div class="evidence-ledger" id="evidence-provenance"></div>
+          </section>
+
+          <section class="report-section caution-section" id="warnings" aria-labelledby="warnings-title">
+            <header class="section-lead">
+              <p class="section-code">Read before relying</p>
+              <h2 id="warnings-title">Warnings and degradation</h2>
+            </header>
+            <div class="warning-stack">
+              <ul id="warning-list"></ul>
+              <p id="degradation-note">—</p>
+            </div>
+          </section>
+
+          <section class="report-section" id="transparency" aria-labelledby="transparency-title">
+            <header class="section-lead">
+              <p class="section-code">Operating receipt</p>
+              <h2 id="transparency-title">Capability and persistence transparency</h2>
+              <p>Decision memory and run logging, checkpoint state, data access, and write expectations are disclosed here exactly as the executor reported them.</p>
+            </header>
+            <div class="transparency-columns">
+              <section><h3>Capability</h3><dl id="capability-grid"></dl></section>
+              <section><h3>Persistence</h3><dl id="persistence-grid"></dl></section>
+              <section><h3>Execution</h3><dl id="execution-grid"></dl></section>
+            </div>
+          </section>
+
+          <section class="report-section" id="artifacts-section" aria-labelledby="artifacts-title">
+            <header class="section-lead">
+              <p class="section-code">Report bundle</p>
+              <h2 id="artifacts-title">Artifacts and export references</h2>
+              <p id="complete-report-reference">—</p>
+            </header>
+            <ul class="artifact-list" id="artifacts"></ul>
+          </section>
+
+          <details class="methodology" id="methodology">
+            <summary>
+              <span><b>Methodology and timeline</b><small>Workflow stages and event coverage from this RunView</small></span>
+              <span aria-hidden="true">+</span>
+            </summary>
+            <div class="methodology-body">
+              <ol class="topology-list" id="topology-list"></ol>
+              <dl class="event-summary" id="event-summary"></dl>
+            </div>
+          </details>
+        </article>
+
+        <footer class="report-footer">
+          <span id="schema-version">—</span>
+          <span>Research record · not investment advice · no broker connection</span>
+        </footer>
+      </div>
+    </main>
+
+    <p class="sr-only" id="interface-status" role="status" aria-live="polite">Loading final research report.</p>
+    <noscript><p class="noscript">JavaScript is required to load the local final RunView.</p></noscript>
+  </body>
+</html>
