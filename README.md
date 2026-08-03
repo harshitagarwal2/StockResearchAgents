@@ -1,10 +1,158 @@
 # tradingrearchagents
 
-An isolated, harness-neutral research capability that lets the active host harness perform the reasoning and then presents the completed result as a portable dossier.
+[![verify](https://github.com/harshitagarwal2/tradingrearchagents/actions/workflows/ci.yml/badge.svg)](https://github.com/harshitagarwal2/tradingrearchagents/actions/workflows/ci.yml)
+[![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB.svg)](https://www.python.org/)
+[![Upstream RFC](https://img.shields.io/badge/TradingAgents-RFC%20%231198-2563EB.svg)](https://github.com/TauricResearch/TradingAgents/issues/1198)
+
+Run the complete TradingAgents-compatible research sequence inside Codex or
+another agent harness, then turn every completed stage into one evidence-first,
+read-only research dossier.
+
+`tradingrearchagents` packages a Codex skill, a 27-tool MCP server, durable
+stage checkpoints, typed workflow contracts, report export, and a final browser
+UI. The active host supplies reasoning and research tools, so the portable
+plugin does not ask for a separate model-provider API key.
 
 > Upstream project: [TauricResearch/TradingAgents](https://github.com/TauricResearch/TradingAgents). `tradingrearchagents` is an independent adapter, Codex plugin, MCP surface, and dossier UI; it integrates with the pinned upstream project without copying or replacing its workflow business logic.
 
 > **Prototype research only. Not financial advice.** The capability may preserve analytical ratings, targets, stops, and sizing scenarios, but it has no broker integration or authority to submit, modify, cancel, approve, or fill an order.
+
+## What you get
+
+| Capability | What it provides |
+| --- | --- |
+| Complete research topology | Market, social, news, and fundamentals analysts; Bull/Bear debate; Research Manager; Trader; three-way risk debate; Portfolio Manager |
+| Evidence-first results | Source URLs, publication dates, retrieval times, limitations, evidence references, structured decisions, and complete report text |
+| Durable execution | Stage checkpoints, restart recovery, pause/resume, cooperative cancellation, cursor-readable events, and atomic final publication |
+| Harness-neutral operation | Native Codex agents when available, a sequential single-agent fallback, or tools-only MCP orchestration |
+| Final research UI | A completed-result-only dossier that merges every analyst, debate, decision, artifact, and provenance record |
+| Portable outputs | JSON, Markdown, event logs, upstream-compatible report folders, and SHA-256 export manifests |
+| Safe integration boundary | No model credentials in the protocol and no broker, order, or trade-execution capability |
+| Upstream compatibility | An optional thin adapter delegates legacy runs to the pinned `TradingAgentsGraph` without vendoring upstream code |
+
+## How a run works
+
+```mermaid
+flowchart LR
+    I["Symbol, cutoff, and analysts"] --> A["Market, social, news, and fundamentals"]
+    A --> B["Bull and Bear debate"]
+    B --> M["Research Manager"]
+    M --> T["Trader proposal"]
+    T --> R["Aggressive, conservative, and neutral risk debate"]
+    R --> P["Portfolio Manager"]
+    P --> D["Validated read-only dossier"]
+```
+
+Codex or another host performs each research stage with its own reasoning and
+available tools. `tradingrearchagents` controls stage order, validates evidence
+and outputs, checkpoints completed work, and publishes the dossier only after
+the full workflow succeeds.
+
+## Install the Codex plugin
+
+### Prerequisites
+
+- Codex App or Codex CLI with plugin support.
+- Python 3.11 or newer.
+- [`uv`](https://docs.astral.sh/uv/getting-started/installation/) available on
+  `PATH`; the bundled local MCP server uses it to create its isolated runtime.
+
+No standalone model-provider API key is required for the preferred Codex
+host-native workflow. Authentication used by any host research tool remains
+owned by that host and never enters the plugin's run state or results.
+
+### Install from the public GitHub marketplace
+
+Run these two commands once:
+
+```bash
+codex plugin marketplace add harshitagarwal2/tradingrearchagents --ref main
+codex plugin add tradingrearchagents@tradingrearchagents-local
+```
+
+`tradingrearchagents-local` is the marketplace identifier stored in this
+repository; the source is the public GitHub repository, so no manual clone is
+required.
+
+Confirm that it is installed:
+
+```bash
+codex plugin list
+```
+
+Then start a **new Codex thread or CLI session** so the bundled skill and MCP
+tools are loaded.
+
+In Codex App, open **Plugins → Installed**, make sure
+`tradingrearchagents` is enabled, and start a new thread. Codex uses `$`
+mentions for skills, so a first request can be:
+
+```text
+$tradingrearchagents Research META as of 2026-08-01. Use all compatible
+analysts, one Bull/Bear round, one risk round, preserve source provenance,
+and show me the completed dossier.
+```
+
+You can also ask naturally after installation:
+
+```text
+Research ORCL with the tradingrearchagents plugin. Use this Codex thread's
+agents and tools, do not request API keys, checkpoint every completed stage,
+and open the final dossier only after the run is finalized.
+```
+
+### Update the plugin
+
+```bash
+codex plugin marketplace upgrade tradingrearchagents-local
+codex plugin add tradingrearchagents@tradingrearchagents-local
+```
+
+Start a new thread after upgrading. See the official
+[Codex plugin documentation](https://learn.chatgpt.com/docs/plugins) for the
+plugin browser and marketplace behavior.
+
+### Installation troubleshooting
+
+```bash
+uv --version
+codex plugin marketplace list
+codex plugin list
+```
+
+- If `uv` is missing, install it and reopen the terminal or Codex App.
+- If the marketplace exists but the plugin is absent, run the two installation
+  commands again and inspect any reported error.
+- If the plugin is installed but its skill or MCP tools are unavailable, start
+  a new thread or CLI session; plugin capabilities are loaded at session start.
+- Managed Codex workspaces may restrict external marketplace sources. Ask the
+  workspace administrator to allow the repository if marketplace installation
+  is blocked by policy.
+
+## Example requests
+
+| Goal | Example prompt |
+| --- | --- |
+| Research a company | `$tradingrearchagents Research AAPL with all compatible analysts and show the final dossier.` |
+| Point-in-time research | `$tradingrearchagents Research JPM using only information published on or before 2026-07-31.` |
+| International symbol | `$tradingrearchagents Research 0700.HK and preserve every source date and limitation.` |
+| Test without live data | `$tradingrearchagents Run the deterministic ORCL fixture and show every declared stage.` |
+| Resume work | `$tradingrearchagents Resume run RUN_ID from its first incomplete stage.` |
+| Export results | `$tradingrearchagents Export completed run RUN_ID and verify its manifest digests.` |
+
+The host-native workflow accepts any symbol its active research tools can
+resolve. The optional legacy adapter passes Yahoo-style symbols such as `AAPL`,
+`0700.HK`, `^GSPC`, `EURUSD=X`, `GC=F`, and `BTC-USD` to upstream unchanged.
+
+## Choose the right integration
+
+| You are using | Recommended surface |
+| --- | --- |
+| Codex App or Codex CLI | Install the plugin above and invoke `$tradingrearchagents` |
+| Another agent harness with MCP | Start `uv run tradingrearchagents-mcp` and use the versioned workflow contracts |
+| A harness with one agent and no subagents | Implement `StageExecutor.execute_stage` and use the packaged sequential runner |
+| Python application | Use `RunRequest`, `HostRunCoordinator`, and the reporting/export APIs |
+| Existing TradingAgents setup | Use the explicit legacy CLI/MCP adapter; upstream owns provider credentials and LangGraph execution |
 
 ## Product boundary
 
