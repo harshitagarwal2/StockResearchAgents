@@ -2,20 +2,20 @@
 
 An isolated, harness-neutral TradingAgents capability that lets the active host harness perform the reasoning and then presents the completed result as a portable dossier.
 
-> **Prototype research only. Not financial advice.** This repository has no broker integration and cannot place, approve, size, submit, modify, or cancel orders.
+> **Prototype research only. Not financial advice.** The capability may preserve analytical ratings, targets, stops, and sizing scenarios, but it has no broker integration or authority to submit, modify, cancel, approve, or fill an order.
 
 ## Product boundary
 
-- The preferred Codex and generic-harness path is `host_native`: the current host task runs every analyst/debate/decision stage with its own agents and tools, then imports one complete validated result. It accepts no API keys or model-provider configuration.
+- The preferred Codex and generic-harness path is the durable `host_native` lifecycle: create, start, append safe receipts, commit each completed stage, optionally pause/resume or request/acknowledge cancellation, then finalize one validated result. The portable boundary accepts no API keys or model-provider configuration; concrete tools and any tool authentication remain host-owned.
 - The optional `research` CLI and explicit `tradingagents-portable-legacy-mcp` executable retain backward-compatible delegation to upstream `TradingAgentsGraph`; neither is registered by the Codex plugin.
 - This repository does not copy analyst, debate, trader, risk, portfolio-manager, provider, or checkpoint business logic from upstream.
-- The UI is a strictly post-run, read-only dossier. It merges normalized reports, debates, decisions, signal, provenance, events, and artifacts after upstream execution completes. It does not configure, start, orchestrate, monitor, cancel, or resume a run.
+- The UI is a strictly completed-result, read-only dossier. Lifecycle-backed runs stay absent from every dashboard surface while `get_run_control` or `poll_run_events` reports `finalizing` with `publication_pending=true`; direct fixture/import runs remain available without a lifecycle record. Lifecycle control and cursor polling are CLI/MCP concerns, and the browser does not configure, start, orchestrate, monitor, cancel, or resume a run.
 - The deterministic ORCL fixture is the credential-free local proof. It uses synthetic data, executes every declared fixture stage, and emits ordered events without network access.
-- Host-native plan/import is implemented and credential-free. It records truthful post-run import receipts; it does not pretend the portable server observed live model execution.
-- The portable guarantee is analysis-stage and final-information parity. Agent spawning, checkpoint storage, live progress, token accounting, and other runtime mechanics remain harness-specific.
+- The mutable `run-lifecycle.v1` protocol is separate from the frozen terminal `host-submission.v2` schema. Private SQLite/WAL checkpoints, atomic canonical result/event bundles, optimistic revisions, receipt-linked observation, stage-boundary resume, cooperative cancellation, publication-gated decision memory, and report export are locally verified.
+- Topology, decision-schema, report-group, lifecycle, persistence, interactive CLI, portable-invariant conformance, optional pinned-checkout identity, and safety-contract parity are verified; see [Feature parity](docs/FEATURE_PARITY.md).
 - Live upstream execution still requires the provider and data credentials expected by TradingAgents. The adapter and result mapping are tested with fakes, but a credentialed live provider run has not been verified in this repository.
 
-The feature matrix separates implementation from runtime readiness. `runtime_readiness.legacy_upstream.ready` reports whether upstream is importable, not whether credentials, data access, checkpoint resume, or a live run are working. Broker execution is prohibited.
+The feature matrix separates implementation from runtime readiness. `runtime_readiness.legacy_upstream.ready` reports whether upstream is importable, not whether credentials, data access, checkpoint resume, or a live run are working. Exact model text and token-level continuation remain harness-specific. Broker/order execution is prohibited.
 
 ## Quick start
 
@@ -24,11 +24,34 @@ Python 3.11+ and `uv` are recommended.
 ```bash
 uv run tradingagents-portable fixture --events
 uv run tradingagents-portable dashboard --fixture
+uv run tradingagents-portable host-init ORCL --date 2026-08-01 --interactive
 uv run tradingagents-portable host-plan ORCL --date 2026-08-01
 uv run tradingagents-portable host-import --input ./orcl-host-run.json --dashboard
 ```
 
-`host-plan` is stateless. The active Codex task or another harness executes the returned roles using its own internal agents and tools. The plan includes exact per-stage context/tool contracts and the versioned host-submission JSON Schema. `host-import` rejects incomplete results, post-cutoff evidence, malformed provenance, dangling references, and credential-shaped fields; it derives metadata/events/artifacts server-side and publishes only the completed dossier.
+`host-init` starts the durable path and may prompt for portable, non-secret research settings with `--interactive`. The host then owns reasoning, agent spawning, concrete tool calls, and hard interruption. The portable layer owns stage order, safe receipts, checkpoint commits, cursor-readable events, validation, and publication.
+
+### Durable Codex/host task flow
+
+1. `host-init` creates a `run-lifecycle.v1` record; `host-start` returns the first stage.
+2. The host performs that stage and may append sanitized `host-receipts` containing summaries, digests, timings, and evidence IDs—never prompts, raw tool arguments, transcripts, or credentials. A truthful observed execution uses matching `stage_started` and `stage_completed` receipts for the same attempt; the completion digest must match the committed output.
+3. `host-stage-commit` atomically checkpoints the stage output and returns the next stage. Every mutation uses the latest returned `revision`.
+4. `host-pause`/`host-resume` continue from the first incomplete stage. Interrupted in-flight work is replayed; token-level continuation is not promised.
+5. `run-cancel` requests cooperative cancellation and `run-cancel-ack` makes it terminal after the host has actually stopped its work.
+6. `host-finalize` validates all committed stages, stages result/events and memory behind hidden publication boundaries, commits the lifecycle, then atomically publishes the canonical completed bundle. Any boundary failure is retryable; memory is excluded from recall until lifecycle completion. Launch the browser only after this succeeds.
+
+`run-events RUN_ID --after CURSOR` provides portable live progress through a monotonic polling cursor. A harness may add push delivery, but push is not required by the contract.
+
+### Backward-compatible atomic import
+
+The stateless plan/import seam remains supported for callers that already produce one complete payload:
+
+```bash
+uv run tradingagents-portable host-plan ORCL --date 2026-08-01 --output ./plan.json
+uv run tradingagents-portable host-import --input ./orcl-host-run.json --output ./result.json
+```
+
+`host-import` validates the frozen `host-submission.v2` schema, provenance cutoff, evidence references, non-execution invariants, and credential-shaped keys before publishing anything. It does not provide partial checkpoints or live receipts; new Codex tasks should use the durable lifecycle above.
 
 Install the pinned official upstream runtime before delegated research:
 
@@ -51,7 +74,7 @@ Start the MCP server directly:
 uv run tradingagents-portable-mcp
 ```
 
-The included `.mcp.json` starts the 12-tool credential-free server from the plugin root with `PYTHONPATH=src`. It registers no legacy/provider executor and imports no legacy/upstream module. The Codex plugin therefore uses fixture and host-native execution; the optional legacy CLI/server remains a separately configured compatibility path.
+The included `.mcp.json` starts the 27-tool credential-free server from the plugin root with `PYTHONPATH=src`. It covers discovery, fixture execution, legacy-compatible plan/import, durable lifecycle control, cursor receipts, decision memory, report export, conformance, completed-run reads, and final dashboard launch. It registers no legacy/provider executor and imports no legacy/upstream module.
 
 ## Python API
 
@@ -63,7 +86,9 @@ assert len(result.research_debate) == 4
 assert len(result.risk_debate) == 6
 ```
 
-For a host-owned run, call `prepare_host_run(RunRequest(executor="host_native", ...))`, execute the returned topology in the current harness, then call `submit_host_run(payload)`. The importer never creates an LLM client and never accepts an API key.
+For a durable host-owned run, use `HostRunCoordinator.create`, `start`, `append_receipts`, `commit_stage`, and `finalize`; `pause`, `resume`, `request_cancel`, and `acknowledge_cancel` provide stage-boundary control. `DecisionMemoryStore` recalls at most five same-symbol and three cross-symbol published decisions and can append later observed outcomes/reflections. `export_run_bundle` atomically creates a new upstream-compatible report tree; validated overwrite is journaled and crash-recoverable.
+
+For backward compatibility, `prepare_host_run(RunRequest(executor="host_native", ...))` plus `submit_host_run(payload)` still performs one atomic completed-run import. Neither path creates an LLM client or accepts an API key.
 
 For a harness with only one agent, implement `StageExecutor.execute_stage` and call `run_sequential_host_workflow`. The packaged reference runner applies the same manifest, context projections, tool-capability IDs, output schema, and atomic importer without any Codex or LangGraph dependency.
 
@@ -120,7 +145,7 @@ The server rejects non-loopback bind addresses. Its read-only endpoints are:
 
 The `/view` response is the merged, UI-ready post-run dossier. `current` resolves to the latest stored run and also works with the run, events, and result endpoints. A saved `/?run=<run_id>` URL stays pinned to that completed run even after a later run becomes current. Everything else is served from the packaged `tradingagents_portable/web/` assets, with SPA fallback to `index.html` and path traversal protection.
 
-The live run store is process-local. Preserve the host submission or normalized JSON artifact if a dossier must be reconstructed after the MCP/CLI process exits; re-importing the same submission is idempotent and recreates the same run ID.
+Durable host-native runs use private SQLite/WAL lifecycle state plus canonical atomic result/event bundles and compatibility projections under the configured state directory. The browser still reads completed results only; lifecycle status and live cursor receipts remain on CLI/MCP surfaces. Preserve exported bundles when a portable, independently verifiable archive is required.
 
 ## Incubation boundary
 

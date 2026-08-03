@@ -73,12 +73,27 @@ def test_orcl_fixture_is_deterministic_complete_and_typed() -> None:
     assert len(first_result.analyst_reports) == len(request.analysts)
     assert len(first_result.research_debate) == 2 * request.debate_rounds
     assert len(first_result.risk_debate) == 3 * request.risk_rounds
+    assert first_result.research_decision.recommendation == "hold"
     assert first_result.research_decision.rationale
-    assert first_result.trader_decision.plan
+    assert first_result.research_decision.strategic_actions
+    assert first_result.research_decision.raw_markdown == first_result.investment_plan
+    assert first_result.trader_decision.action == "hold"
+    assert first_result.trader_decision.reasoning
+    assert first_result.trader_decision.position_sizing
+    assert first_result.trader_decision.raw_markdown == first_result.trader_investment_plan
     assert first_result.risk_decision.constraints
-    assert first_result.portfolio_decision.summary
+    assert first_result.portfolio_decision.rating == "hold"
+    assert first_result.portfolio_decision.executive_summary
+    assert first_result.portfolio_decision.investment_thesis
+    assert first_result.portfolio_decision.time_horizon
+    assert first_result.portfolio_decision.raw_markdown == first_result.portfolio_manager_decision
+    assert first_result.processed_signal == "HOLD"
     assert first_result.trader_decision.executable is False
+    assert first_result.trader_decision.execution_authority == "none"
+    assert first_result.trader_decision.submitted is False
     assert first_result.portfolio_decision.executable is False
+    assert first_result.portfolio_decision.execution_authority == "none"
+    assert first_result.portfolio_decision.submitted is False
     assert {artifact.media_type for artifact in first_result.artifacts} >= {
         "text/markdown",
         "application/json",

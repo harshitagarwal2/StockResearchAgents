@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tradingagents-portable.local/schemas/run-lifecycle.v1.json",
+  "title": "TradingAgents Portable host lifecycle",
+  "description": "Stage-boundary control and safe-observation protocol. This is separate from the terminal host-submission.v2 dossier.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "run_id",
+    "status",
+    "revision",
+    "request",
+    "topology",
+    "completed_stage_ids",
+    "created_at",
+    "updated_at"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "run_id": {"type": "string", "pattern": "^host-[a-f0-9]{12}$"},
+    "status": {
+      "enum": ["prepared", "running", "paused", "cancel_requested", "cancelled", "finalizing", "completed", "failed"]
+    },
+    "revision": {"type": "integer", "minimum": 0},
+    "request": {"type": "object"},
+    "topology": {"type": "object"},
+    "completed_stage_ids": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "active_stage_id": {"type": ["string", "null"]},
+    "active_attempt": {"type": ["integer", "null"], "minimum": 1},
+    "cancel_reason": {"type": ["string", "null"], "maxLength": 1000},
+    "result_run_id": {"type": ["string", "null"]},
+    "finalization_completed_at": {"type": ["string", "null"], "format": "date-time"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "updated_at": {"type": "string", "format": "date-time"}
+  },
+  "$defs": {
+    "receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["receipt_id", "kind"],
+      "properties": {
+        "receipt_id": {"type": "string", "minLength": 1, "maxLength": 128},
+        "observed_at": {"type": "string", "format": "date-time"},
+        "kind": {
+          "enum": [
+            "stage_started",
+            "stage_completed",
+            "stage_progress",
+            "tool_started",
+            "tool_completed",
+            "tool_failed",
+            "warning"
+          ]
+        },
+        "stage_id": {"type": "string"},
+        "attempt": {"type": "integer", "minimum": 1},
+        "capability_id": {"type": "string"},
+        "host_call_id": {"type": "string"},
+        "status": {"type": "string"},
+        "duration_ms": {"type": "integer", "minimum": 0},
+        "input_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "output_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "evidence_ids": {"type": "array", "items": {"type": "string"}},
+        "safe_summary": {"type": "string", "maxLength": 1000}
+      }
+    }
+  }
+}

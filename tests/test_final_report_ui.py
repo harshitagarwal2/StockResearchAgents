@@ -45,12 +45,23 @@ def test_ui_exposes_every_merged_final_report_section() -> None:
         "analyst-grid",
         "research-debate-list",
         "research-manager",
-        "trader-stance",
-        "trader-plan",
+        "research-recommendation",
+        "research-rationale",
+        "research-strategic-actions",
+        "trader-action",
+        "trader-reasoning",
+        "trader-entry-price",
+        "trader-stop-loss",
+        "trader-position-sizing",
         "trader-executable",
         "risk-perspectives",
         "risk-manager-judgment",
-        "portfolio-decision",
+        "portfolio-rating",
+        "portfolio-summary",
+        "portfolio-thesis",
+        "portfolio-price-target",
+        "portfolio-time-horizon",
+        "portfolio-disclaimer",
         "processed-signal",
         "evidence-provenance",
         "capability-grid",
@@ -62,6 +73,8 @@ def test_ui_exposes_every_merged_final_report_section() -> None:
     }
     for element_id in required_section_ids | required_data_ids:
         assert f'id="{element_id}"' in html
+    for obsolete_id in ("research-decision", "trader-stance", "trader-plan", "portfolio-decision"):
+        assert f'id="{obsolete_id}"' not in html
 
 
 def test_ui_loads_only_the_canonical_final_view_without_fabricated_fallback() -> None:

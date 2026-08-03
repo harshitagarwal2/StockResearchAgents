@@ -61,6 +61,21 @@ def test_mcp_discovery_and_function_schemas_cover_required_surface() -> None:
         "run_fixture",
         "prepare_host_run",
         "import_host_run",
+        "create_host_run",
+        "start_host_run",
+        "append_run_receipts",
+        "commit_host_stage",
+        "pause_host_run",
+        "resume_host_run",
+        "get_run_control",
+        "poll_run_events",
+        "request_run_cancellation",
+        "acknowledge_run_cancellation",
+        "finalize_host_run",
+        "export_completed_run",
+        "query_decision_memory",
+        "record_decision_outcome",
+        "get_conformance_report",
         "get_run",
         "get_run_events",
         "get_run_result",
@@ -113,6 +128,33 @@ def test_registered_mcp_tool_names_match_discovery() -> None:
 
     assert names == set(discovery(legacy_path=str(ROOT / "does-not-exist"), include_legacy=False)["tools"])
     assert "run_legacy" not in names
+
+
+def test_export_mcp_tool_truthfully_declares_destructive_non_idempotent_behavior() -> None:
+    pytest.importorskip("mcp")
+    mcp_server = importlib.import_module("tradingagents_portable.mcp_server")
+    export_tool = next(
+        tool for tool in mcp_server.mcp._tool_manager.list_tools() if tool.name == "export_completed_run"
+    )
+
+    assert export_tool.annotations is not None
+    assert export_tool.annotations.read_only_hint is False
+    assert export_tool.annotations.destructive_hint is True
+    assert export_tool.annotations.idempotent_hint is False
+    assert export_tool.annotations.open_world_hint is False
+
+
+def test_mutating_mcp_tools_do_not_invite_automatic_idempotent_retries() -> None:
+    pytest.importorskip("mcp")
+    mcp_server = importlib.import_module("tradingagents_portable.mcp_server")
+    mutating = [
+        tool
+        for tool in mcp_server.mcp._tool_manager.list_tools()
+        if tool.annotations is not None and tool.annotations.read_only_hint is False
+    ]
+
+    assert mutating
+    assert all(tool.annotations.idempotent_hint is False for tool in mutating)
 
 
 def test_opt_in_legacy_mcp_adds_only_the_explicit_legacy_tool() -> None:

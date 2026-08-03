@@ -9,21 +9,55 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from ipaddress import ip_address
 from pathlib import Path
 from threading import Thread
-from urllib.parse import quote, unquote, urlparse
+from typing import Any, Protocol
+from urllib.parse import parse_qs, quote, unquote, urlparse
 
 from .contracts import PROTOTYPE_NOTICE
+from .lifecycle import HOST_RUN_COORDINATOR
 from .store import RUN_STORE, RunStore
 from .view import build_run_view
 
 _SERVERS: list[ThreadingHTTPServer] = []
 
 
+class PublicationCoordinator(Protocol):
+    def control(self, run_id: str) -> dict[str, Any]: ...
+
+
 def _default_web_root() -> Path:
     return Path(__file__).resolve().parent / "web"
 
 
-def dashboard_report(run_id: str, store: RunStore = RUN_STORE) -> dict[str, object]:
+def _publication_coordinator(
+    store: RunStore,
+    coordinator: PublicationCoordinator | None,
+) -> PublicationCoordinator | None:
+    if coordinator is not None:
+        return coordinator
+    return HOST_RUN_COORDINATOR if store is RUN_STORE else None
+
+
+def _is_publicly_visible(run_id: str, coordinator: PublicationCoordinator | None) -> bool:
+    if coordinator is None:
+        return True
+    try:
+        control = coordinator.control(run_id)
+    except KeyError:
+        # Fixture and imported runs have no lifecycle record and remain directly viewable.
+        return True
+    return control["status"] == "completed" and not control["publication_pending"]
+
+
+def dashboard_report(
+    run_id: str,
+    store: RunStore = RUN_STORE,
+    *,
+    coordinator: PublicationCoordinator | None = None,
+) -> dict[str, object]:
+    publication_coordinator = _publication_coordinator(store, coordinator)
     resolved_run_id = store.resolve_run_id(run_id)
+    if resolved_run_id is not None and not _is_publicly_visible(resolved_run_id, publication_coordinator):
+        resolved_run_id = None
     result = store.get_result(resolved_run_id) if resolved_run_id else None
     if result is None:
         return {"ok": False, "error": {"code": "run_not_found", "run_id": run_id}}
@@ -44,7 +78,11 @@ def dashboard_report(run_id: str, store: RunStore = RUN_STORE) -> dict[str, obje
     }
 
 
-def _handler(store: RunStore, web_root: Path) -> type[BaseHTTPRequestHandler]:
+def _handler(
+    store: RunStore,
+    web_root: Path,
+    coordinator: PublicationCoordinator | None,
+) -> type[BaseHTTPRequestHandler]:
     class DashboardHandler(BaseHTTPRequestHandler):
         server_version = "TradingAgentsPortable/0.1"
 
@@ -88,29 +126,52 @@ def _handler(store: RunStore, web_root: Path) -> type[BaseHTTPRequestHandler]:
             self.wfile.write(body)
 
         def do_GET(self) -> None:  # noqa: N802 - BaseHTTPRequestHandler contract
-            path = urlparse(self.path).path
+            parsed_url = urlparse(self.path)
+            path = parsed_url.path
             if path == "/api/health":
                 self._json({"ok": True, "loopback_only": True, "prototype_notice": PROTOTYPE_NOTICE})
                 return
             if path == "/api/runs":
-                self._json({"runs": [dashboard_report(item.run_id, store) for item in store.list_results()]})
+                reports = [
+                    dashboard_report(item.run_id, store, coordinator=coordinator) for item in store.list_results()
+                ]
+                self._json({"runs": [report for report in reports if report["ok"]]})
                 return
             if path.startswith("/api/runs/"):
                 parts = path.strip("/").split("/")
                 requested_run_id = parts[2] if len(parts) >= 3 else ""
                 run_id = store.resolve_run_id(requested_run_id)
+                if run_id is not None and not _is_publicly_visible(run_id, coordinator):
+                    run_id = None
                 if len(parts) == 3:
+                    report = dashboard_report(requested_run_id, store, coordinator=coordinator)
                     self._json(
-                        dashboard_report(requested_run_id, store),
-                        HTTPStatus.OK if run_id else HTTPStatus.NOT_FOUND,
+                        report,
+                        HTTPStatus.OK if report["ok"] else HTTPStatus.NOT_FOUND,
                     )
                     return
                 if len(parts) == 4 and parts[3] == "events":
-                    events = store.get_events(run_id) if run_id else None
+                    query = parse_qs(parsed_url.query)
+                    try:
+                        after_sequence = int(query.get("after", ["0"])[0])
+                        limit = int(query.get("limit", ["1000"])[0])
+                        events = (
+                            store.get_events_after(run_id, after_sequence=after_sequence, limit=limit)
+                            if run_id
+                            else None
+                        )
+                    except ValueError as exc:
+                        self._json(
+                            {"ok": False, "error": {"code": "invalid_event_cursor", "message": str(exc)}},
+                            HTTPStatus.BAD_REQUEST,
+                        )
+                        return
                     self._json(
                         {
                             "ok": events is not None,
                             "run_id": run_id or requested_run_id,
+                            "after_sequence": after_sequence,
+                            "last_sequence": events[-1].sequence if events else after_sequence,
                             "events": [event.to_dict() for event in events or ()],
                         },
                         HTTPStatus.OK if events is not None else HTTPStatus.NOT_FOUND,
@@ -149,6 +210,8 @@ def create_dashboard_server(
     port: int = 0,
     web_root: str | Path | None = None,
     store: RunStore = RUN_STORE,
+    *,
+    coordinator: PublicationCoordinator | None = None,
 ) -> ThreadingHTTPServer:
     try:
         address = ip_address(host)
@@ -157,7 +220,8 @@ def create_dashboard_server(
     if not address.is_loopback:
         raise ValueError("dashboard may bind only to a loopback address")
     root = Path(web_root).resolve() if web_root else _default_web_root()
-    return ThreadingHTTPServer((host, port), _handler(store, root))
+    publication_coordinator = _publication_coordinator(store, coordinator)
+    return ThreadingHTTPServer((host, port), _handler(store, root, publication_coordinator))
 
 
 def launch_dashboard(
@@ -166,10 +230,15 @@ def launch_dashboard(
     web_root: str | Path | None = None,
     run_id: str | None = None,
     store: RunStore = RUN_STORE,
+    *,
+    coordinator: PublicationCoordinator | None = None,
 ) -> dict[str, object]:
-    if run_id is not None and store.get_result(run_id) is None:
+    publication_coordinator = _publication_coordinator(store, coordinator)
+    if run_id is not None and (
+        store.get_result(run_id) is None or not _is_publicly_visible(run_id, publication_coordinator)
+    ):
         raise ValueError(f"completed run not found: {run_id}")
-    server = create_dashboard_server(host, port, web_root, store)
+    server = create_dashboard_server(host, port, web_root, store, coordinator=publication_coordinator)
     thread = Thread(target=server.serve_forever, name="tradingagents-dashboard", daemon=True)
     thread.start()
     _SERVERS.append(server)

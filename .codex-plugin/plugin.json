@@ -1,15 +1,15 @@
 {
   "name": "tradingagents-portable",
-  "version": "0.1.0+codex.20260803043340",
-  "description": "Run TradingAgents research with the current host task and inspect the completed read-only dossier.",
+  "version": "0.1.0+codex.20260803071157",
+  "description": "Run durable TradingAgents research with any host harness and inspect the completed read-only dossier.",
   "author": {
     "name": "TradingAgents Portable contributors"
   },
   "skills": "./skills/",
   "interface": {
     "displayName": "TradingAgents Portable",
-    "shortDescription": "Use host agents to build a final research dossier.",
-    "longDescription": "A credential-free research capability where the current Codex task or another host harness executes the complete TradingAgents topology with its own agents and tools, then atomically imports a validated result into a read-only dossier.",
+    "shortDescription": "Durable host-run research and final dossier.",
+    "longDescription": "A credential-free, harness-neutral research capability with the complete TradingAgents topology, live safe receipts, stage checkpoints and resume, cooperative cancellation, decision memory, report export, conformance checks, and a completed-result-only dossier.",
     "developerName": "TradingAgents Portable contributors",
     "category": "Developer Tools",
     "capabilities": [
@@ -17,9 +17,9 @@
       "Read"
     ],
     "defaultPrompt": [
-      "Research ORCL with this Codex task using the host-native workflow; do not request API keys.",
-      "Research any supported instrument with the current host's own agents and tools.",
-      "Inspect a completed run through the merged read-only dossier."
+      "Research ORCL through the durable host lifecycle with this Codex task; do not request API keys.",
+      "Research any supported instrument with this host's agents and tools, checkpointing every completed stage.",
+      "Resume or cancel a durable run, export its reports, or inspect its completed merged dossier."
     ],
     "brandColor": "#2563EB"
   },

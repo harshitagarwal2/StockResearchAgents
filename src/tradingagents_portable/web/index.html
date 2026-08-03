@@ -52,12 +52,12 @@
           </div>
 
           <aside class="decision-aperture" aria-label="Executive decision summary">
-            <p>Portfolio judgment</p>
+            <p>Portfolio rating</p>
             <strong id="decision-action">—</strong>
             <div class="decision-rule" aria-hidden="true"><span></span><i></i></div>
             <dl>
               <div><dt>Risk level</dt><dd id="risk-level">—</dd></div>
-              <div><dt>Derived signal</dt><dd id="processed-signal">—</dd></div>
+              <div><dt>Processed signal (derived)</dt><dd id="processed-signal">—</dd></div>
             </dl>
             <div class="non-executable" role="note">
               <b>NON-EXECUTABLE</b>
@@ -86,17 +86,23 @@
             <div class="executive-grid">
               <div class="judgment-panel">
                 <span class="eyebrow">Portfolio manager</span>
-                <p class="large-copy" id="portfolio-decision">—</p>
-                <p id="portfolio-output">—</p>
+                <h3 id="portfolio-rating">—</h3>
+                <p class="large-copy" id="portfolio-summary">—</p>
+                <p id="portfolio-thesis">—</p>
+                <dl class="compact-facts">
+                  <div><dt>Analytical price target</dt><dd id="portfolio-price-target">—</dd></div>
+                  <div><dt>Time horizon</dt><dd id="portfolio-time-horizon">—</dd></div>
+                </dl>
                 <p class="disclaimer" id="portfolio-disclaimer">—</p>
               </div>
               <div class="rationale-panel">
                 <span class="eyebrow">Research manager</span>
-                <h3 id="research-decision">—</h3>
+                <h3 id="research-recommendation">—</h3>
                 <p id="research-rationale">—</p>
+                <h3 class="subsection-title">Strategic actions</h3>
+                <p id="research-strategic-actions">—</p>
                 <dl class="compact-facts">
                   <div><dt>Supporting turns</dt><dd id="supporting-turns">—</dd></div>
-                  <div><dt>Final trade decision text</dt><dd id="final-trade-decision">—</dd></div>
                 </dl>
               </div>
             </div>
@@ -132,15 +138,18 @@
             </header>
             <div class="trader-sheet">
               <div class="stance-block">
-                <span>Analytical stance</span>
-                <strong id="trader-stance">—</strong>
+                <span>Analytical action</span>
+                <strong id="trader-action">—</strong>
                 <small id="trader-executable">—</small>
               </div>
               <div class="plan-block">
-                <h3>Plan</h3>
-                <div id="trader-plan" class="rich-text"><p>—</p></div>
-                <h3>Investment-plan handoff</h3>
-                <p id="investment-plan">—</p>
+                <h3>Reasoning</h3>
+                <p id="trader-reasoning">—</p>
+                <dl class="compact-facts trader-facts">
+                  <div><dt>Analytical entry price</dt><dd id="trader-entry-price">—</dd></div>
+                  <div><dt>Analytical stop loss</dt><dd id="trader-stop-loss">—</dd></div>
+                  <div><dt>Sizing scenario</dt><dd id="trader-position-sizing">—</dd></div>
+                </dl>
               </div>
               <div class="caveat-block">
                 <h3>Caveats</h3>

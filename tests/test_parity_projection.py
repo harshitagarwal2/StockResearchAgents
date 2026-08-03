@@ -24,8 +24,19 @@ def _legacy_state() -> dict[str, object]:
             "judge_decision": "RESEARCH MANAGER PLAN",
             "count": 2,
         },
-        "investment_plan": "INVESTMENT PLAN EXACT",
-        "trader_investment_plan": "TRADER PLAN EXACT",
+        "investment_plan": (
+            "**Recommendation**: Overweight\n\n"
+            "**Rationale**: RESEARCH RATIONALE EXACT\n\n"
+            "**Strategic Actions**: RESEARCH ACTIONS EXACT"
+        ),
+        "trader_investment_plan": (
+            "**Action**: Sell\n\n"
+            "**Reasoning**: TRADER REASONING EXACT\n\n"
+            "**Entry Price**: 141.25\n\n"
+            "**Stop Loss**: 150.5\n\n"
+            "**Position Sizing**: TRADER SIZING EXACT\n\n"
+            "FINAL TRANSACTION PROPOSAL: **SELL**"
+        ),
         "risk_debate_state": {
             "history": "Aggressive: buy\nConservative: wait\nNeutral: hold",
             "aggressive_history": "Aggressive: buy",
@@ -37,7 +48,13 @@ def _legacy_state() -> dict[str, object]:
             "judge_decision": "PORTFOLIO MANAGER DECISION EXACT",
             "count": 3,
         },
-        "final_trade_decision": "FINAL TRADE DECISION EXACT",
+        "final_trade_decision": (
+            "**Rating**: Buy\n\n"
+            "**Executive Summary**: PORTFOLIO SUMMARY EXACT\n\n"
+            "**Investment Thesis**: PORTFOLIO THESIS EXACT\n\n"
+            "**Price Target**: 210\n\n"
+            "**Time Horizon**: 12 months"
+        ),
     }
 
 
@@ -70,13 +87,33 @@ def test_projector_is_lossless_for_reports_and_distinct_decision_fields() -> Non
     assert state == before
     assert result.report_sections.market_report == "MARKET FULL REPORT"
     assert result.report_sections.fundamentals_report == "FUNDAMENTALS FULL REPORT"
-    assert result.investment_plan == "INVESTMENT PLAN EXACT"
-    assert result.trader_investment_plan == "TRADER PLAN EXACT"
+    assert result.investment_plan == state["investment_plan"]
+    assert result.trader_investment_plan == state["trader_investment_plan"]
     assert result.portfolio_manager_decision == "PORTFOLIO MANAGER DECISION EXACT"
-    assert result.final_trade_decision == "FINAL TRADE DECISION EXACT"
+    assert result.final_trade_decision == state["final_trade_decision"]
     assert result.processed_signal == "BUY"
-    assert result.trader_decision.stance == "buy"
+    assert result.research_decision.recommendation == "overweight"
+    assert result.research_decision.rationale == "RESEARCH RATIONALE EXACT"
+    assert result.research_decision.strategic_actions == "RESEARCH ACTIONS EXACT"
+    assert result.research_decision.raw_markdown == state["investment_plan"]
+    assert result.trader_decision.action == "sell"
+    assert result.trader_decision.reasoning == "TRADER REASONING EXACT"
+    assert result.trader_decision.entry_price == 141.25
+    assert result.trader_decision.stop_loss == 150.5
+    assert result.trader_decision.position_sizing == "TRADER SIZING EXACT"
+    assert result.trader_decision.raw_markdown == state["trader_investment_plan"]
     assert result.trader_decision.executable is False
+    assert result.trader_decision.execution_authority == "none"
+    assert result.trader_decision.submitted is False
+    assert result.portfolio_decision.rating == "buy"
+    assert result.portfolio_decision.executive_summary == "PORTFOLIO SUMMARY EXACT"
+    assert result.portfolio_decision.investment_thesis == "PORTFOLIO THESIS EXACT"
+    assert result.portfolio_decision.price_target == 210.0
+    assert result.portfolio_decision.time_horizon == "12 months"
+    assert result.portfolio_decision.raw_markdown == state["final_trade_decision"]
+    assert result.portfolio_decision.executable is False
+    assert result.portfolio_decision.execution_authority == "none"
+    assert result.portfolio_decision.submitted is False
     assert result.execution_config.backend_url == "https://api.example.test/v1"
     assert result.execution_config.output_language == "English"
     assert result.execution_config.temperature == 0.2
@@ -114,21 +151,27 @@ def test_projector_preserves_snapshots_without_inventing_turns() -> None:
 
 
 @pytest.mark.parametrize("signal", ["BUY", "OVERWEIGHT", "HOLD", "UNDERWEIGHT", "SELL"])
-def test_projector_preserves_every_upstream_signal_tier(signal: str) -> None:
+def test_projector_preserves_portfolio_signal_tiers_without_rewriting_trader_action(signal: str) -> None:
+    state = _legacy_state()
+    state["final_trade_decision"] = (
+        f"**Rating**: {signal.title()}\n\n"
+        "**Executive Summary**: PORTFOLIO SUMMARY\n\n"
+        "**Investment Thesis**: PORTFOLIO THESIS"
+    )
     result = LegacyStateProjector().project(
         run_id="legacy-test",
         request=RunRequest(executor="legacy"),
-        final_state=_legacy_state(),
+        final_state=state,
         processed_signal=signal,
         config={},
         started_at="start",
         completed_at="end",
     )
 
-    expected = signal.lower()
     assert result.processed_signal == signal
-    assert result.trader_decision.stance == expected
-    assert result.portfolio_decision.action == expected
+    assert result.portfolio_decision.rating == signal.lower()
+    assert result.trader_decision.action == "sell"
+    assert result.trader_decision.raw_markdown == state["trader_investment_plan"]
 
 
 def test_fixture_populates_the_full_parity_surface() -> None:
@@ -144,6 +187,6 @@ def test_fixture_populates_the_full_parity_surface() -> None:
     assert result.trader_investment_plan
     assert result.portfolio_manager_decision
     assert result.final_trade_decision
-    assert result.processed_signal == "NO_ACTION"
+    assert result.processed_signal == "HOLD"
     assert result.capability.observation_mode == "fixture"
     assert result.persistence.writes_expected is False

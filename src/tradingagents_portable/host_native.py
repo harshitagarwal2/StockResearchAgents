@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
+import re
 from collections.abc import Mapping, Sequence
 from dataclasses import replace
 from datetime import UTC, date, datetime, timedelta
@@ -41,7 +43,14 @@ from .contracts import (
 )
 from .reporting import build_report_artifacts
 from .store import RUN_STORE, RunStore
-from .workflow import expand_workflow, load_host_submission_schema, load_workflow_manifest, stage_runtime_contract
+from .workflow import (
+    WorkflowManifest,
+    expand_workflow,
+    load_host_submission_schema,
+    load_run_lifecycle_schema,
+    load_workflow_manifest,
+    stage_runtime_contract,
+)
 
 _MAX_SUBMISSION_BYTES = 2_000_000
 _ANALYST_REPORT_FIELDS = {
@@ -53,6 +62,11 @@ _ANALYST_REPORT_FIELDS = {
 _RESEARCH_SPEAKERS = ("Bull Researcher", "Bear Researcher")
 _RISK_SPEAKERS = ("Aggressive Analyst", "Conservative Analyst", "Neutral Analyst")
 _SIGNALS = {"buy", "overweight", "hold", "underweight", "sell"}
+_TRADER_ACTIONS = {"buy", "hold", "sell"}
+_RATING_PATTERN = re.compile(
+    r"(?im)^\s*(?:\*\*)?rating(?:\*\*)?\s*:\s*(?:\*\*)?"
+    r"(buy|overweight|hold|underweight|sell)(?:\*\*)?\b"
+)
 
 
 def _mapping(value: object, name: str) -> Mapping[str, Any]:
@@ -93,6 +107,33 @@ def _confidence(value: object, name: str) -> float:
     if not 0 <= confidence <= 1:
         raise ValueError(f"{name} must be between 0 and 1")
     return confidence
+
+
+def _optional_text(value: Mapping[str, Any], key: str, name: str) -> str | None:
+    if key not in value or value[key] is None:
+        return None
+    return _text(value[key], name)
+
+
+def _optional_number(value: Mapping[str, Any], key: str, name: str) -> float | None:
+    if key not in value or value[key] is None:
+        return None
+    raw = value[key]
+    if not isinstance(raw, int | float) or isinstance(raw, bool):
+        raise ValueError(f"{name} must be a number or null")
+    number = float(raw)
+    if not math.isfinite(number) or number <= 0:
+        raise ValueError(f"{name} must be a finite positive number")
+    return number
+
+
+def _final_rating(final_text: str) -> str:
+    match = _RATING_PATTERN.search(final_text)
+    if match is None:
+        raise ValueError(
+            "final_trade_decision must contain an explicit Rating: Buy, Overweight, Hold, Underweight, or Sell"
+        )
+    return match.group(1).lower()
 
 
 def _integer(value: object, name: str) -> int:
@@ -317,12 +358,43 @@ def _run_id(payload: Mapping[str, Any]) -> str:
     return "host-" + hashlib.sha256(material.encode("utf-8")).hexdigest()[:12]
 
 
+def _stage_output_contracts(manifest: WorkflowManifest, schema: Mapping[str, Any]) -> dict[str, dict[str, Any]]:
+    """Project the advertised stage fields directly from the submission schema."""
+    contract_keys = {
+        "analyst": "analyst_stage_output",
+        "research_debate": "debate_stage_output",
+        "research_manager": "research_manager_output",
+        "trader": "trader_output",
+        "risk_debate": "debate_stage_output",
+        "portfolio": "portfolio_stage_output",
+    }
+    definitions = _mapping(schema.get("$defs"), "submission schema $defs")
+    advertised: dict[str, dict[str, Any]] = {}
+    for stage_name, contract_key in contract_keys.items():
+        output_ref = manifest.contracts[contract_key]
+        prefix = "host-submission.v2.schema.json#/$defs/"
+        if not isinstance(output_ref, str) or not output_ref.startswith(prefix):
+            raise ValueError(f"unexpected output contract reference: {output_ref!r}")
+        definition_name = output_ref.removeprefix(prefix)
+        definition = _mapping(definitions.get(definition_name), f"submission schema $defs.{definition_name}")
+        required = _sequence(definition.get("required"), f"submission schema $defs.{definition_name}.required")
+        properties = _mapping(definition.get("properties"), f"submission schema $defs.{definition_name}.properties")
+        advertised[stage_name] = {
+            "output_ref": output_ref,
+            "required": list(required),
+            "properties": list(properties),
+            "additional_properties": definition.get("additionalProperties", True),
+        }
+    return advertised
+
+
 def prepare_host_run(request: RunRequest) -> dict[str, Any]:
     """Return the canonical plan and required output shapes without creating a run."""
     if request.executor != "host_native":
         request = replace(request, executor="host_native", checkpoint_enabled=False, legacy_config={})
     topology = expand_workflow(request)
     manifest = load_workflow_manifest()
+    submission_schema = load_host_submission_schema()
     return {
         "ok": True,
         "request": {
@@ -342,14 +414,7 @@ def prepare_host_run(request: RunRequest) -> dict[str, Any]:
         "execution_owner": "host_harness",
         "external_model_api_keys_accepted": False,
         "publication": "atomic_after_complete_validation",
-        "stage_output_contracts": {
-            "analyst": ("evidence", "report.thesis", "report.evidence_ids", "report.confidence", "report.content"),
-            "research_debate": ("position", "evidence_ids"),
-            "research_manager": ("decision", "rationale", "confidence"),
-            "trader": ("stance", "plan", "caveats"),
-            "risk_debate": ("position", "evidence_ids"),
-            "portfolio": ("risk_decision", "portfolio_decision", "final_trade_decision"),
-        },
+        "stage_output_contracts": _stage_output_contracts(manifest, submission_schema),
         "workflow_semantics": {
             "defaults": dict(manifest.defaults),
             "evidence_policy": dict(manifest.evidence_policy),
@@ -360,7 +425,8 @@ def prepare_host_run(request: RunRequest) -> dict[str, Any]:
             "state_contract": dict(manifest.state_contract),
             "parity_scope": dict(manifest.parity_scope),
         },
-        "submission_schema": load_host_submission_schema(),
+        "submission_schema": submission_schema,
+        "lifecycle_schema": load_run_lifecycle_schema(),
     }
 
 
@@ -454,8 +520,15 @@ def submit_host_run(
     payload: Mapping[str, Any],
     *,
     store: RunStore = RUN_STORE,
+    run_id_override: str | None = None,
 ) -> tuple[RunResult, tuple[RunEvent, ...]]:
-    """Validate and persist one completed host-executed workflow submission."""
+    """Validate and persist one completed host-executed workflow submission.
+
+    ``run_id_override`` is an internal coordinator seam. It is deliberately not
+    part of the host submission wire contract, so a lifecycle can retain the
+    durable identity allocated before execution without letting submissions
+    choose arbitrary storage identifiers.
+    """
     reject_secret_shaped_keys(payload)
     _reject_unknown_keys(
         payload,
@@ -557,34 +630,74 @@ def submit_host_run(
     )
 
     research_data = _mapping(payload.get("research_decision"), "research_decision")
-    _reject_unknown_keys(research_data, {"decision", "rationale", "confidence"}, "research_decision")
-    raw_research_label = _text(research_data.get("decision"), "research_decision.decision")
-    allowed_research_labels = {*_SIGNALS, *(label.title() for label in _SIGNALS)}
-    if raw_research_label not in allowed_research_labels:
-        raise ValueError("research_decision.decision must use a documented rating label")
+    _reject_unknown_keys(
+        research_data,
+        {"recommendation", "rationale", "strategic_actions", "raw_markdown", "confidence"},
+        "research_decision",
+    )
+    raw_research_label = _text(research_data.get("recommendation"), "research_decision.recommendation")
+    if raw_research_label not in {label.title() for label in _SIGNALS}:
+        raise ValueError("research_decision.recommendation must be Buy, Overweight, Hold, Underweight, or Sell")
     research_label = raw_research_label.lower()
-    if research_label not in _SIGNALS:
-        raise ValueError("research_decision.decision must be Buy, Overweight, Hold, Underweight, or Sell")
     research_decision = ResearchDecision(
-        decision=research_label.title(),
+        recommendation=research_label,  # type: ignore[arg-type]
         rationale=_text(research_data.get("rationale"), "research_decision.rationale"),
+        strategic_actions=_text(
+            research_data.get("strategic_actions"),
+            "research_decision.strategic_actions",
+        ),
+        raw_markdown=_optional_text(research_data, "raw_markdown", "research_decision.raw_markdown") or "",
         supporting_turns=tuple(range(1, len(research_turns) + 1)),
         confidence=_confidence(research_data.get("confidence"), "research_decision.confidence"),
     )
+    if not research_decision.raw_markdown:
+        research_decision = replace(research_decision, raw_markdown=research_decision.render_markdown())
+
     trader_data = _mapping(payload.get("trader_decision"), "trader_decision")
-    _reject_unknown_keys(trader_data, {"stance", "plan", "caveats", "executable"}, "trader_decision")
+    _reject_unknown_keys(
+        trader_data,
+        {
+            "action",
+            "reasoning",
+            "entry_price",
+            "stop_loss",
+            "position_sizing",
+            "raw_markdown",
+            "caveats",
+            "executable",
+            "execution_authority",
+            "submitted",
+        },
+        "trader_decision",
+    )
     trader_executable = trader_data.get("executable")
     if trader_executable is not None and trader_executable is not False:
         raise ValueError("trader_decision.executable must be false")
-    stance = _text(trader_data.get("stance"), "trader_decision.stance")
-    if stance not in {*_SIGNALS, "no_action"}:
-        raise ValueError(f"unsupported trader stance: {stance}")
+    trader_authority = trader_data.get("execution_authority")
+    if trader_authority is not None and trader_authority != "none":
+        raise ValueError("trader_decision.execution_authority must be none")
+    trader_submitted = trader_data.get("submitted")
+    if trader_submitted is not None and trader_submitted is not False:
+        raise ValueError("trader_decision.submitted must be false")
+    raw_trader_action = _text(trader_data.get("action"), "trader_decision.action")
+    if raw_trader_action not in {action.title() for action in _TRADER_ACTIONS}:
+        raise ValueError("trader_decision.action must be Buy, Hold, or Sell")
+    trader_action = raw_trader_action.lower()
     trader_decision = TraderDecision(
-        stance=stance,  # type: ignore[arg-type]
-        plan=_text(trader_data.get("plan"), "trader_decision.plan"),
+        action=trader_action,  # type: ignore[arg-type]
+        reasoning=_text(trader_data.get("reasoning"), "trader_decision.reasoning"),
+        entry_price=_optional_number(trader_data, "entry_price", "trader_decision.entry_price"),
+        stop_loss=_optional_number(trader_data, "stop_loss", "trader_decision.stop_loss"),
+        position_sizing=_optional_text(trader_data, "position_sizing", "trader_decision.position_sizing"),
+        raw_markdown=_optional_text(trader_data, "raw_markdown", "trader_decision.raw_markdown") or "",
         executable=False,
+        execution_authority="none",
+        submitted=False,
         caveats=_optional_string_tuple(trader_data, "caveats", "trader_decision.caveats"),
     )
+    if not trader_decision.raw_markdown:
+        trader_decision = replace(trader_decision, raw_markdown=trader_decision.render_markdown())
+
     risk_data = _mapping(payload.get("risk_decision"), "risk_decision")
     _reject_unknown_keys(risk_data, {"risk_level", "constraints", "unresolved"}, "risk_decision")
     risk_level = _text(risk_data.get("risk_level"), "risk_decision.risk_level")
@@ -596,32 +709,67 @@ def submit_host_run(
         unresolved=_string_tuple(risk_data.get("unresolved"), "risk_decision.unresolved"),
     )
     portfolio_data = _mapping(payload.get("portfolio_decision"), "portfolio_decision")
-    _reject_unknown_keys(portfolio_data, {"action", "summary", "executable"}, "portfolio_decision")
+    _reject_unknown_keys(
+        portfolio_data,
+        {
+            "rating",
+            "executive_summary",
+            "investment_thesis",
+            "price_target",
+            "time_horizon",
+            "raw_markdown",
+            "executable",
+            "execution_authority",
+            "submitted",
+        },
+        "portfolio_decision",
+    )
     portfolio_executable = portfolio_data.get("executable")
     if portfolio_executable is not None and portfolio_executable is not False:
         raise ValueError("portfolio_decision.executable must be false")
-    action = _text(portfolio_data.get("action"), "portfolio_decision.action")
-    allowed_actions = {*_SIGNALS, "approve_research_case", "revise", "reject", "no_action"}
-    if action not in allowed_actions:
-        raise ValueError(f"unsupported portfolio action: {action}")
+    portfolio_authority = portfolio_data.get("execution_authority")
+    if portfolio_authority is not None and portfolio_authority != "none":
+        raise ValueError("portfolio_decision.execution_authority must be none")
+    portfolio_submitted = portfolio_data.get("submitted")
+    if portfolio_submitted is not None and portfolio_submitted is not False:
+        raise ValueError("portfolio_decision.submitted must be false")
+    raw_portfolio_rating = _text(portfolio_data.get("rating"), "portfolio_decision.rating")
+    if raw_portfolio_rating not in {label.title() for label in _SIGNALS}:
+        raise ValueError("portfolio_decision.rating must be Buy, Overweight, Hold, Underweight, or Sell")
+    portfolio_rating = raw_portfolio_rating.lower()
     portfolio_decision = PortfolioDecision(
-        action=action,  # type: ignore[arg-type]
-        summary=_text(portfolio_data.get("summary"), "portfolio_decision.summary"),
+        rating=portfolio_rating,  # type: ignore[arg-type]
+        executive_summary=_text(
+            portfolio_data.get("executive_summary"),
+            "portfolio_decision.executive_summary",
+        ),
+        investment_thesis=_text(
+            portfolio_data.get("investment_thesis"),
+            "portfolio_decision.investment_thesis",
+        ),
+        price_target=_optional_number(portfolio_data, "price_target", "portfolio_decision.price_target"),
+        time_horizon=_optional_text(portfolio_data, "time_horizon", "portfolio_decision.time_horizon"),
+        raw_markdown=_optional_text(portfolio_data, "raw_markdown", "portfolio_decision.raw_markdown") or "",
         executable=False,
+        execution_authority="none",
+        submitted=False,
     )
+    if not portfolio_decision.raw_markdown:
+        portfolio_decision = replace(portfolio_decision, raw_markdown=portfolio_decision.render_markdown())
 
     warnings = _optional_string_tuple(payload, "warnings", "warnings")
     report_content = {report.analyst: report.content for report in reports}
     report_sections = ReportSections(
         **{field: report_content.get(analyst, "") for analyst, field in _ANALYST_REPORT_FIELDS.items()}
     )
-    default_final_decision = f"Rating: {action.replace('_', ' ').title()}\n{portfolio_decision.summary}"
-    final_trade_decision = _text(
-        payload.get("final_trade_decision", default_final_decision),
-        "final_trade_decision",
-    )
-    processed_signal = action.upper() if action in _SIGNALS else "NO_ACTION"
-    run_id = _run_id(payload)
+    final_trade_decision = _text(payload.get("final_trade_decision"), "final_trade_decision")
+    final_rating = _final_rating(final_trade_decision)
+    if final_rating != portfolio_rating:
+        raise ValueError("final_trade_decision Rating must match portfolio_decision.rating")
+    processed_signal = portfolio_rating.upper()
+    if run_id_override is not None and not re.fullmatch(r"host-[a-f0-9]{12}", run_id_override):
+        raise ValueError("run_id_override must match host- followed by 12 lowercase hexadecimal characters")
+    run_id = run_id_override or _run_id(payload)
     existing_result = store.get_result(run_id)
     existing_events = store.get_events(run_id)
     if existing_result is not None and existing_events is not None:
@@ -647,7 +795,7 @@ def submit_host_run(
         research_debate_snapshot=_snapshot(
             research_turns,
             {"bull": "Bull Researcher", "bear": "Bear Researcher"},
-            research_decision.rationale,
+            research_decision.raw_markdown,
         ),
         research_decision=research_decision,
         trader_decision=trader_decision,
@@ -659,13 +807,13 @@ def submit_host_run(
                 "conservative": "Conservative Analyst",
                 "neutral": "Neutral Analyst",
             },
-            portfolio_decision.summary,
+            portfolio_decision.raw_markdown,
         ),
         risk_decision=risk_decision,
         portfolio_decision=portfolio_decision,
-        investment_plan=research_decision.rationale,
-        trader_investment_plan=trader_decision.plan,
-        portfolio_manager_decision=portfolio_decision.summary,
+        investment_plan=research_decision.raw_markdown,
+        trader_investment_plan=trader_decision.raw_markdown,
+        portfolio_manager_decision=portfolio_decision.raw_markdown,
         final_trade_decision=final_trade_decision,
         processed_signal=processed_signal,
         execution_config=ExecutionConfig(
@@ -688,6 +836,8 @@ def submit_host_run(
             deterministic=False,
             live_data=all(item.provenance.source_uri is not None and not item.provenance.fixture for item in evidence),
             external_credentials_required=False,
+            portable_boundary_credentials_required=False,
+            host_tool_auth="host_owned_unknown",
             upstream_business_logic=False,
         ),
         warnings=(

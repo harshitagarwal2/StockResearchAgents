@@ -22,20 +22,20 @@
   ],
   "portfolio_manager": {"id": "portfolio", "role": "Portfolio Manager"},
   "contracts": {
-    "host_submission_schema": "host-submission.v1.schema.json",
-    "request": "host-submission.v1.schema.json#/$defs/request",
-    "evidence": "host-submission.v1.schema.json#/$defs/evidence",
-    "analyst_stage_output": "host-submission.v1.schema.json#/$defs/analystStageOutput",
-    "debate_stage_output": "host-submission.v1.schema.json#/$defs/debateStageOutput",
-    "research_manager_output": "host-submission.v1.schema.json#/$defs/researchManagerOutput",
-    "trader_output": "host-submission.v1.schema.json#/$defs/traderOutput",
-    "portfolio_stage_output": "host-submission.v1.schema.json#/$defs/portfolioStageOutput",
+    "host_submission_schema": "host-submission.v2.schema.json",
+    "request": "host-submission.v2.schema.json#/$defs/request",
+    "evidence": "host-submission.v2.schema.json#/$defs/evidence",
+    "analyst_stage_output": "host-submission.v2.schema.json#/$defs/analystStageOutput",
+    "debate_stage_output": "host-submission.v2.schema.json#/$defs/debateStageOutput",
+    "research_manager_output": "host-submission.v2.schema.json#/$defs/researchManagerOutput",
+    "trader_output": "host-submission.v2.schema.json#/$defs/traderOutput",
+    "portfolio_stage_output": "host-submission.v2.schema.json#/$defs/portfolioStageOutput",
     "normalized_output": "tradingagents_portable.contracts.RunResult"
   },
   "capability_negotiation": {
     "full": {
       "requires": ["structured_output", "tool_calls"],
-      "optional": ["subagents", "parallel_tools", "host_checkpoint"],
+      "optional": ["subagents", "parallel_tools", "push_events"],
       "execution": "The host may use separate native agents while preserving the declared context and output contracts."
     },
     "compatible": {
@@ -44,7 +44,7 @@
     },
     "tools_only": {
       "requires": ["mcp_client"],
-      "execution": "The harness consumes prepare_host_run, owns all orchestration, and submits one complete result."
+      "execution": "The harness consumes the workflow and lifecycle contracts, owns all reasoning, commits stage outputs through MCP, and finalizes one complete result."
     },
     "portable_fallback": "compatible"
   },
@@ -93,85 +93,85 @@
     "analyst.fundamentals": "Use company fundamentals, balance sheet, cash flow, and income statement. Assess growth, earnings quality, cash conversion, leverage, commitments, valuation inputs when available, concentration, guidance, and disclosed unknowns in a compact evidence table.",
     "research.bull": "Consume every selected analyst report plus prior debate history. Build the strongest falsifiable upside case, address the strongest bear evidence directly, and cite evidence IDs in the requested output language.",
     "research.bear": "Consume every selected analyst report plus the current bull case and prior debate history. Rebut the strongest upside case, build the strongest falsifiable downside case, and cite evidence IDs in the requested output language.",
-    "research.manager": "Consume every analyst report and the full ordered Bull/Bear history. Weigh both cases, choose Buy, Overweight, Hold, Underweight, or Sell as a research label, explain decisive evidence and monitoring tests, and provide confidence from zero to one.",
-    "trader": "Consume the research-manager synthesis and instrument context. Translate it into a non-executable analytical stance, confirmation and invalidation gates, and explicit suitability and order caveats; never produce an order instruction.",
+    "research.manager": "Consume every analyst report and the full ordered Bull/Bear history. Return a structured ResearchPlan: recommendation must be exactly Buy, Overweight, Hold, Underweight, or Sell; include rationale, concrete analytical strategic_actions, and confidence from zero to one. Hold is a neutral research rating, not No Action. Analytical sizing guidance is allowed, but it has no broker authority.",
+    "trader": "Consume the research-manager synthesis and instrument context. Return a structured TraderProposal: action must be exactly Buy, Hold, or Sell; include reasoning and optional analytical entry_price, stop_loss, and position_sizing. These are research scenarios only: executable is false, execution_authority is none, submitted is false, and no broker-ready order or side effect is permitted.",
     "risk.aggressive": "Consume the trader plan, every analyst report, and prior risk history. State the strongest responsible higher-risk interpretation and the evidence gates required to upgrade the research stance.",
     "risk.conservative": "Consume the trader plan, every analyst report, and prior risk history. State the strongest capital-preservation interpretation and the evidence required before risk falls.",
     "risk.neutral": "Consume the trader plan, every analyst report, and prior risk history. Reconcile aggressive and conservative views into measurable upgrade and downgrade gates while preserving uncertainty.",
-    "portfolio": "Consume all analyst reports, research decision, trader proposal, complete risk history, and optional host-owned past context. Issue the final non-executable research action, risk level, constraints, unresolved unknowns, and concise decision text. Never authorize a trade."
+    "portfolio": "Consume all analyst reports, research decision, trader proposal, complete risk history, and optional host-owned past context. Return risk_decision plus a structured PortfolioDecision whose rating is exactly Buy, Overweight, Hold, Underweight, or Sell, with executive_summary, investment_thesis, optional price_target, and optional time_horizon. final_trade_decision must contain an explicit matching Rating label. Non-executable means the rating cannot authorize an order; it never means No Action. executable is false, execution_authority is none, submitted is false, and no trade side effect is permitted."
   },
   "stage_contracts": {
     "analyst.market": {
       "context": ["request", "instrument_identity"],
       "allowed_tools": ["market.price_history", "market.indicators", "market.verified_snapshot"],
       "tool_policy": "Call price history before indicators and finish with a latest-session cross-check when capabilities are available; otherwise emit explicit unavailable evidence.",
-      "output_ref": "host-submission.v1.schema.json#/$defs/analystStageOutput"
+      "output_ref": "host-submission.v2.schema.json#/$defs/analystStageOutput"
     },
     "analyst.social": {
       "context": ["request", "instrument_identity"],
       "allowed_tools": ["news.company", "social.stocktwits", "social.reddit"],
       "tool_policy": "Prefetch bounded samples, preserve sample sizes and source divergence, and degrade to explicit unavailable evidence without credentials.",
-      "output_ref": "host-submission.v1.schema.json#/$defs/analystStageOutput"
+      "output_ref": "host-submission.v2.schema.json#/$defs/analystStageOutput"
     },
     "analyst.news": {
       "context": ["request", "instrument_identity"],
       "allowed_tools": ["news.company", "news.global", "macro.indicators", "prediction_markets"],
       "tool_policy": "Use only available keyless capabilities; distinguish unavailable optional signals from zero or neutral values.",
-      "output_ref": "host-submission.v1.schema.json#/$defs/analystStageOutput"
+      "output_ref": "host-submission.v2.schema.json#/$defs/analystStageOutput"
     },
     "analyst.fundamentals": {
       "context": ["request", "instrument_identity"],
       "allowed_tools": ["fundamentals.company", "financials.balance_sheet", "financials.cash_flow", "financials.income_statement"],
       "tool_policy": "Prefer filings and official results; retain units, reporting periods, and reconciliation limitations.",
-      "output_ref": "host-submission.v1.schema.json#/$defs/analystStageOutput"
+      "output_ref": "host-submission.v2.schema.json#/$defs/analystStageOutput"
     },
     "research.bull": {
       "context": ["request", "evidence", "analyst_reports", "research_debate_so_far"],
       "allowed_tools": [],
       "tool_policy": "Reason only over retained evidence and prior debate context.",
-      "output_ref": "host-submission.v1.schema.json#/$defs/debateStageOutput"
+      "output_ref": "host-submission.v2.schema.json#/$defs/debateStageOutput"
     },
     "research.bear": {
       "context": ["request", "evidence", "analyst_reports", "research_debate_so_far"],
       "allowed_tools": [],
       "tool_policy": "Reason only over retained evidence and prior debate context.",
-      "output_ref": "host-submission.v1.schema.json#/$defs/debateStageOutput"
+      "output_ref": "host-submission.v2.schema.json#/$defs/debateStageOutput"
     },
     "research.manager": {
       "context": ["request", "evidence", "analyst_reports", "research_debate"],
       "allowed_tools": [],
       "tool_policy": "No new evidence retrieval; synthesize the completed research record.",
-      "output_ref": "host-submission.v1.schema.json#/$defs/researchManagerOutput"
+      "output_ref": "host-submission.v2.schema.json#/$defs/researchManagerOutput"
     },
     "trader": {
       "context": ["request", "instrument_identity", "research_decision"],
       "allowed_tools": [],
       "tool_policy": "No order or broker capability is permitted.",
-      "output_ref": "host-submission.v1.schema.json#/$defs/traderOutput"
+      "output_ref": "host-submission.v2.schema.json#/$defs/traderOutput"
     },
     "risk.aggressive": {
       "context": ["request", "evidence", "analyst_reports", "trader_decision", "risk_debate_so_far"],
       "allowed_tools": [],
       "tool_policy": "Reason over the completed evidence record; do not create new facts.",
-      "output_ref": "host-submission.v1.schema.json#/$defs/debateStageOutput"
+      "output_ref": "host-submission.v2.schema.json#/$defs/debateStageOutput"
     },
     "risk.conservative": {
       "context": ["request", "evidence", "analyst_reports", "trader_decision", "risk_debate_so_far"],
       "allowed_tools": [],
       "tool_policy": "Reason over the completed evidence record; do not create new facts.",
-      "output_ref": "host-submission.v1.schema.json#/$defs/debateStageOutput"
+      "output_ref": "host-submission.v2.schema.json#/$defs/debateStageOutput"
     },
     "risk.neutral": {
       "context": ["request", "evidence", "analyst_reports", "trader_decision", "risk_debate_so_far"],
       "allowed_tools": [],
       "tool_policy": "Reason over the completed evidence record; do not create new facts.",
-      "output_ref": "host-submission.v1.schema.json#/$defs/debateStageOutput"
+      "output_ref": "host-submission.v2.schema.json#/$defs/debateStageOutput"
     },
     "portfolio": {
       "context": ["request", "evidence", "analyst_reports", "research_decision", "trader_decision", "risk_debate", "optional_past_context"],
       "allowed_tools": [],
       "tool_policy": "Produce research-only decisions; executable must be false.",
-      "output_ref": "host-submission.v1.schema.json#/$defs/portfolioStageOutput"
+      "output_ref": "host-submission.v2.schema.json#/$defs/portfolioStageOutput"
     }
   },
   "routing_semantics": {
@@ -182,13 +182,14 @@
   },
   "state_contract": {
     "portable_shared_state": ["request", "instrument_identity", "evidence", "analyst_reports", "research_debate", "research_decision", "trader_decision", "risk_debate", "risk_decision", "portfolio_decision", "warnings"],
-    "host_owned_optional_state": ["subagent_handles", "tool_transcripts", "token_usage", "wall_time", "checkpoint", "past_context"],
-    "publication": "Only the complete validated portable_shared_state crosses import_host_run. Host-owned state is never required by the dossier contract."
+    "host_owned_optional_state": ["subagent_handles", "tool_transcripts", "token_usage", "wall_time", "model_session", "in_flight_tool_handles"],
+    "publication": "Portable stage outputs, safe receipts, checkpoints, and unpublished memory may be staged incrementally. Memory recall and the final UI expose only completed lifecycle decisions and the complete validated dossier. Host-owned prompts, credentials, transcripts, and runtime handles never cross the boundary."
   },
   "parity_scope": {
-    "guaranteed": ["selected analyst stages", "Bull/Bear debate order and round counts", "Research Manager", "Trader research proposal", "three-way risk debate", "Portfolio Manager", "final report groups", "evidence and provenance", "output language"],
-    "adapter_specific": ["agent spawning", "tool-call transport", "parallelism", "checkpoint implementation", "past-memory implementation", "live progress telemetry", "token and wall-time accounting"],
-    "claim": "Analysis-stage and final-information parity; runtime mechanics remain harness-specific."
+    "guaranteed": ["stage topology and order", "Research Manager five-tier schema", "Trader three-tier proposal schema", "Portfolio Manager five-tier schema", "processed-signal derivation", "final report groups", "evidence and provenance contract", "non-execution boundary", "output language", "durable stage-boundary checkpoints and resume", "linked safe live stage and tool receipts", "publication-gated bounded durable decision memory", "cooperative cancellation", "upstream-compatible report bundle export", "interactive portable CLI configuration", "portable invariant conformance with optional pinned-checkout identity"],
+    "partial": [],
+    "adapter_specific": ["agent spawning", "tool-call transport", "parallelism", "hard process or tool interruption", "in-flight token continuation", "push event transport", "raw token and cost accounting", "exact model text"],
+    "claim": "Portable feature, information, action, lifecycle, memory, report, and safety contracts are complete; actual agent spawning, tool invocation, hard interruption, and exact model text remain harness-specific by design."
   },
   "fallback": "sequential"
 }

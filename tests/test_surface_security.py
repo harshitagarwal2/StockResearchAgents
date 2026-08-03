@@ -6,7 +6,7 @@ import json
 import pytest
 
 from tradingagents_portable.capabilities import feature_matrix
-from tradingagents_portable.contracts import RunRequest
+from tradingagents_portable.contracts import RunRequest, reject_secret_shaped_keys
 from tradingagents_portable.legacy_mcp_server import (
     _reject_secret_shaped_keys,
     _request,
@@ -28,6 +28,12 @@ from tradingagents_portable.legacy_mcp_server import (
 def test_secret_shaped_config_keys_are_rejected_recursively(payload: dict[str, object]) -> None:
     with pytest.raises(ValueError, match="credential-shaped config key is forbidden"):
         _reject_secret_shaped_keys(payload)
+
+
+def test_financial_authorization_field_is_not_misclassified_as_a_credential() -> None:
+    payload = {"new_repurchase_authorization_usd_bn": 50, "regulatory_authorization_status": "approved"}
+
+    reject_secret_shaped_keys(payload)
 
 
 def test_legacy_config_is_allowlisted_and_omits_unset_values() -> None:
@@ -115,18 +121,19 @@ def test_validated_python_config_cannot_be_mutated_after_construction() -> None:
         request.legacy_config["api_key"] = "sentinel"
 
 
-def test_executor_readiness_does_not_claim_unverified_features_supported() -> None:
+def test_executor_readiness_separates_verified_portable_lifecycle_from_unverified_legacy_runtime() -> None:
     matrix = feature_matrix(legacy_path="/definitely/not/a/tradingagents/repository")
     features = {feature.name: feature.level.value for feature in matrix.features}
     assert features["orcl_fixture"] == "supported"
     assert features["legacy_adapter"] == "optional"
-    assert features["legacy_full_topology"] == "optional"
-    assert features["checkpoint_resume"] == "optional"
-    assert features["live_stage_streaming"] == "unavailable"
-    assert features["host_native_executor"] == "supported"
-    assert matrix.runtime_readiness["host_native"]["credentials_required"] is False
-    assert matrix.runtime_readiness["host_native"]["checkpoint"] == "unavailable"
-    assert features["run_cancellation"] == "unavailable"
+    assert features["legacy_full_topology"] == "supported"
+    assert features["checkpoint_resume"] == "supported"
+    assert features["live_stage_streaming"] == "supported"
+    assert features["host_native_plan_import"] == "supported"
+    assert matrix.runtime_readiness["host_native"]["portable_boundary_credentials_required"] is False
+    assert matrix.runtime_readiness["host_native"]["host_tool_auth"] == "host_owned_unknown"
+    assert matrix.runtime_readiness["host_native"]["checkpoint"] == "durable_portable_stage_boundaries"
+    assert features["run_cancellation"] == "supported"
 
     legacy = matrix.runtime_readiness["legacy_upstream"]
     assert legacy["result_mapping"] == "implemented_post_run"
@@ -136,5 +143,5 @@ def test_executor_readiness_does_not_claim_unverified_features_supported() -> No
     assert legacy["cancellation"] == "unavailable"
 
     host = matrix.runtime_readiness["host_native"]
-    assert host["implementation"] == "stateless_plan_and_atomic_import"
+    assert host["implementation"] == "durable_stage_boundary_coordinator_plus_atomic_canonical_bundle_import"
     assert host["verification"] == "locally_verified"

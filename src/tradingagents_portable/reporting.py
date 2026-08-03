@@ -128,6 +128,8 @@ def build_report_artifacts(result: RunResult) -> tuple[Artifact, ...]:
             )
         ),
     )
+    durable_storage = result.persistence.writes_expected
+    storage = "durable_run_store" if durable_storage else "in_memory_run_store"
     result_descriptor = Artifact(
         id="data.run_result",
         kind="structured_result_descriptor",
@@ -137,8 +139,8 @@ def build_report_artifacts(result: RunResult) -> tuple[Artifact, ...]:
             "run_id": result.run_id,
             "representation": "RunResult",
             "availability": f"/api/runs/{result.run_id}/result",
-            "storage": "in_memory_run_store",
-            "disk_write_declared": False,
+            "storage": storage,
+            "disk_write_declared": durable_storage,
         },
     )
     events_descriptor = Artifact(
@@ -150,8 +152,8 @@ def build_report_artifacts(result: RunResult) -> tuple[Artifact, ...]:
             "run_id": result.run_id,
             "representation": "RunEvent[]",
             "availability": f"/api/runs/{result.run_id}/events",
-            "storage": "in_memory_run_store",
-            "disk_write_declared": False,
+            "storage": storage,
+            "disk_write_declared": durable_storage,
         },
     )
     return (*report_groups, complete, result_descriptor, events_descriptor)

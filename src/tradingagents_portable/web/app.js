@@ -180,12 +180,12 @@
     set("#asset-class", humanize(overview.asset_type));
     set("#symbol", overview.symbol);
     set("#report-title", title);
-    set("#decision-summary", portfolio.summary);
+    set("#decision-summary", portfolio.executive_summary);
     set("#analysis-date", date(overview.as_of_date));
     set("#run-id", view.run_id);
     set("#completed-at", timestamp(overview.completed_at));
     set("#research-confidence", percentage(research.confidence));
-    set("#decision-action", humanize(portfolio.action));
+    set("#decision-action", humanize(portfolio.rating));
     set("#risk-level", humanize(risk.risk_level));
     set("#processed-signal", humanize(signal.processed_signal));
     set("#signal-meaning", signal.meaning);
@@ -198,15 +198,16 @@
     const decisions = record(view.decisions);
     const research = record(decisions.research);
     const portfolio = record(decisions.portfolio);
-    const outputs = record(view.outputs);
-
-    set("#portfolio-decision", portfolio.summary);
-    set("#portfolio-output", outputs.portfolio_manager_decision);
+    set("#portfolio-rating", humanize(portfolio.rating));
+    set("#portfolio-summary", portfolio.executive_summary);
+    set("#portfolio-thesis", portfolio.investment_thesis);
+    set("#portfolio-price-target", portfolio.price_target, "Not specified");
+    set("#portfolio-time-horizon", portfolio.time_horizon, "Not specified");
     set("#portfolio-disclaimer", portfolio.disclaimer);
-    set("#research-decision", humanize(research.decision));
+    set("#research-recommendation", humanize(research.recommendation));
     set("#research-rationale", research.rationale);
+    set("#research-strategic-actions", research.strategic_actions);
     set("#supporting-turns", list(research.supporting_turns).join(", "), "None declared");
-    set("#final-trade-decision", outputs.final_trade_decision);
   }
 
   function renderAnalysts(view) {
@@ -251,12 +252,17 @@
 
   function renderTrader(view) {
     const trader = record(record(view.decisions).trader);
-    const outputs = record(view.outputs);
-    set("#trader-stance", humanize(trader.stance));
-    set("#trader-executable", trader.executable ? "Executable" : "Non-executable analytical output");
-    const plan = q("#trader-plan");
-    if (plan) plan.replaceChildren(...richText(trader.plan).childNodes);
-    set("#investment-plan", outputs.investment_plan || outputs.trader_investment_plan);
+    set("#trader-action", humanize(trader.action));
+    set(
+      "#trader-executable",
+      trader.executable || trader.execution_authority !== "none" || trader.submitted
+        ? "Invalid execution state"
+        : "Non-executable · no authority · not submitted"
+    );
+    set("#trader-reasoning", trader.reasoning);
+    set("#trader-entry-price", trader.entry_price, "Not specified");
+    set("#trader-stop-loss", trader.stop_loss, "Not specified");
+    set("#trader-position-sizing", trader.position_sizing, "Not specified");
     renderList("#trader-caveats", trader.caveats, "No trader caveats declared in RunView.");
   }
 
@@ -291,7 +297,7 @@
     replace("#risk-perspectives", cards.length ? cards : [node("p", "empty-row", "No risk perspectives declared in RunView.")]);
     renderList("#risk-constraints", riskDecision.constraints, "No constraints declared in RunView.");
     renderList("#risk-unresolved", riskDecision.unresolved, "No unresolved risks declared in RunView.");
-    set("#risk-manager-judgment", record(riskDebate.snapshot).judge_decision || portfolio.summary);
+    set("#risk-manager-judgment", record(riskDebate.snapshot).judge_decision || portfolio.executive_summary);
   }
 
   function renderEvidence(view) {

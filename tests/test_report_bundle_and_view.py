@@ -93,16 +93,17 @@ def test_run_view_is_lossless_and_keeps_decision_and_signal_separate() -> None:
     assert view["debates"]["research"]["snapshot"] == result.research_debate_snapshot.to_dict()
     assert view["debates"]["risk"]["snapshot"] == result.risk_debate_snapshot.to_dict()
     assert view["decisions"]["portfolio"] == result.portfolio_decision.to_dict()
+    assert view["decisions"]["research"]["recommendation"] == "hold"
+    assert view["decisions"]["trader"]["action"] == "hold"
+    assert view["decisions"]["portfolio"]["rating"] == "hold"
     assert view["outputs"]["final_trade_decision"] == result.final_trade_decision
     assert view["signal"]["processed_signal"] == result.processed_signal
+    assert view["signal"]["source"] == "portfolio_rating"
     assert view["signal"]["processed_signal"] != view["outputs"]["final_trade_decision"]
     assert view["events"] == [event.to_dict() for event in events]
     assert view["artifacts"] == [artifact.to_dict() for artifact in result.artifacts]
-    assert next(action for action in view["actions"] if action["id"] == "execute_trade") == {
-        "id": "execute_trade",
-        "available": False,
-        "reason": "Broker connections, order authority, and trade execution are prohibited.",
-    }
+    assert {action["id"] for action in view["actions"]} == {"view_complete_report", "resume", "cancel"}
+    assert all(action["id"] != "execute_trade" for action in view["actions"])
 
 
 def test_legacy_projection_preserves_source_report_contents_in_memory() -> None:

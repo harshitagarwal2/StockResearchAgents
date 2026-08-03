@@ -511,6 +511,14 @@ dd {
   border-right: 1px solid var(--line-strong);
 }
 
+.judgment-panel h3 {
+  margin: 16px 0 18px;
+  color: var(--cobalt-deep);
+  font-family: var(--display);
+  font-size: clamp(2rem, 4vw, 4rem);
+  font-weight: 500;
+}
+
 .large-copy {
   margin: 18px 0 30px;
   font-family: var(--display);
@@ -538,6 +546,16 @@ dd {
   font-weight: 500;
 }
 
+.rationale-panel h3.subsection-title {
+  margin: 30px 0 10px;
+  color: var(--ink);
+  font-family: var(--utility);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
 .rationale-panel > p {
   color: var(--ink-soft);
 }
@@ -548,6 +566,14 @@ dd {
   margin: 34px 0 0;
   padding-top: 22px;
   border-top: 1px solid var(--line);
+}
+
+.compact-facts dd {
+  overflow-wrap: anywhere;
+}
+
+.trader-facts {
+  margin-top: 28px;
 }
 
 .analyst-grid {

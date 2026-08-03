@@ -10,6 +10,7 @@ from tradingagents_portable.workflow import (
     DEFAULT_MANIFEST,
     expand_workflow,
     load_host_submission_schema,
+    load_run_lifecycle_schema,
     load_workflow_manifest,
     stage_runtime_contract,
 )
@@ -35,7 +36,9 @@ def test_manifest_is_generic_and_declares_sequential_fallback() -> None:
     assert manifest.defaults["risk_rounds"] == 1
     assert "Never request an API key" in manifest.evidence_policy["fallback"]
     assert manifest.parity_scope["claim"] == (
-        "Analysis-stage and final-information parity; runtime mechanics remain harness-specific."
+        "Portable feature, information, action, lifecycle, memory, report, and safety contracts are complete; "
+        "actual agent spawning, tool invocation, hard interruption, and exact model text remain harness-specific "
+        "by design."
     )
     assert manifest.capability_negotiation["portable_fallback"] == "compatible"
     assert manifest.routing_semantics["research_debate"].endswith("2 * debate_rounds turns.")
@@ -62,7 +65,7 @@ def test_every_expanded_stage_has_an_executable_runtime_contract() -> None:
     contracts = [stage_runtime_contract(stage, manifest) for stage in topology.stages]
 
     assert len(contracts) == len(topology.stages)
-    assert all(contract["output_ref"].startswith("host-submission.v1.schema.json#/") for contract in contracts)
+    assert all(contract["output_ref"].startswith("host-submission.v2.schema.json#/") for contract in contracts)
     assert contracts[0]["allowed_tools"] == [
         "market.price_history",
         "market.indicators",
@@ -97,7 +100,52 @@ def test_host_submission_schema_covers_every_stage_and_final_field() -> None:
         "risk_debate",
         "risk_decision",
         "portfolio_decision",
+        "final_trade_decision",
     }
+    assert definitions["researchManagerOutput"]["properties"]["recommendation"]["enum"] == [
+        "Buy",
+        "Overweight",
+        "Hold",
+        "Underweight",
+        "Sell",
+    ]
+    assert definitions["traderOutput"]["properties"]["action"]["enum"] == ["Buy", "Hold", "Sell"]
+    assert definitions["portfolioDecision"]["properties"]["rating"]["enum"] == [
+        "Buy",
+        "Overweight",
+        "Hold",
+        "Underweight",
+        "Sell",
+    ]
+    assert set(definitions["researchManagerOutput"]["required"]) == {
+        "recommendation",
+        "rationale",
+        "strategic_actions",
+        "confidence",
+    }
+    assert set(definitions["traderOutput"]["required"]) == {"action", "reasoning"}
+    assert set(definitions["portfolioDecision"]["required"]) == {
+        "rating",
+        "executive_summary",
+        "investment_thesis",
+    }
+
+
+def test_run_lifecycle_schema_is_separate_and_covers_controls_and_safe_receipts() -> None:
+    schema = load_run_lifecycle_schema()
+
+    assert schema["properties"]["status"]["enum"] == [
+        "prepared",
+        "running",
+        "paused",
+        "cancel_requested",
+        "cancelled",
+        "finalizing",
+        "completed",
+        "failed",
+    ]
+    assert "receipt" in schema["$defs"]
+    assert "api_key" not in json.dumps(schema).lower()
 
 
 def test_loader_rejects_unknown_schema_version(tmp_path) -> None:

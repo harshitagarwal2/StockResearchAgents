@@ -91,8 +91,11 @@ def build_run_view(result: RunResult, events: tuple[RunEvent, ...]) -> RunView:
         },
         "signal": {
             "processed_signal": result.processed_signal,
-            "meaning": "Derived downstream signal; it is not the portfolio decision text or an order.",
+            "source": "portfolio_rating",
+            "meaning": "Derived from the Portfolio Manager rating; it is research output, never an order.",
             "executable": False,
+            "execution_authority": "none",
+            "submitted": False,
         },
         "persistence": {
             "metadata": persistence,
@@ -120,11 +123,13 @@ def build_run_view(result: RunResult, events: tuple[RunEvent, ...]) -> RunView:
                 _badge("Deterministic", result.capability.deterministic, "safe", "Replay characteristic"),
                 _badge("Live data", result.capability.live_data, "warning", "Data-source characteristic"),
                 _badge(
-                    "Credentials required",
-                    result.capability.external_credentials_required,
-                    "warning" if result.capability.external_credentials_required else "safe",
-                    "Runtime prerequisite",
+                    "Portable boundary credentials",
+                    result.capability.portable_boundary_credentials_required,
+                    "warning" if result.capability.portable_boundary_credentials_required else "safe",
+                    "The portable host-plan/import boundary never accepts credentials",
                 ),
+                _badge("Host tool auth", result.capability.host_tool_auth, "info", "Owned by the selected harness"),
+                _badge("Execution authority", "none", "safe", "No broker or order surface exists"),
             ],
         },
         "events": [event.to_dict() for event in events],
@@ -148,11 +153,6 @@ def build_run_view(result: RunResult, events: tuple[RunEvent, ...]) -> RunView:
                 "id": "cancel",
                 "available": not completed,
                 "reason": "Completed runs cannot be cancelled." if completed else "Run is still active.",
-            },
-            {
-                "id": "execute_trade",
-                "available": False,
-                "reason": "Broker connections, order authority, and trade execution are prohibited.",
             },
         ],
     }

@@ -206,25 +206,37 @@ def run_fixture(request: RunRequest, store: RunStore = RUN_STORE) -> tuple[RunRe
     research_debate = _research_debate(request)
     risk_debate = _risk_debate(request)
     research_decision = ResearchDecision(
-        decision="balanced_constructive_fixture_case",
+        recommendation="hold",
         rationale="The static fixture supports further research, not a live investment conclusion.",
+        strategic_actions="Validate the synthetic thesis with live, cutoff-valid evidence before changing the rating.",
         supporting_turns=tuple(turn.turn for turn in research_debate),
         confidence=0.61,
+        projection_quality="synthetic",
     )
+    research_decision = replace(research_decision, raw_markdown=research_decision.render_markdown())
     trader_decision = TraderDecision(
-        stance="no_action",
-        plan="No trade. Preserve the fixture thesis as a non-executable analytical scenario.",
+        action="hold",
+        reasoning="Synthetic evidence supports a Hold research scenario until live evidence validates the thesis.",
+        position_sizing="No analytical allocation from synthetic evidence.",
         caveats=("Synthetic evidence", "No live price", "No suitability assessment"),
+        projection_quality="synthetic",
     )
+    trader_decision = replace(trader_decision, raw_markdown=trader_decision.render_markdown())
     risk_decision = RiskDecision(
         risk_level="unknown",
         constraints=("No broker integration", "No order execution", "No position sizing"),
         unresolved=("Live valuation", "Current news", "User-specific risk tolerance"),
     )
     portfolio_decision = PortfolioDecision(
-        action="approve_research_case",
-        summary="Approve the fixture as a workflow demonstration only; authorize no portfolio action.",
+        rating="hold",
+        executive_summary="Retain the fixture as a Hold research demonstration only; authorize no transaction.",
+        investment_thesis=(
+            "The synthetic evidence is adequate to exercise the workflow, not to support a live allocation."
+        ),
+        time_horizon="Until live evidence is supplied",
+        projection_quality="synthetic",
     )
+    portfolio_decision = replace(portfolio_decision, raw_markdown=portfolio_decision.render_markdown())
     report_by_name = {report.analyst: report.content for report in reports}
     report_sections = ReportSections(
         market_report=report_by_name.get("market", ""),
@@ -232,13 +244,10 @@ def run_fixture(request: RunRequest, store: RunStore = RUN_STORE) -> tuple[RunRe
         news_report=report_by_name.get("news", ""),
         fundamentals_report=report_by_name.get("fundamentals", ""),
     )
-    investment_plan = (
-        "Maintain a balanced constructive research case, validate the fixture thesis with live data, "
-        "and do not allocate capital from synthetic evidence."
-    )
-    trader_plan = trader_decision.plan
-    portfolio_manager_decision = portfolio_decision.summary
-    final_trade_decision = "Rating: No Action\nSynthetic fixture only; no portfolio action is authorized."
+    investment_plan = research_decision.raw_markdown
+    trader_plan = trader_decision.raw_markdown
+    portfolio_manager_decision = portfolio_decision.raw_markdown
+    final_trade_decision = "Rating: Hold\nSynthetic fixture only; no portfolio transaction is authorized."
     base_result = RunResult(
         run_id=run_id,
         request=request,
@@ -297,7 +306,7 @@ def run_fixture(request: RunRequest, store: RunStore = RUN_STORE) -> tuple[RunRe
         trader_investment_plan=trader_plan,
         portfolio_manager_decision=portfolio_manager_decision,
         final_trade_decision=final_trade_decision,
-        processed_signal="NO_ACTION",
+        processed_signal="HOLD",
         execution_config=ExecutionConfig(
             executor="fixture",
             checkpoint_enabled=request.checkpoint_enabled,

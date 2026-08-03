@@ -3,6 +3,7 @@
 from typing import TYPE_CHECKING, Any
 
 from .capabilities import discovery, feature_matrix
+from .conformance import evaluate_conformance
 from .contracts import (
     PROTOTYPE_NOTICE,
     SCHEMA_VERSION,
@@ -26,9 +27,12 @@ from .contracts import (
     WorkflowTopology,
 )
 from .errors import CapabilitySetupError
+from .export import export_run_bundle
 from .fixture import prepare_fixture, run_fixture
 from .harness import run_sequential_host_workflow
 from .host_native import prepare_host_run, submit_host_run
+from .lifecycle import HostRunCoordinator, LifecycleStore
+from .memory import DecisionMemoryStore
 from .topology import build_legacy_topology
 
 if TYPE_CHECKING:
@@ -51,6 +55,7 @@ __all__ = [
     "DebateTurn",
     "EvidenceItem",
     "FeatureCapabilityMatrix",
+    "HostRunCoordinator",
     "InstrumentIdentity",
     "LegacyTradingAgentsAdapter",
     "PortfolioDecision",
@@ -58,6 +63,8 @@ __all__ = [
     "Provenance",
     "ResearchDecision",
     "RiskDecision",
+    "LifecycleStore",
+    "DecisionMemoryStore",
     "RunEvent",
     "RunRequest",
     "RunResult",
@@ -69,6 +76,8 @@ __all__ = [
     "build_legacy_topology",
     "discovery",
     "feature_matrix",
+    "evaluate_conformance",
+    "export_run_bundle",
     "prepare_fixture",
     "prepare_host_run",
     "run_fixture",

@@ -11,12 +11,23 @@ import pytest
 
 from tradingagents_portable import dashboard
 from tradingagents_portable.contracts import RunRequest
-from tradingagents_portable.dashboard import create_dashboard_server, launch_dashboard
+from tradingagents_portable.dashboard import create_dashboard_server, dashboard_report, launch_dashboard
 from tradingagents_portable.fixture import run_fixture
 from tradingagents_portable.store import RunStore
 
 ROOT = Path(__file__).resolve().parents[1]
 WEB_ROOT = ROOT / "src" / "tradingagents_portable" / "web"
+
+
+class PublicationCoordinatorStub:
+    def __init__(self, controls: dict[str, dict[str, object]]) -> None:
+        self.controls = controls
+
+    def control(self, run_id: str) -> dict[str, object]:
+        try:
+            return self.controls[run_id]
+        except KeyError as exc:
+            raise KeyError(f"unknown lifecycle run: {run_id}") from exc
 
 
 class DashboardMarkup(HTMLParser):
@@ -64,9 +75,22 @@ def test_dashboard_markup_contains_complete_final_report_information() -> None:
         "warning-list",
         "analyst-grid",
         "research-debate-list",
+        "research-recommendation",
+        "research-rationale",
+        "research-strategic-actions",
         "trader",
+        "trader-action",
+        "trader-reasoning",
+        "trader-entry-price",
+        "trader-stop-loss",
+        "trader-position-sizing",
         "risk-perspectives",
         "risk-manager-judgment",
+        "portfolio-rating",
+        "portfolio-summary",
+        "portfolio-thesis",
+        "portfolio-price-target",
+        "portfolio-time-horizon",
         "evidence-provenance",
         "transparency",
         "artifacts",
@@ -159,6 +183,12 @@ def test_loopback_dashboard_serves_html_json_result_and_events() -> None:
             assert payload["ok"] is True
             assert len(payload["events"]) == len(events)
             assert [event["sequence"] for event in payload["events"]] == list(range(1, len(events) + 1))
+
+        with urlopen(f"{base}/api/runs/{result.run_id}/events?after=2&limit=1", timeout=5) as response:  # noqa: S310
+            page = json.load(response)
+            assert page["after_sequence"] == 2
+            assert page["last_sequence"] == 3
+            assert [event["sequence"] for event in page["events"]] == [3]
     finally:
         server.shutdown()
         server.server_close()
@@ -186,6 +216,17 @@ def test_dashboard_current_alias_resolves_the_run_requested_by_the_frontend() ->
         server.shutdown()
         server.server_close()
         thread.join(timeout=5)
+
+
+def test_dashboard_keeps_runs_without_lifecycle_records_visible() -> None:
+    store = RunStore()
+    result, _events = run_fixture(RunRequest(), store)
+    coordinator = PublicationCoordinatorStub({})
+
+    report = dashboard_report(result.run_id, store, coordinator=coordinator)
+
+    assert report["ok"] is True
+    assert report["run_id"] == result.run_id
 
 
 @pytest.mark.parametrize("host", ["0.0.0.0", "8.8.8.8", "localhost"])

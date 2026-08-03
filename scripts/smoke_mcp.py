@@ -14,18 +14,33 @@ from mcp.types import CallToolResult, TextContent
 
 ROOT = Path(__file__).resolve().parents[1]
 EXPECTED_TOOLS = {
+    "acknowledge_run_cancellation",
+    "append_run_receipts",
+    "commit_host_stage",
+    "create_host_run",
     "discover_capability",
+    "export_completed_run",
+    "finalize_host_run",
+    "get_conformance_report",
     "get_dashboard_report",
     "get_feature_matrix",
     "get_run",
     "get_run_events",
     "get_run_result",
     "get_run_view",
+    "get_run_control",
     "launch_local_dashboard",
     "import_host_run",
+    "pause_host_run",
+    "poll_run_events",
     "prepare_host_run",
     "prepare_fixture",
+    "query_decision_memory",
+    "record_decision_outcome",
+    "request_run_cancellation",
+    "resume_host_run",
     "run_fixture",
+    "start_host_run",
 }
 
 
@@ -80,6 +95,34 @@ async def smoke() -> None:
             plan = _payload(plan_response)
             assert plan["execution_owner"] == "host_harness"
             assert plan["external_model_api_keys_accepted"] is False
+            assert plan["lifecycle_schema"]["properties"]["status"]["enum"][-1] == "failed"
+
+            created_response = await session.call_tool(
+                "create_host_run",
+                arguments={
+                    "symbol": "ORCL",
+                    "as_of_date": "2026-08-01",
+                    "analysts": ["market"],
+                    "decision_memory_enabled": False,
+                },
+            )
+            created = _payload(created_response)["control"]
+            started_response = await session.call_tool(
+                "start_host_run",
+                arguments={"run_id": created["run_id"], "expected_revision": created["revision"]},
+            )
+            started = _payload(started_response)
+            assert started["stage"]["id"] == "analyst.market"
+            cancelled_response = await session.call_tool(
+                "request_run_cancellation",
+                arguments={
+                    "run_id": created["run_id"],
+                    "expected_revision": started["control"]["revision"],
+                    "reason": "MCP lifecycle smoke completed.",
+                },
+            )
+            cancelled = _payload(cancelled_response)["control"]
+            assert cancelled["status"] == "cancel_requested"
 
             run_response = await session.call_tool(
                 "run_fixture",
@@ -103,6 +146,12 @@ async def smoke() -> None:
             assert len(retrieved_result["risk_debate"]) == 6
             assert retrieved_result["trader_decision"]["executable"] is False
             assert retrieved_result["portfolio_decision"]["executable"] is False
+
+            conformance_response = await session.call_tool("get_conformance_report", arguments={"run_id": run_id})
+            conformance = _payload(conformance_response)
+            assert conformance["ok"] is False
+            assert conformance["conformance"]["verified"] is False
+            assert not any(check["status"] == "failed" for check in conformance["conformance"]["checks"])
 
             view_response = await session.call_tool("get_run_view", arguments={"run_id": run_id})
             view_payload = _payload(view_response)

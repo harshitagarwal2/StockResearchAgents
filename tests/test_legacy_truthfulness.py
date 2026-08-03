@@ -30,10 +30,15 @@ def test_post_run_events_do_not_claim_unobserved_stage_completion() -> None:
     assert stage_events
     assert {event.status for event in stage_events} == {"unobserved"}
     assert all(event.data["output_observed"] is False for event in stage_events)
-    assert result.trader_decision.stance == "sell"
+    assert result.trader_decision.action == "unknown"
+    assert result.trader_decision.raw_markdown == ""
     assert result.trader_decision.executable is False
+    assert result.trader_decision.execution_authority == "none"
+    assert result.trader_decision.submitted is False
     assert result.portfolio_manager_decision == ""
     assert result.final_trade_decision == ""
+    assert result.portfolio_decision.rating == "sell"
+    assert result.portfolio_decision.execution_authority == "none"
     assert result.processed_signal == "SELL"
     assert result.persistence.run_logging_enabled is True
     assert result.persistence.writes_expected is True

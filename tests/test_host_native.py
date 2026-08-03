@@ -44,7 +44,7 @@ def _payload() -> dict[str, object]:
     ]
     return {
         "request": {
-            "schema_version": "2026-08-02",
+            "schema_version": "2026-08-03",
             "symbol": "ORCL",
             "as_of_date": "2026-08-01",
             "asset_type": "stock",
@@ -74,10 +74,23 @@ def _payload() -> dict[str, object]:
                 "evidence_ids": ["ev-market", "ev-fundamentals"],
             },
         ],
-        "research_decision": {"decision": "Hold", "rationale": "Manager synthesis.", "confidence": 0.72},
+        "research_decision": {
+            "recommendation": "Hold",
+            "rationale": "Manager synthesis.",
+            "strategic_actions": "Wait for the next verified earnings update.",
+            "raw_markdown": "Research manager: preserve optional source text.",
+            "confidence": 0.72,
+        },
         "trader_decision": {
-            "stance": "hold",
-            "plan": "Research-only hold stance.",
+            "action": "Hold",
+            "reasoning": "Research-only hold stance.",
+            "entry_price": 175.5,
+            "stop_loss": 160.0,
+            "position_sizing": "At most 1% of a diversified portfolio.",
+            "raw_markdown": "Trader proposal: preserve optional source text.",
+            "executable": False,
+            "execution_authority": "none",
+            "submitted": False,
             "caveats": ["No suitability review."],
         },
         "risk_debate": [
@@ -94,7 +107,18 @@ def _payload() -> dict[str, object]:
             "constraints": ["No order execution."],
             "unresolved": ["Future cash conversion."],
         },
-        "portfolio_decision": {"action": "hold", "summary": "Hold research stance; no order is authorized."},
+        "portfolio_decision": {
+            "rating": "Hold",
+            "executive_summary": "Hold research stance; no order is authorized.",
+            "investment_thesis": "Valuation and execution risks are balanced at the cutoff.",
+            "price_target": 190.0,
+            "time_horizon": "12 months",
+            "raw_markdown": "Portfolio decision: preserve optional source text.",
+            "executable": False,
+            "execution_authority": "none",
+            "submitted": False,
+        },
+        "final_trade_decision": "Rating: Hold\nResearch conclusion only; no order is authorized.",
     }
 
 
@@ -130,6 +154,98 @@ def test_host_native_submission_is_complete_credential_free_and_ui_ready() -> No
         assert stage_events[0].data["execution_observed"] is False
 
 
+def test_host_native_submission_preserves_every_v2_decision_field() -> None:
+    result, _events = submit_host_run(_payload(), store=RunStore())
+
+    assert result.research_decision.recommendation == "hold"
+    assert result.research_decision.rationale == "Manager synthesis."
+    assert result.research_decision.strategic_actions == "Wait for the next verified earnings update."
+    assert result.research_decision.raw_markdown == "Research manager: preserve optional source text."
+    assert result.research_decision.confidence == 0.72
+
+    assert result.trader_decision.action == "hold"
+    assert result.trader_decision.reasoning == "Research-only hold stance."
+    assert result.trader_decision.entry_price == 175.5
+    assert result.trader_decision.stop_loss == 160.0
+    assert result.trader_decision.position_sizing == "At most 1% of a diversified portfolio."
+    assert result.trader_decision.raw_markdown == "Trader proposal: preserve optional source text."
+    assert result.trader_decision.caveats == ("No suitability review.",)
+    assert result.trader_decision.executable is False
+    assert result.trader_decision.execution_authority == "none"
+    assert result.trader_decision.submitted is False
+
+    assert result.portfolio_decision.rating == "hold"
+    assert result.portfolio_decision.executive_summary == "Hold research stance; no order is authorized."
+    assert result.portfolio_decision.investment_thesis == ("Valuation and execution risks are balanced at the cutoff.")
+    assert result.portfolio_decision.price_target == 190.0
+    assert result.portfolio_decision.time_horizon == "12 months"
+    assert result.portfolio_decision.raw_markdown == "Portfolio decision: preserve optional source text."
+    assert result.portfolio_decision.executable is False
+    assert result.portfolio_decision.execution_authority == "none"
+    assert result.portfolio_decision.submitted is False
+    assert result.final_trade_decision == "Rating: Hold\nResearch conclusion only; no order is authorized."
+
+
+@pytest.mark.parametrize(
+    ("section", "field", "value", "message"),
+    [
+        ("research_decision", "recommendation", "no_action", "recommendation must be"),
+        ("research_decision", "recommendation", "Strong Buy", "recommendation must be"),
+        ("trader_decision", "action", "no_action", "action must be Buy, Hold, or Sell"),
+        ("trader_decision", "action", "Overweight", "action must be Buy, Hold, or Sell"),
+        ("portfolio_decision", "rating", "no_action", "rating must be"),
+        ("portfolio_decision", "rating", "Outperform", "rating must be"),
+    ],
+)
+def test_host_import_rejects_no_action_and_non_upstream_decision_values(
+    section: str,
+    field: str,
+    value: str,
+    message: str,
+) -> None:
+    payload = _payload()
+    payload[section][field] = value  # type: ignore[index]
+
+    with pytest.raises(ValueError, match=message):
+        submit_host_run(payload, store=RunStore())
+
+
+@pytest.mark.parametrize(
+    ("mutation", "message"),
+    [
+        (lambda payload: payload.pop("final_trade_decision"), "final_trade_decision must be a string"),
+        (
+            lambda payload: payload.update({"final_trade_decision": "Rating: Sell\nMismatch."}),
+            "Rating must match portfolio_decision.rating",
+        ),
+        (
+            lambda payload: payload.update({"final_trade_decision": "Hold without an explicit rating label."}),
+            "must contain an explicit Rating",
+        ),
+    ],
+)
+def test_host_import_requires_matching_explicit_final_rating(mutation: object, message: str) -> None:
+    payload = _payload()
+    mutation(payload)  # type: ignore[operator]
+
+    with pytest.raises(ValueError, match=message):
+        submit_host_run(payload, store=RunStore())
+
+
+@pytest.mark.parametrize("rating", ["Buy", "Overweight", "Hold", "Underweight", "Sell"])
+def test_host_import_preserves_every_portfolio_rating_as_the_processed_signal(rating: str) -> None:
+    payload = _payload()
+    payload["portfolio_decision"]["rating"] = rating  # type: ignore[index]
+    payload["final_trade_decision"] = f"Rating: {rating}\nResearch conclusion only; no order is authorized."
+
+    result, _events = submit_host_run(payload, store=RunStore())
+
+    assert result.portfolio_decision.rating == rating.lower()
+    assert result.processed_signal == rating.upper()
+    assert result.portfolio_decision.executable is False
+    assert result.portfolio_decision.submitted is False
+
+
 def test_canonical_import_payload_validates_against_the_published_json_schema() -> None:
     jsonschema = pytest.importorskip("jsonschema")
     schema = load_host_submission_schema()
@@ -158,6 +274,27 @@ def test_host_plan_is_stateless_and_matches_canonical_topology() -> None:
     assert plan["workflow_semantics"]["defaults"]["debate_rounds"] == 1
     assert "analyst.market" in plan["workflow_semantics"]["stage_instructions"]
     assert "Never request an API key" in plan["workflow_semantics"]["evidence_policy"]["fallback"]
+
+
+def test_host_plan_output_contracts_are_derived_from_the_published_v2_schema() -> None:
+    plan = prepare_host_run(RunRequest(executor="host_native"))
+    schema = plan["submission_schema"]
+    expected_definitions = {
+        "analyst": "analystStageOutput",
+        "research_debate": "debateStageOutput",
+        "research_manager": "researchManagerOutput",
+        "trader": "traderOutput",
+        "risk_debate": "debateStageOutput",
+        "portfolio": "portfolioStageOutput",
+    }
+
+    for stage_name, definition_name in expected_definitions.items():
+        advertised = plan["stage_output_contracts"][stage_name]
+        definition = schema["$defs"][definition_name]
+        assert advertised["output_ref"] == f"host-submission.v2.schema.json#/$defs/{definition_name}"
+        assert advertised["required"] == definition["required"]
+        assert advertised["properties"] == list(definition["properties"])
+        assert advertised["additional_properties"] == definition["additionalProperties"]
 
 
 def test_prepared_request_round_trips_unchanged_through_import() -> None:
@@ -257,6 +394,15 @@ def test_host_import_rejects_explicit_null_arrays(path: tuple[object, ...], mess
 def test_run_request_rejects_future_cutoff() -> None:
     with pytest.raises(ValueError, match="cannot be in the future"):
         RunRequest(symbol="ORCL", as_of_date="9999-12-31", executor="host_native")
+
+
+def test_host_plan_reports_invalid_future_cutoff_without_traceback(capsys: pytest.CaptureFixture[str]) -> None:
+    assert main(["host-plan", "MSFT", "--date", "9999-12-31"]) == 2
+
+    response = json.loads(capsys.readouterr().out)
+    assert response["ok"] is False
+    assert response["guidance"]["code"] == "invalid_host_request"
+    assert response["guidance"]["message"] == "as_of_date cannot be in the future"
 
 
 def test_host_import_requires_report_and_debate_provenance() -> None:

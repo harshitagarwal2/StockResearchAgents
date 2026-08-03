@@ -2,22 +2,30 @@
 
 This checklist records current evidence, not intended capability. Checked items must have a fresh local test or static assertion. Credentialed upstream execution was not performed.
 
-Fresh evidence on `2026-08-02`: `132 passed` from `uv run pytest -q`; `All checks passed!` from `uv run ruff check src tests`; `Success: no issues found in 19 source files` from `mypy --ignore-missing-imports`; successful fixture, backend smoke, MCP stdio smoke, loopback health, and `/api/runs/current/view` checks. The built wheel and installed Codex plugin cache also passed host-plan/MCP startup smoke tests without provider credentials.
+Fresh evidence on `2026-08-02`: `215 passed` from the credential-free local suite; Ruff, Ruff format, mypy, and compile checks pass. Coverage includes canonical atomic bundle recovery, lifecycle publication-pending retries, dashboard-wide completion gating, private SQLite state, linked execution receipts, publication-gated decision memory, crash-recoverable export replacement, all five Portfolio ratings, and portable observable-invariant validation with optional pinned-checkout identity. Credentialed upstream execution was not performed.
 
 ## Verified credential-free proof
 
 - [x] `uv run tradingagents-portable fixture --events` completes the deterministic synthetic ORCL run without provider credentials.
 - [x] Fixture tests confirm all configured analyst, research-debate, manager, trader, risk-debate, and portfolio stages.
 - [x] Tests confirm the fixture produces typed result data, ordered events, the five report groups, and JSON/Markdown artifacts.
-- [x] Host-native tests confirm stateless plan expansion, complete-run validation, recursive credential rejection, atomic publication, five report groups, and CLI round-trip without provider keys.
-- [x] A complete point-in-time ORCL run was researched by this Codex task, imported as `host-46503d8f4e88`, and rendered as a final dossier: 9 evidence records, 4 analyst reports, 2 Bull/Bear turns, Research Manager, Trader, 3 risk turns, Portfolio Manager, 8 artifacts, and 21 post-import events.
+- [x] `run-lifecycle.v1` tests confirm SQLite/WAL restart recovery, optimistic revision conflicts, create/start/receipt/commit/pause/resume/cancel-ack/finalize transitions, and replay of only the interrupted incomplete stage.
+- [x] `host-submission.v2` remains the frozen terminal schema; tests independently retain backward-compatible stateless plan/import validation and atomic publication.
+- [x] Safe live stage/tool receipts reject credential-shaped fields, unsupported fields, invalid digests, duplicate IDs, disallowed stage capabilities, and incorrect stage/attempt associations. `execution_observed` requires linked start/completion receipts with an output digest matching the checkpoint; receipt batches, retained counts, evidence IDs, cursor pages, and lifecycle record size are bounded.
+- [x] Durable result/event fault tests inject failure at every direct-put boundary; restart recovers from the private intent into one canonical atomic bundle, never exposes an orphan result, and keeps lifecycle stages hidden until explicit publication.
+- [x] Decision-memory tests confirm SQLite durability, publication gating during finalization, idempotent retry by run ID, at most five same-symbol plus three cross-symbol recalls, later outcome/reflection append, and secret-shaped-key rejection.
+- [x] Export tests verify every report path, complete report, result/events, optional lifecycle log, byte counts, and SHA-256 digests. Overwrite accepts only a verified prior bundle and subprocess crash injection confirms journaled recovery between directory renames.
+- [x] Host-native tests confirm plan expansion, complete-run validation, recursive credential rejection, five report groups, and CLI round-trip without provider keys.
+- [x] A complete point-in-time ORCL run researched by this Codex task was freshly replayed through every durable boundary as `host-fe876e15883a`: 9 evidence records, 4 analyst reports, 2 Bull/Bear turns, Research Manager, Trader, 3 risk turns, Portfolio Manager, 8 artifacts, and 42 linked-receipt/lifecycle/final events. Earlier browser rendering used `host-e19da9daacb2` and remains separate visual evidence.
 - [x] Dashboard tests confirm loopback serving and read-only run, events, result, and merged `/view` endpoints, including the `current` alias.
-- [x] `uv run python scripts/smoke_mcp.py` starts the exact credential-free MCP command, discovers 12 tools, confirms fixture/host-native readiness, prepares a host plan, runs the fixture, and retrieves the merged run view.
+- [x] MCP registration/discovery tests confirm the default credential-free surface has 27 tools and the opt-in legacy server adds only `run_legacy`.
 - [x] The published host-submission JSON Schema and importer reject future cutoffs, post-cutoff sources, explicit `null` arrays, malformed provenance, unknown fields, duplicate/dangling evidence references, executable decisions, and credential-shaped keys.
 - [x] The generic sequential runner executes the same manifest stages through a four-argument `StageExecutor` contract and projects only each stage's declared context.
 - [x] `uv build` includes the workflow manifest and browser assets; an isolated wheel smoke loads both and completes the fixture.
 - [x] Manifest tests parse `.codex-plugin/plugin.json` and `.mcp.json`, inspect the bundled skill, and verify the MCP tool surface.
-- [x] `uv run ruff check src tests` passes.
+- [x] Credential-free conformance tests validate portable workflow order/counts, decision schemas, signal derivation, evidence references, report groups, and linked receipt contracts. When supplied, the sibling checkout separately matches pinned revision `a33fd4c0f134485a43553a2c23a63cb14adbd88f`; this is identity verification, not upstream behavioral proof.
+- [x] CLI tests cover interactive-capable durable setup, control/events, cooperative cancellation, memory, export, and conformance command routing.
+- [x] `uv run ruff check .`, `uv run ruff format --check .`, `uv run mypy --ignore-missing-imports src`, and compileall pass.
 - [x] `uv run pytest -q` passes without live credentials.
 
 ## Verified safety and boundary proof
@@ -26,6 +34,7 @@ Fresh evidence on `2026-08-02`: `132 passed` from `uv run pytest -q`; `All check
 - [x] Security tests reject credential-shaped portable configuration and confirm environment credentials are not serialized.
 - [x] Dashboard tests reject non-loopback bind addresses and verify escaping/path traversal protections.
 - [x] Surface tests confirm there is no broker/order tool or executable action and trade-like outputs are labeled non-executable.
+- [x] Lifecycle and memory receipt tests confirm API keys, tokens, authorization fields, and other credential-shaped keys cannot cross portable boundaries.
 - [x] UI contract tests confirm the browser is a post-run reader: it fetches the merged `/view` response and contains no fixture or upstream execution controls.
 
 ## Verified delegated adapter behavior
@@ -43,17 +52,28 @@ Fresh evidence on `2026-08-02`: `132 passed` from `uv run pytest -q`; `All check
 
 - [ ] A live upstream run completes with real provider and data-vendor credentials.
 - [ ] Live provider responses and data access work for the documented arbitrary instrument families.
-- [ ] Upstream checkpoint creation and resume work end to end.
-- [ ] Live upstream stage events stream during execution; this is currently unimplemented.
+- [ ] Upstream-owned checkpoint creation and resume work end to end in a credentialed legacy process.
+- [ ] Live upstream stage events stream during legacy execution; the upstream adapter still has no observer seam.
 - [x] A current host harness can execute every workflow stage and atomically import the completed result without API keys.
-- [ ] Host-native live token/stage streaming, checkpoint/resume, and cancellation are intentionally outside the portable import contract.
+- [x] Host-native cursor receipts, durable stage-boundary resume, and cooperative cancellation are locally verified.
+- [ ] Exact model text, token-level continuation, host hard interruption, and optional push delivery remain harness-specific and are not claimed by portable conformance.
 
 ## Verified final-only UI
 
-- [x] The loopback dashboard rendered `host-46503d8f4e88` with 4 analyst cards, 9 safe source links, all merged decision sections, and no run buttons or input controls.
+- [x] The loopback dashboard rendered durable run `host-e19da9daacb2` with Research `Hold`, Trader `Hold`, Portfolio `Hold`, derived signal `HOLD`, 4 analyst cards, 9 safe source links, all merged decision sections, and no run buttons or input controls.
 - [x] Markdown-like report content is rendered through DOM/text nodes; literal heading markers are removed and no `innerHTML` execution path is used.
 - [x] Browser console inspection returned no warnings or errors for the completed ORCL dossier.
 
+## Verified cross-company matrix
+
+- [x] This Codex task freshly replayed and finalized full durable host-native dossiers for MSFT (`host-0bb0768da623`), JPM (`host-42d7fb642292`), and Tencent `0700.HK` (`host-025683fdba08`) with the `2026-08-01` cutoff; fresh ORCL is `host-fe876e15883a`.
+- [x] Every fresh matrix dossier contains four analyst reports, two research-debate turns, three risk-debate turns, the Research Manager, Trader, Portfolio Manager, eight artifacts, 42 linked-receipt/lifecycle/final events, non-executable decisions, and `external_credentials_required=false`.
+- [x] Every fresh matrix run rehydrated after a new store instance, exposed exactly one completed decision-memory record, exported 16 content/log files plus a digest manifest, passed every portable observable-invariant check, and separately verified the sibling checkout identity at revision `a33fd4c0f134485a43553a2c23a63cb14adbd88f`.
+- [x] Evidence counts were 7 for MSFT and 6 each for JPM and Tencent. No source date exceeded the cutoff, and every retrieval timestamp included a timezone.
+- [x] The keyless market evidence tool returned dated snapshots for MSFT, JPM, `0700.HK`, `BRK-B`, `7203.T`, `SAP.DE`, and BABA. The plan contract also expanded the complete 12-stage topology for the four additional symbol formats.
+- [x] Browser verification found the correct company/run identity, four analyst cards, one safe link per evidence record, no input or run controls, no literal Markdown headings, and no console warnings/errors for all three dossiers.
+- [x] Matrix testing found and fixed two negative-path defects: invalid future plans now return structured guidance instead of a traceback, and legitimate financial authorization fields no longer trigger the credential-key scanner. Actual credential-shaped fields remain rejected.
+
 ## Integration decision
 
-Do not treat fake-graph delegation tests or upstream importability as evidence of credentialed live readiness. Any integration proposal must preserve the unchecked items above as explicit gaps until fresh runtime evidence exists.
+Do not treat fake-graph delegation, importability, or credential-free observable conformance as evidence of credentialed live readiness. The host owns reasoning, agent spawning, concrete tools, and hard interruption. The browser remains a finalized-result reader, and no portable surface accepts API keys or performs broker/order execution.

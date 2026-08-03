@@ -27,6 +27,7 @@ def test_feature_matrix_has_no_parity_blocker_statuses() -> None:
     assert "legacy_full_topology" in {feature.name for feature in matrix.features}
     assert "orcl_fixture" in {feature.name for feature in matrix.features}
     assert "loopback_dashboard" in {feature.name for feature in matrix.features}
+    assert {feature.level.value for feature in matrix.features} <= {"supported", "optional", "prohibited"}
 
 
 def test_discovery_has_no_broker_or_order_tool_surface() -> None:

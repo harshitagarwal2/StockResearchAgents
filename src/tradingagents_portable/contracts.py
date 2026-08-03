@@ -9,7 +9,7 @@ from enum import StrEnum
 from typing import Any, Literal, Never
 from urllib.parse import urlsplit
 
-SCHEMA_VERSION = "2026-08-02"
+SCHEMA_VERSION = "2026-08-03"
 PROTOTYPE_NOTICE = (
     "Prototype research output only. Not financial advice and never an order, "
     "broker instruction, or authorization to trade."
@@ -33,16 +33,12 @@ SAFE_LEGACY_CONFIG_KEYS = frozenset(
 SECRET_KEY_MARKERS = (
     "api_key",
     "apikey",
-    "authorization",
-    "bearer",
-    "cookie",
     "credential",
     "password",
     "private_key",
     "privatekey",
-    "secret",
-    "token",
 )
+SECRET_KEY_WORDS = frozenset({"bearer", "cookie", "secret", "token"})
 
 
 class FrozenConfig(dict[str, Any]):
@@ -71,7 +67,18 @@ def reject_secret_shaped_keys(value: object, path: tuple[str, ...] = ()) -> None
     if isinstance(value, Mapping):
         for raw_key, nested in value.items():
             key = str(raw_key).strip().lower().replace("-", "_")
-            if any(marker in key for marker in SECRET_KEY_MARKERS):
+            words = set(key.split("_"))
+            authorization_header = key in {
+                "authorization",
+                "authorization_header",
+                "http_authorization",
+                "http_authorization_header",
+            } or key.startswith("authorization_")
+            if (
+                any(marker in key for marker in SECRET_KEY_MARKERS)
+                or bool(words & SECRET_KEY_WORDS)
+                or authorization_header
+            ):
                 location = ".".join((*path, str(raw_key)))
                 raise ValueError(f"credential-shaped config key is forbidden: {location}")
             reject_secret_shaped_keys(nested, (*path, str(raw_key)))
@@ -151,6 +158,7 @@ class StageKind(WireEnum):
 
 class SupportLevel(WireEnum):
     SUPPORTED = "supported"
+    PARTIAL = "partial"
     OPTIONAL = "optional"
     UNAVAILABLE = "unavailable"
     PROHIBITED = "prohibited"
@@ -312,18 +320,69 @@ class DebateTurn(Contract):
 
 @dataclass(frozen=True, slots=True)
 class ResearchDecision(Contract):
-    decision: str = ""
+    recommendation: Literal["buy", "overweight", "hold", "underweight", "sell", "unknown"] = "unknown"
     rationale: str = ""
+    strategic_actions: str = ""
+    raw_markdown: str = ""
     supporting_turns: tuple[int, ...] = ()
     confidence: float = 0.0
+    projection_quality: Literal["structured", "parsed", "raw_markdown_only", "synthetic"] = "structured"
+
+    @property
+    def decision(self) -> str:
+        """Backward-compatible display alias for pre-v2 callers."""
+        return self.recommendation.title()
+
+    def render_markdown(self) -> str:
+        return "\n".join(
+            (
+                f"**Recommendation**: {self.recommendation.title()}",
+                "",
+                f"**Rationale**: {self.rationale}",
+                "",
+                f"**Strategic Actions**: {self.strategic_actions}",
+            )
+        )
 
 
 @dataclass(frozen=True, slots=True)
 class TraderDecision(Contract):
-    stance: Literal["buy", "overweight", "hold", "underweight", "sell", "no_action"] = "no_action"
-    plan: str = ""
+    action: Literal["buy", "hold", "sell", "unknown"] = "unknown"
+    reasoning: str = ""
+    entry_price: float | None = None
+    stop_loss: float | None = None
+    position_sizing: str | None = None
+    raw_markdown: str = ""
     executable: bool = False
+    execution_authority: Literal["none"] = "none"
+    submitted: bool = False
     caveats: tuple[str, ...] = ()
+    projection_quality: Literal["structured", "parsed", "raw_markdown_only", "synthetic"] = "structured"
+
+    def __post_init__(self) -> None:
+        if self.executable or self.submitted or self.execution_authority != "none":
+            raise ValueError("trader output cannot carry execution authority or a submitted order")
+
+    @property
+    def stance(self) -> str:
+        """Backward-compatible display alias for pre-v2 callers."""
+        return self.action
+
+    @property
+    def plan(self) -> str:
+        """Backward-compatible raw plan alias for pre-v2 callers."""
+        return self.raw_markdown or self.reasoning
+
+    def render_markdown(self) -> str:
+        parts = [f"**Action**: {self.action.title()}", "", f"**Reasoning**: {self.reasoning}"]
+        if self.entry_price is not None:
+            parts.extend(("", f"**Entry Price**: {self.entry_price}"))
+        if self.stop_loss is not None:
+            parts.extend(("", f"**Stop Loss**: {self.stop_loss}"))
+        if self.position_sizing:
+            parts.extend(("", f"**Position Sizing**: {self.position_sizing}"))
+        parts.extend(("", f"FINAL TRANSACTION PROPOSAL: **{self.action.upper()}**"))
+        return "\n".join(parts)
 
 
 @dataclass(frozen=True, slots=True)
@@ -335,20 +394,45 @@ class RiskDecision(Contract):
 
 @dataclass(frozen=True, slots=True)
 class PortfolioDecision(Contract):
-    action: Literal[
-        "buy",
-        "overweight",
-        "hold",
-        "underweight",
-        "sell",
-        "approve_research_case",
-        "revise",
-        "reject",
-        "no_action",
-    ] = "no_action"
-    summary: str = ""
+    rating: Literal["buy", "overweight", "hold", "underweight", "sell", "unknown"] = "unknown"
+    executive_summary: str = ""
+    investment_thesis: str = ""
+    price_target: float | None = None
+    time_horizon: str | None = None
+    raw_markdown: str = ""
     executable: bool = False
+    execution_authority: Literal["none"] = "none"
+    submitted: bool = False
     disclaimer: str = PROTOTYPE_NOTICE
+    projection_quality: Literal["structured", "parsed", "raw_markdown_only", "synthetic"] = "structured"
+
+    def __post_init__(self) -> None:
+        if self.executable or self.submitted or self.execution_authority != "none":
+            raise ValueError("portfolio output cannot carry execution authority or a submitted order")
+
+    @property
+    def action(self) -> str:
+        """Backward-compatible display alias for pre-v2 callers."""
+        return self.rating
+
+    @property
+    def summary(self) -> str:
+        """Backward-compatible summary alias for pre-v2 callers."""
+        return self.executive_summary
+
+    def render_markdown(self) -> str:
+        parts = [
+            f"**Rating**: {self.rating.title()}",
+            "",
+            f"**Executive Summary**: {self.executive_summary}",
+            "",
+            f"**Investment Thesis**: {self.investment_thesis}",
+        ]
+        if self.price_target is not None:
+            parts.extend(("", f"**Price Target**: {self.price_target}"))
+        if self.time_horizon:
+            parts.extend(("", f"**Time Horizon**: {self.time_horizon}"))
+        return "\n".join(parts)
 
 
 @dataclass(frozen=True, slots=True)
@@ -388,6 +472,8 @@ class CapabilityMetadata(Contract):
     deterministic: bool = True
     live_data: bool = False
     external_credentials_required: bool = False
+    portable_boundary_credentials_required: bool = False
+    host_tool_auth: Literal["not_applicable", "host_owned_unknown", "environment_owned"] = "not_applicable"
     upstream_business_logic: bool = False
 
 

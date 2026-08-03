@@ -12,7 +12,8 @@ from .contracts import RunRequest, StageKind, StageSpec, WorkflowTopology
 
 WORKFLOW_SCHEMA_VERSION = "1.0.0"
 DEFAULT_MANIFEST = Path(__file__).resolve().parent / "workflow" / "financial-research.v1.json"
-DEFAULT_SUBMISSION_SCHEMA = Path(__file__).resolve().parent / "workflow" / "host-submission.v1.schema.json"
+DEFAULT_SUBMISSION_SCHEMA = Path(__file__).resolve().parent / "workflow" / "host-submission.v2.schema.json"
+DEFAULT_LIFECYCLE_SCHEMA = Path(__file__).resolve().parent / "workflow" / "run-lifecycle.v1.schema.json"
 
 
 class StageExecutor(Protocol):
@@ -83,8 +84,15 @@ def load_workflow_manifest(path: str | Path = DEFAULT_MANIFEST) -> WorkflowManif
 
 def load_host_submission_schema(path: str | Path = DEFAULT_SUBMISSION_SCHEMA) -> dict[str, Any]:
     raw = json.loads(Path(path).read_text(encoding="utf-8"))
-    if raw.get("$id") != "https://tradingagents-portable.local/schemas/host-submission.v1.json":
+    if raw.get("$id") != "https://tradingagents-portable.local/schemas/host-submission.v2.json":
         raise ValueError("unexpected host submission schema id")
+    return raw
+
+
+def load_run_lifecycle_schema(path: str | Path = DEFAULT_LIFECYCLE_SCHEMA) -> dict[str, Any]:
+    raw = json.loads(Path(path).read_text(encoding="utf-8"))
+    if raw.get("$id") != "https://tradingagents-portable.local/schemas/run-lifecycle.v1.json":
+        raise ValueError("unexpected run lifecycle schema id")
     return raw
 
 
