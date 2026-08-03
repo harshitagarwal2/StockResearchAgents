@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+from collections import Counter
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
+from urllib.parse import urlparse
 
-from .contracts import RunEvent, RunResult
+from .contracts import EvidenceItem, RunEvent, RunResult
 from .reporting import report_groups
 
 
@@ -21,6 +24,162 @@ class RunView:
 
 def _badge(label: str, value: object, tone: str, detail: str) -> dict[str, object]:
     return {"label": label, "value": value, "tone": tone, "detail": detail}
+
+
+def _safe_web_url(value: object) -> str | None:
+    if not isinstance(value, str):
+        return None
+    parsed = urlparse(value)
+    return value if parsed.scheme in {"http", "https"} and bool(parsed.netloc) else None
+
+
+def _evidence_context(item: EvidenceItem) -> dict[str, str]:
+    return {"evidence_id": item.id, "category": item.category}
+
+
+def _normalize_records(item: EvidenceItem, key: str, text_key: str) -> list[dict[str, Any]]:
+    value = item.values.get(key)
+    if not isinstance(value, list | tuple):
+        return []
+
+    records: list[dict[str, Any]] = []
+    for entry in value:
+        if isinstance(entry, str):
+            record: dict[str, Any] = {text_key: entry}
+        elif isinstance(entry, Mapping):
+            record = {str(field): field_value for field, field_value in entry.items()}
+        else:
+            continue
+        record.update(_evidence_context(item))
+        records.append(record)
+    return records
+
+
+def _normalize_metrics(item: EvidenceItem) -> list[dict[str, Any]]:
+    value = item.values.get("metrics")
+    records: list[dict[str, Any]] = []
+    if isinstance(value, Mapping):
+        for name, metric_value in value.items():
+            if isinstance(metric_value, Mapping):
+                record = {str(field): field_value for field, field_value in metric_value.items()}
+                record.setdefault("name", str(name))
+            else:
+                record = {"name": str(name), "value": metric_value}
+            record.update(_evidence_context(item))
+            records.append(record)
+    elif isinstance(value, list | tuple):
+        for metric in value:
+            if not isinstance(metric, Mapping):
+                continue
+            record = {str(field): field_value for field, field_value in metric.items()}
+            record.update(_evidence_context(item))
+            records.append(record)
+    return records
+
+
+def _source_quality(item: EvidenceItem) -> str:
+    value = item.values.get("source_quality")
+    if item.provenance.fixture:
+        return "synthetic"
+    return value if isinstance(value, str) and value.strip() else "unknown"
+
+
+def _intelligence_projection(result: RunResult) -> dict[str, Any]:
+    source_qualities = Counter(_source_quality(item) for item in result.evidence)
+    categories = Counter(item.category for item in result.evidence)
+    providers = Counter(item.provenance.provider or "unknown" for item in result.evidence)
+    source_types = Counter(item.provenance.source_type or "unknown" for item in result.evidence)
+    source_urls = [
+        source_url
+        for item in result.evidence
+        if (source_url := _safe_web_url(item.provenance.source_uri)) is not None
+    ]
+    source_dates = [item.provenance.source_date for item in result.evidence if item.provenance.source_date]
+    retrieved_dates = [item.provenance.retrieved_at for item in result.evidence if item.provenance.retrieved_at]
+
+    news: list[dict[str, Any]] = []
+    for item in result.evidence:
+        for article in _normalize_records(item, "articles", "headline"):
+            for url_key in ("url", "source_url"):
+                if url_key in article:
+                    safe_url = _safe_web_url(article[url_key])
+                    if safe_url is None:
+                        article.pop(url_key)
+                    else:
+                        article[url_key] = safe_url
+                        source_urls.append(safe_url)
+            news.append(article)
+
+    risk_register = [
+        record
+        for item in result.evidence
+        for record in _normalize_records(item, "risks", "risk")
+    ]
+    risk_register.extend(
+        {"risk": constraint, "source": "risk_decision.constraints"}
+        for constraint in result.risk_decision.constraints
+    )
+    unknowns = [
+        record
+        for item in result.evidence
+        for record in _normalize_records(item, "unknowns", "unknown")
+    ]
+    unknowns.extend(
+        {"unknown": unresolved, "source": "risk_decision.unresolved"}
+        for unresolved in result.risk_decision.unresolved
+    )
+    monitoring_conditions = [
+        record
+        for item in result.evidence
+        for record in _normalize_records(item, "monitoring_conditions", "condition")
+    ]
+    if result.research_decision.strategic_actions:
+        monitoring_conditions.append(
+            {
+                "condition": result.research_decision.strategic_actions,
+                "source": "research_decision.strategic_actions",
+            }
+        )
+
+    return {
+        "coverage": {
+            "evidence_count": len(result.evidence),
+            "analyst_count": len(result.analyst_reports),
+            "limitation_count": sum(len(item.limitations) for item in result.evidence),
+            "source_url_count": len(source_urls),
+            "dated_source_count": len(source_dates),
+            "source_quality_buckets": dict(sorted(source_qualities.items())),
+        },
+        "source_mix": {
+            "categories": dict(sorted(categories.items())),
+            "providers": dict(sorted(providers.items())),
+            "source_types": dict(sorted(source_types.items())),
+        },
+        "freshness": {
+            "cutoff": result.request.as_of_date,
+            "oldest_source_date": min(source_dates, default=None),
+            "latest_source_date": max(source_dates, default=None),
+            "oldest_retrieved_at": min(retrieved_dates, default=None),
+            "latest_retrieved_at": max(retrieved_dates, default=None),
+        },
+        "evidence_metrics": [
+            record for item in result.evidence for record in _normalize_metrics(item)
+        ],
+        "news": news,
+        "catalysts": [
+            record
+            for item in result.evidence
+            for record in _normalize_records(item, "catalysts", "catalyst")
+        ],
+        "risk_register": risk_register,
+        "conflicts": [
+            record
+            for item in result.evidence
+            for record in _normalize_records(item, "conflicts", "conflict")
+        ],
+        "unknowns": unknowns,
+        "monitoring_conditions": monitoring_conditions,
+    }
 
 
 def build_run_view(result: RunResult, events: tuple[RunEvent, ...]) -> RunView:
@@ -61,6 +220,7 @@ def build_run_view(result: RunResult, events: tuple[RunEvent, ...]) -> RunView:
         "execution_config": result.execution_config.to_dict(),
         "topology": result.topology.to_dict(),
         "evidence": [item.to_dict() for item in result.evidence],
+        "intelligence": _intelligence_projection(result),
         "analyst_reports": [report.to_dict() for report in result.analyst_reports],
         "report_sections": result.report_sections.to_dict(),
         "reports": {

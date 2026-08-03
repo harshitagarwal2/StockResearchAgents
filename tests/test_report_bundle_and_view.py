@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from pathlib import Path
 from threading import Thread
 from typing import Any
@@ -106,6 +107,104 @@ def test_run_view_is_lossless_and_keeps_decision_and_signal_separate() -> None:
     assert all(action["id"] != "execute_trade" for action in view["actions"])
 
 
+def test_run_view_projects_full_fixture_intelligence_without_inventing_sources() -> None:
+    result, events = run_fixture(RunRequest(), RunStore())
+    view = build_run_view(result, events).to_dict()
+    intelligence = view["intelligence"]
+
+    assert set(intelligence) == {
+        "coverage",
+        "source_mix",
+        "freshness",
+        "evidence_metrics",
+        "news",
+        "catalysts",
+        "risk_register",
+        "conflicts",
+        "unknowns",
+        "monitoring_conditions",
+    }
+    assert intelligence["coverage"] == {
+        "evidence_count": 4,
+        "analyst_count": 4,
+        "limitation_count": 4,
+        "source_url_count": 2,
+        "dated_source_count": 4,
+        "source_quality_buckets": {"synthetic": 4},
+    }
+    assert intelligence["source_mix"]["categories"] == {
+        "fundamentals": 1,
+        "market": 1,
+        "news": 1,
+        "social": 1,
+    }
+    assert intelligence["source_mix"]["providers"] == {"portable-fixture": 4}
+    assert intelligence["freshness"] == {
+        "cutoff": result.request.as_of_date,
+        "oldest_source_date": result.request.as_of_date,
+        "latest_source_date": result.request.as_of_date,
+        "oldest_retrieved_at": f"{result.request.as_of_date}T12:00:00+00:00",
+        "latest_retrieved_at": f"{result.request.as_of_date}T12:00:00+00:00",
+    }
+    assert len(intelligence["evidence_metrics"]) == 11
+    assert len(intelligence["news"]) == 3
+    assert sum("url" in article for article in intelligence["news"]) == 2
+    assert all(
+        article.get("url", "https://filtered.invalid").startswith(("http://", "https://"))
+        for article in intelligence["news"]
+    )
+    assert len(intelligence["catalysts"]) == 3
+    assert len(intelligence["risk_register"]) == 6
+    assert len(intelligence["conflicts"]) == 2
+    assert len(intelligence["unknowns"]) == 5
+    assert len(intelligence["monitoring_conditions"]) == 4
+    for section in ("evidence_metrics", "news", "catalysts", "conflicts"):
+        assert all(record["evidence_id"] and record["category"] for record in intelligence[section])
+    assert all(article["synthetic"] is True for article in intelligence["news"])
+    assert any(item.get("source") == "risk_decision.constraints" for item in intelligence["risk_register"])
+    assert any(item.get("source") == "risk_decision.unresolved" for item in intelligence["unknowns"])
+    assert intelligence["monitoring_conditions"][-1]["source"] == "research_decision.strategic_actions"
+
+
+def test_run_view_intelligence_is_backward_compatible_and_quality_fallback_is_safe() -> None:
+    result, events = run_fixture(RunRequest(), RunStore())
+    explicit = replace(
+        result.evidence[0],
+        values={"close_usd": 162.4, "source_quality": "primary"},
+        provenance=replace(
+            result.evidence[0].provenance,
+            source_uri="https://source.example/market",
+            source_date=None,
+            fixture=False,
+        ),
+    )
+    unknown = replace(
+        result.evidence[1],
+        values={"positive": 7},
+        provenance=replace(
+            result.evidence[1].provenance,
+            source_uri="javascript:alert(1)",
+            fixture=False,
+        ),
+    )
+    projected_result = replace(result, evidence=(explicit, unknown))
+    view = build_run_view(projected_result, events).to_dict()
+
+    assert view["evidence"] == [explicit.to_dict(), unknown.to_dict()]
+    assert view["evidence"][0]["values"]["close_usd"] == 162.4
+    assert view["evidence"][1]["values"]["positive"] == 7
+    assert view["intelligence"]["coverage"] == {
+        "evidence_count": 2,
+        "analyst_count": 4,
+        "limitation_count": 2,
+        "source_url_count": 1,
+        "dated_source_count": 1,
+        "source_quality_buckets": {"primary": 1, "unknown": 1},
+    }
+    assert view["intelligence"]["evidence_metrics"] == []
+    assert view["intelligence"]["news"] == []
+
+
 def test_legacy_projection_preserves_source_report_contents_in_memory() -> None:
     final_state = {
         "market_report": "MARKET",
@@ -166,9 +265,10 @@ def test_dashboard_serves_run_view_and_current_alias() -> None:
     thread = Thread(target=server.serve_forever, daemon=True)
     thread.start()
     host, port = server.server_address[:2]
+    host_text = host.decode() if isinstance(host, bytes) else host
     try:
         for run_id in (result.run_id, "current"):
-            with urlopen(f"http://{host}:{port}/api/runs/{run_id}/view", timeout=5) as response:  # noqa: S310
+            with urlopen(f"http://{host_text}:{port}/api/runs/{run_id}/view", timeout=5) as response:  # noqa: S310
                 payload = json.load(response)
             assert payload["ok"] is True
             assert payload["view"]["run_id"] == result.run_id
