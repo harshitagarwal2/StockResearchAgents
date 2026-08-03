@@ -2,7 +2,7 @@
 
 This checklist records current evidence, not intended capability. Checked items must have a fresh local test or static assertion. Credentialed upstream execution was not performed.
 
-Fresh evidence on `2026-08-02`: `215 passed` from the credential-free local suite; Ruff, Ruff format, mypy, and compile checks pass. Coverage includes canonical atomic bundle recovery, lifecycle publication-pending retries, dashboard-wide completion gating, private SQLite state, linked execution receipts, publication-gated decision memory, crash-recoverable export replacement, all five Portfolio ratings, and portable observable-invariant validation with optional pinned-checkout identity. Credentialed upstream execution was not performed.
+Fresh evidence on `2026-08-03`: `219 passed` from the credential-free local suite; Ruff, Ruff format, mypy, and compile checks pass. Coverage includes canonical atomic bundle recovery, lifecycle publication-pending retries, dashboard-wide completion gating, private SQLite state, linked execution receipts, publication-gated decision memory, crash-recoverable export replacement, all five Portfolio ratings, and portable observable-invariant validation with optional pinned-checkout identity. Credentialed upstream execution was not performed.
 
 ## Verified credential-free proof
 

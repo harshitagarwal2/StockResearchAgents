@@ -33,6 +33,15 @@ python scripts/upstream_pin.py --set-revision <full-upstream-sha>
 uv lock
 ```
 
+## Upstream RFC
+
+The proposed long-term boundary with TradingAgents is documented in
+[Harness-neutral TradingAgents integrations](docs/UPSTREAM_RFC.md). The RFC
+asks whether the portable workflow contract should live upstream, remain in
+this independent repository, or be split between a thin upstream contract and
+external harness adapters. No upstream merge is assumed without maintainer
+buy-in.
+
 ## Quick start
 
 Python 3.11+ and `uv` are recommended.
