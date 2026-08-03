@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from dataclasses import asdict, dataclass, field
 from datetime import date
 from enum import StrEnum
-from typing import Any, Literal
+from typing import Any, Literal, Never
 from urllib.parse import urlsplit
 
 SCHEMA_VERSION = "2026-08-02"
@@ -49,7 +49,7 @@ class FrozenConfig(dict[str, Any]):
     """JSON-compatible immutable mapping for validated public execution config."""
 
     @staticmethod
-    def _immutable(*_: object, **__: object) -> None:
+    def _immutable(*_: object, **__: object) -> Never:
         raise TypeError("legacy_config is immutable; construct a new RunRequest")
 
     __delitem__ = _immutable
@@ -172,7 +172,8 @@ class RunRequest(Contract):
     analysts: tuple[str, ...] = ("market", "social", "news", "fundamentals")
     debate_rounds: int = 1
     risk_rounds: int = 1
-    executor: Literal["fixture", "legacy"] = "fixture"
+    output_language: str = "English"
+    executor: Literal["fixture", "host_native", "legacy"] = "fixture"
     checkpoint_enabled: bool = False
     legacy_config: dict[str, Any] = field(default_factory=dict)
 
@@ -181,7 +182,9 @@ class RunRequest(Contract):
         if not symbol or len(symbol) > 32 or not all(c.isalnum() or c in "._-^=" for c in symbol):
             raise ValueError("symbol must be a non-empty market identifier")
         object.__setattr__(self, "symbol", symbol)
-        date.fromisoformat(self.as_of_date)
+        parsed_as_of_date = date.fromisoformat(self.as_of_date)
+        if parsed_as_of_date > date.today():
+            raise ValueError("as_of_date cannot be in the future")
         if self.asset_type not in {"stock", "crypto"}:
             raise ValueError("asset_type must be 'stock' or 'crypto'")
         allowed = {"market", "social", "news", "fundamentals"}
@@ -198,6 +201,10 @@ class RunRequest(Contract):
             raise ValueError("crypto requests require at least one of market, social, or news")
         if not 1 <= self.debate_rounds <= 10 or not 1 <= self.risk_rounds <= 10:
             raise ValueError("debate_rounds and risk_rounds must be between 1 and 10")
+        output_language = self.output_language.strip()
+        if not output_language or len(output_language) > 64:
+            raise ValueError("output_language must be between 1 and 64 characters")
+        object.__setattr__(self, "output_language", output_language)
         if self.executor == "fixture" and self.symbol != "ORCL":
             raise ValueError("the deterministic fixture supports symbol ORCL only")
         object.__setattr__(self, "legacy_config", FrozenConfig(sanitize_legacy_config(self.legacy_config)))
@@ -348,7 +355,7 @@ class PortfolioDecision(Contract):
 class ExecutionConfig(Contract):
     """Non-secret execution settings safe to persist and show in a UI."""
 
-    executor: Literal["fixture", "legacy"] = "fixture"
+    executor: Literal["fixture", "host_native", "legacy"] = "fixture"
     llm_provider: str | None = None
     deep_model: str | None = None
     quick_model: str | None = None
@@ -376,8 +383,8 @@ class PersistenceMetadata(Contract):
 
 @dataclass(frozen=True, slots=True)
 class CapabilityMetadata(Contract):
-    executor: Literal["fixture", "legacy"] = "fixture"
-    observation_mode: Literal["fixture", "legacy_post_run"] = "fixture"
+    executor: Literal["fixture", "host_native", "legacy"] = "fixture"
+    observation_mode: Literal["fixture", "host_native_submission", "legacy_post_run"] = "fixture"
     deterministic: bool = True
     live_data: bool = False
     external_credentials_required: bool = False

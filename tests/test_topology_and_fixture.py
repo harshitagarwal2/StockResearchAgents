@@ -65,6 +65,9 @@ def test_orcl_fixture_is_deterministic_complete_and_typed() -> None:
 
     assert isinstance(first_result, RunResult)
     assert first_result.status is RunStatus.COMPLETED
+    assert first_result.instrument.requested_symbol == "ORCL"
+    assert first_result.instrument.company_of_interest == "Oracle Corporation"
+    assert first_result.instrument.trade_date == first_result.request.as_of_date
     assert asdict(first_result) == asdict(second_result)
     assert tuple(asdict(event) for event in first_events) == tuple(asdict(event) for event in second_events)
     assert len(first_result.analyst_reports) == len(request.analysts)

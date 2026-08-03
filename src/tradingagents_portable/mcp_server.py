@@ -2,16 +2,15 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from typing import Any
 
 from .capabilities import discovery, feature_matrix
-from .contracts import RunRequest, reject_secret_shaped_keys, sanitize_legacy_config
+from .contracts import RunRequest
 from .dashboard import dashboard_report, launch_dashboard
-from .errors import CapabilitySetupError
 from .fixture import prepare_fixture as prepare_fixture_request
 from .fixture import run_fixture as execute_fixture
-from .legacy import LegacyTradingAgentsAdapter
+from .host_native import prepare_host_run as prepare_host_run_request
+from .host_native import submit_host_run as execute_host_run_import
 from .store import RUN_STORE
 from .view import build_run_view
 
@@ -33,15 +32,6 @@ def _annotations(*, read_only: bool, idempotent: bool, open_world: bool) -> Tool
     )
 
 
-def _reject_secret_shaped_keys(value: object, path: tuple[str, ...] = ()) -> None:
-    """Reject credential-shaped mapping keys at any nesting depth."""
-    reject_secret_shaped_keys(value, path)
-
-
-def _safe_legacy_config(config: Mapping[str, object] | None) -> dict[str, object]:
-    return sanitize_legacy_config(config)
-
-
 def _request(
     symbol: str,
     as_of_date: str,
@@ -50,8 +40,7 @@ def _request(
     risk_rounds: int,
     executor: str,
     asset_type: str = "stock",
-    checkpoint_enabled: bool = False,
-    legacy_config: Mapping[str, object] | None = None,
+    output_language: str = "English",
 ) -> RunRequest:
     if asset_type not in {"stock", "crypto"}:
         raise ValueError("asset_type must be 'stock' or 'crypto'")
@@ -68,20 +57,20 @@ def _request(
         ),
         debate_rounds=debate_rounds,
         risk_rounds=risk_rounds,
+        output_language=output_language,
         executor=executor,  # type: ignore[arg-type]
-        checkpoint_enabled=checkpoint_enabled,
-        legacy_config=_safe_legacy_config(legacy_config),
+        checkpoint_enabled=False,
     )
 
 
-def discover_capability(legacy_path: str | None = None) -> dict[str, object]:
+def discover_capability() -> dict[str, object]:
     """Discover executors, tools, safety boundaries, and the default fixture."""
-    return discovery(legacy_path)
+    return discovery(include_legacy=False)
 
 
-def get_feature_matrix(legacy_path: str | None = None) -> dict[str, Any]:
+def get_feature_matrix() -> dict[str, Any]:
     """Return supported, optional, and intentionally unavailable features."""
-    return feature_matrix(legacy_path).to_dict()
+    return feature_matrix(include_legacy=False).to_dict()
 
 
 def prepare_fixture(
@@ -105,65 +94,40 @@ def run_fixture(
     return {"ok": True, "result": result.to_dict(), "events": [event.to_dict() for event in events]}
 
 
-def run_legacy(
+def prepare_host_run(
     symbol: str,
     as_of_date: str,
-    asset_type: str = "auto",
+    asset_type: str = "stock",
     analysts: list[str] | None = None,
-    debate_rounds: int | None = None,
-    risk_rounds: int | None = None,
-    checkpoint_enabled: bool | None = None,
-    legacy_path: str | None = None,
-    llm_provider: str | None = None,
-    deep_think_llm: str | None = None,
-    quick_think_llm: str | None = None,
-    backend_url: str | None = None,
-    output_language: str | None = None,
-    temperature: float | None = None,
-    llm_max_retries: int | None = None,
-    google_thinking_level: str | None = None,
-    openai_reasoning_effort: str | None = None,
-    anthropic_effort: str | None = None,
-    report_output_path: str | None = None,
+    debate_rounds: int = 1,
+    risk_rounds: int = 1,
+    output_language: str = "English",
 ) -> dict[str, Any]:
-    """Delegate upstream with typed non-secret config; credentials come only from the environment."""
-    try:
-        adapter = LegacyTradingAgentsAdapter(legacy_path)
-        canonical_symbol, resolved_asset_type = adapter.resolve_subject(symbol, asset_type)
-        defaults = adapter.defaults()
-        resolved_debate_rounds = debate_rounds if debate_rounds is not None else int(defaults["max_debate_rounds"])
-        resolved_risk_rounds = risk_rounds if risk_rounds is not None else int(defaults["max_risk_discuss_rounds"])
-        resolved_checkpoint = (
-            checkpoint_enabled if checkpoint_enabled is not None else bool(defaults.get("checkpoint_enabled", False))
-        )
-        legacy_config = {
-            "llm_provider": llm_provider,
-            "deep_think_llm": deep_think_llm,
-            "quick_think_llm": quick_think_llm,
-            "backend_url": backend_url,
-            "output_language": output_language,
-            "temperature": temperature,
-            "llm_max_retries": llm_max_retries,
-            "google_thinking_level": google_thinking_level,
-            "openai_reasoning_effort": openai_reasoning_effort,
-            "anthropic_effort": anthropic_effort,
-            "report_output_path": report_output_path,
-        }
-        request = _request(
-            canonical_symbol,
+    """Return the exact workflow plan for the current host harness to execute."""
+    return prepare_host_run_request(
+        _request(
+            symbol,
             as_of_date,
             analysts,
-            resolved_debate_rounds,
-            resolved_risk_rounds,
-            "legacy",
-            resolved_asset_type,
-            resolved_checkpoint,
-            legacy_config,
-        )
-        result, events = adapter.run(request)
-        return {"ok": True, "result": result.to_dict(), "events": [event.to_dict() for event in events]}
-    except CapabilitySetupError as exc:
-        return exc.to_dict()
+            debate_rounds,
+            risk_rounds,
+            "host_native",
+            asset_type,
+            output_language=output_language,
+        ),
+    )
+
+
+def import_host_run(payload: dict[str, Any]) -> dict[str, Any]:
+    """Validate a completed host-executed workflow and publish its final dossier atomically."""
+    result, events = execute_host_run_import(payload)
+    return {
+        "ok": True,
+        "result": result.to_dict(),
+        "events": [event.to_dict() for event in events],
+        "view": build_run_view(result, events).to_dict(),
+        "dashboard_path": f"/?run={result.run_id}",
+    }
 
 
 def get_run(run_id: str) -> dict[str, Any]:
@@ -171,20 +135,29 @@ def get_run(run_id: str) -> dict[str, Any]:
     return dashboard_report(run_id)
 
 
+def _resolve_run_id(run_id: str) -> str:
+    if run_id != "current":
+        return run_id
+    return RUN_STORE.current_run_id() or run_id
+
+
 def get_run_events(run_id: str) -> dict[str, Any]:
     """Return the ordered event stream for a run."""
+    run_id = _resolve_run_id(run_id)
     events = RUN_STORE.get_events(run_id)
     return {"ok": events is not None, "run_id": run_id, "events": [event.to_dict() for event in events or ()]}
 
 
 def get_run_result(run_id: str) -> dict[str, Any]:
     """Return the full typed result for a run."""
+    run_id = _resolve_run_id(run_id)
     result = RUN_STORE.get_result(run_id)
     return {"ok": result is not None, "result": result.to_dict() if result else None}
 
 
 def get_run_view(run_id: str) -> dict[str, Any]:
     """Return the complete UI-ready view for inline harness rendering."""
+    run_id = _resolve_run_id(run_id)
     result = RUN_STORE.get_result(run_id)
     events = RUN_STORE.get_events(run_id)
     if result is None or events is None:
@@ -192,9 +165,9 @@ def get_run_view(run_id: str) -> dict[str, Any]:
     return build_run_view(result, events).to_dict()
 
 
-def launch_local_dashboard(host: str = "127.0.0.1", port: int = 0) -> dict[str, object]:
+def launch_local_dashboard(host: str = "127.0.0.1", port: int = 0, run_id: str | None = None) -> dict[str, object]:
     """Launch the Designer-owned dashboard assets on an ephemeral loopback port."""
-    return launch_dashboard(host, port)
+    return launch_dashboard(host, port, run_id=run_id)
 
 
 def get_dashboard_report(run_id: str) -> dict[str, object]:
@@ -202,7 +175,7 @@ def get_dashboard_report(run_id: str) -> dict[str, object]:
     return dashboard_report(run_id)
 
 
-def create_server() -> MCPServer:
+def create_server(*, include_legacy_metadata: bool = False) -> MCPServer:
     server = MCPServer(
         "TradingAgents Portable",
         version="0.1.0",
@@ -213,19 +186,28 @@ def create_server() -> MCPServer:
     )
     read = _annotations(read_only=True, idempotent=True, open_world=False)
     local_write = _annotations(read_only=False, idempotent=True, open_world=False)
-    legacy_write = _annotations(read_only=False, idempotent=False, open_world=True)
     launch = _annotations(read_only=False, idempotent=False, open_world=False)
+
+    capability_tool = discover_capability
+    matrix_tool = get_feature_matrix
+    if include_legacy_metadata:
+
+        def capability_tool(legacy_path: str | None = None) -> dict[str, object]:
+            return discovery(legacy_path, include_legacy=True)
+
+        def matrix_tool(legacy_path: str | None = None) -> dict[str, Any]:
+            return feature_matrix(legacy_path, include_legacy=True).to_dict()
 
     server.tool(
         name="discover_capability",
         description="Discover executors, tools, safety boundaries, and default fixture.",
         annotations=read,
-    )(discover_capability)
+    )(capability_tool)
     server.tool(
         name="get_feature_matrix",
         description="Return implemented features, safety exclusions, and runtime readiness.",
         annotations=read,
-    )(get_feature_matrix)
+    )(matrix_tool)
     server.tool(
         name="prepare_fixture",
         description="Validate and expand the deterministic ORCL fixture without running it.",
@@ -237,13 +219,15 @@ def create_server() -> MCPServer:
         annotations=local_write,
     )(run_fixture)
     server.tool(
-        name="run_legacy",
-        description=(
-            "Delegate to upstream TradingAgentsGraph with typed non-secret settings. "
-            "Provider credentials are accepted only through the server environment."
-        ),
-        annotations=legacy_write,
-    )(run_legacy)
+        name="prepare_host_run",
+        description="Return the canonical plan for the active host harness; accepts no model credentials.",
+        annotations=read,
+    )(prepare_host_run)
+    server.tool(
+        name="import_host_run",
+        description="Validate completed host stage outputs and atomically publish the final dossier.",
+        annotations=local_write,
+    )(import_host_run)
     server.tool(
         name="get_run",
         description="Return a compact dashboard-oriented run record.",

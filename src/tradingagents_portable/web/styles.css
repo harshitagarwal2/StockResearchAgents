@@ -787,6 +787,34 @@ dd {
   padding-left: 18px;
 }
 
+.rich-text {
+  display: grid;
+  gap: 14px;
+}
+
+.rich-text > * {
+  margin: 0;
+}
+
+.rich-text h4 {
+  margin-top: 8px;
+  color: var(--ink);
+  font-family: var(--display);
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.rich-text ul {
+  padding-left: 1.15rem;
+}
+
+.source-link {
+  color: var(--cobalt);
+  overflow-wrap: anywhere;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+
 .caveat-block li + li,
 .constraint-grid li + li,
 .warning-stack li + li {

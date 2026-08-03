@@ -6,7 +6,13 @@ import pytest
 
 from tradingagents_portable.contracts import RunRequest
 from tradingagents_portable.topology import build_legacy_topology
-from tradingagents_portable.workflow import DEFAULT_MANIFEST, expand_workflow, load_workflow_manifest
+from tradingagents_portable.workflow import (
+    DEFAULT_MANIFEST,
+    expand_workflow,
+    load_host_submission_schema,
+    load_workflow_manifest,
+    stage_runtime_contract,
+)
 
 
 def test_versioned_manifest_expands_the_exact_legacy_topology() -> None:
@@ -25,6 +31,73 @@ def test_manifest_is_generic_and_declares_sequential_fallback() -> None:
     assert manifest.fallback == "sequential"
     assert [role["slug"] for role in manifest.research_debate] == ["bull", "bear"]
     assert [role["slug"] for role in manifest.risk_debate] == ["aggressive", "conservative", "neutral"]
+    assert manifest.defaults["debate_rounds"] == 1
+    assert manifest.defaults["risk_rounds"] == 1
+    assert "Never request an API key" in manifest.evidence_policy["fallback"]
+    assert manifest.parity_scope["claim"] == (
+        "Analysis-stage and final-information parity; runtime mechanics remain harness-specific."
+    )
+    assert manifest.capability_negotiation["portable_fallback"] == "compatible"
+    assert manifest.routing_semantics["research_debate"].endswith("2 * debate_rounds turns.")
+    assert set(manifest.stage_instructions) == {
+        "analyst.market",
+        "analyst.social",
+        "analyst.news",
+        "analyst.fundamentals",
+        "research.bull",
+        "research.bear",
+        "research.manager",
+        "trader",
+        "risk.aggressive",
+        "risk.conservative",
+        "risk.neutral",
+        "portfolio",
+    }
+
+
+def test_every_expanded_stage_has_an_executable_runtime_contract() -> None:
+    manifest = load_workflow_manifest()
+    topology = expand_workflow(RunRequest(debate_rounds=2, risk_rounds=2))
+
+    contracts = [stage_runtime_contract(stage, manifest) for stage in topology.stages]
+
+    assert len(contracts) == len(topology.stages)
+    assert all(contract["output_ref"].startswith("host-submission.v1.schema.json#/") for contract in contracts)
+    assert contracts[0]["allowed_tools"] == [
+        "market.price_history",
+        "market.indicators",
+        "market.verified_snapshot",
+    ]
+    assert contracts[-1]["id"] == "portfolio"
+    assert contracts[-1]["allowed_tools"] == []
+
+
+def test_host_submission_schema_covers_every_stage_and_final_field() -> None:
+    schema = load_host_submission_schema()
+    definitions = schema["$defs"]
+
+    assert schema["$ref"] == "#/$defs/submission"
+    assert {
+        "request",
+        "evidence",
+        "analystStageOutput",
+        "debateStageOutput",
+        "researchManagerOutput",
+        "traderOutput",
+        "portfolioStageOutput",
+        "submission",
+    } <= set(definitions)
+    assert definitions["submission"]["additionalProperties"] is False
+    assert set(definitions["submission"]["required"]) >= {
+        "request",
+        "analyst_reports",
+        "research_debate",
+        "research_decision",
+        "trader_decision",
+        "risk_debate",
+        "risk_decision",
+        "portfolio_decision",
+    }
 
 
 def test_loader_rejects_unknown_schema_version(tmp_path) -> None:

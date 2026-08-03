@@ -9,8 +9,9 @@ from urllib.request import urlopen
 
 import pytest
 
+from tradingagents_portable import dashboard
 from tradingagents_portable.contracts import RunRequest
-from tradingagents_portable.dashboard import create_dashboard_server
+from tradingagents_portable.dashboard import create_dashboard_server, launch_dashboard
 from tradingagents_portable.fixture import run_fixture
 from tradingagents_portable.store import RunStore
 
@@ -103,6 +104,27 @@ def test_dashboard_markup_has_basic_accessibility_and_static_safety() -> None:
     assert "new Function" not in javascript
     assert "https://" not in javascript
     assert "http://" not in javascript
+
+
+def test_launched_dashboard_pins_the_requested_run_and_uses_the_supplied_store() -> None:
+    store = RunStore()
+    first, _ = run_fixture(RunRequest(debate_rounds=1), store)
+    second, _ = run_fixture(RunRequest(debate_rounds=2), store)
+    launched = launch_dashboard("127.0.0.1", 0, WEB_ROOT, run_id=first.run_id, store=store)
+    server = dashboard._SERVERS.pop()
+    base = str(launched["url"]).split("?", 1)[0].rstrip("/")
+    try:
+        assert launched["url"] == f"{base}/?run={first.run_id}"
+        with urlopen(f"{base}/api/runs/{first.run_id}/view", timeout=5) as response:  # noqa: S310
+            first_view = json.load(response)
+        with urlopen(f"{base}/api/runs/current/view", timeout=5) as response:  # noqa: S310
+            current_view = json.load(response)
+
+        assert first_view["view"]["run_id"] == first.run_id
+        assert current_view["view"]["run_id"] == second.run_id
+    finally:
+        server.shutdown()
+        server.server_close()
 
 
 def test_loopback_dashboard_serves_html_json_result_and_events() -> None:

@@ -22,9 +22,10 @@ EXPECTED_TOOLS = {
     "get_run_result",
     "get_run_view",
     "launch_local_dashboard",
+    "import_host_run",
+    "prepare_host_run",
     "prepare_fixture",
     "run_fixture",
-    "run_legacy",
 }
 
 
@@ -68,7 +69,17 @@ async def smoke() -> None:
             discovery_response = await session.call_tool("discover_capability", arguments={})
             capability = _payload(discovery_response)
             assert capability["executors"]["fixture"] is True
-            assert capability["executors"]["legacy"] is True
+            assert capability["executors"]["host_native"] is True
+            assert capability["executors"]["legacy"] is False
+            assert "run_legacy" not in capability["tools"]
+
+            plan_response = await session.call_tool(
+                "prepare_host_run",
+                arguments={"symbol": "ORCL", "as_of_date": "2026-08-01"},
+            )
+            plan = _payload(plan_response)
+            assert plan["execution_owner"] == "host_harness"
+            assert plan["external_model_api_keys_accepted"] is False
 
             run_response = await session.call_tool(
                 "run_fixture",

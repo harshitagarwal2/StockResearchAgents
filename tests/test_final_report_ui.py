@@ -69,7 +69,8 @@ def test_ui_loads_only_the_canonical_final_view_without_fabricated_fallback() ->
     javascript = (WEB_ROOT / "app.js").read_text(encoding="utf-8")
     combined = f"{html}\n{javascript}"
 
-    assert 'fetch("/api/runs/current/view"' in javascript
+    assert 'return "/api/runs/current/view"' in javascript
+    assert "resolveViewEndpoint(window.location.search)" in javascript
     assert "/api/runs/current/events" not in javascript
     assert "/api/runs/current/result" not in javascript
     assert "ORCL" not in combined
@@ -148,3 +149,22 @@ def test_ui_falls_back_to_all_three_legacy_risk_role_histories_without_duplicati
         {"speaker": "Neutral Analyst", "position": "NEUTRAL HISTORY", "snapshot": True},
     ]
     assert result["primary"] == [{"speaker": "Neutral Analyst", "position": "NORMALIZED TURN"}]
+
+
+def test_ui_resolves_saved_run_urls_without_falling_forward_to_current() -> None:
+    result = _run_debate_projection(
+        """
+        const ui = require('./src/tradingagents_portable/web/app.js');
+        process.stdout.write(JSON.stringify({
+          current: ui.resolveViewEndpoint(''),
+          saved: ui.resolveViewEndpoint('?run=host-dc2616f0e2c2'),
+          invalid: ui.resolveViewEndpoint('?run=../../current')
+        }));
+        """
+    )
+
+    assert result == {
+        "current": "/api/runs/current/view",
+        "saved": "/api/runs/host-dc2616f0e2c2/view",
+        "invalid": None,
+    }

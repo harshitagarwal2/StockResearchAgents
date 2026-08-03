@@ -16,8 +16,8 @@ def legacy_available(legacy_path: str | None = None) -> bool:
     return importlib.util.find_spec("tradingagents") is not None
 
 
-def feature_matrix(legacy_path: str | None = None) -> FeatureCapabilityMatrix:
-    available = legacy_available(legacy_path)
+def feature_matrix(legacy_path: str | None = None, *, include_legacy: bool = True) -> FeatureCapabilityMatrix:
+    available = legacy_available(legacy_path) if include_legacy else False
     return FeatureCapabilityMatrix(
         features=(
             CapabilityFeature(
@@ -25,8 +25,12 @@ def feature_matrix(legacy_path: str | None = None) -> FeatureCapabilityMatrix:
             ),
             CapabilityFeature(
                 "legacy_full_topology",
-                SupportLevel.OPTIONAL,
-                "Delegated to upstream TradingAgentsGraph; this adapter maps completed state after the run.",
+                SupportLevel.OPTIONAL if include_legacy else SupportLevel.UNAVAILABLE,
+                (
+                    "Delegated to upstream TradingAgentsGraph; this adapter maps completed state after the run."
+                    if include_legacy
+                    else "Not exposed by the credential-free MCP; use the explicit standalone compatibility CLI."
+                ),
             ),
             CapabilityFeature(
                 "orcl_fixture",
@@ -35,9 +39,13 @@ def feature_matrix(legacy_path: str | None = None) -> FeatureCapabilityMatrix:
             ),
             CapabilityFeature(
                 "legacy_adapter",
-                SupportLevel.OPTIONAL,
-                "Delegation and post-run result mapping are implemented; "
-                "runtime/provider readiness is environment-dependent.",
+                SupportLevel.OPTIONAL if include_legacy else SupportLevel.UNAVAILABLE,
+                (
+                    "Delegation and post-run result mapping are implemented; "
+                    "runtime/provider readiness is environment-dependent."
+                    if include_legacy
+                    else "Excluded from this credential-free server surface."
+                ),
             ),
             CapabilityFeature(
                 "mcp_stdio", SupportLevel.SUPPORTED, "Discovery, runs, events, results, and dashboard tools."
@@ -55,8 +63,9 @@ def feature_matrix(legacy_path: str | None = None) -> FeatureCapabilityMatrix:
             ),
             CapabilityFeature(
                 "host_native_executor",
-                SupportLevel.UNAVAILABLE,
-                "The plugin manifest and skill describe host use, but no host-native stage executor is implemented.",
+                SupportLevel.SUPPORTED,
+                "The host owns reasoning; a strict credential-free import boundary validates "
+                "and publishes the final dossier.",
             ),
             CapabilityFeature(
                 "run_cancellation",
@@ -81,6 +90,7 @@ def feature_matrix(legacy_path: str | None = None) -> FeatureCapabilityMatrix:
             },
             "legacy_upstream": {
                 "implementation": "implemented_thin_adapter",
+                "surface_exposed": include_legacy,
                 "result_mapping": "implemented_post_run",
                 "verification": "runtime_unverified",
                 "ready": available,
@@ -92,9 +102,12 @@ def feature_matrix(legacy_path: str | None = None) -> FeatureCapabilityMatrix:
                 "detail": "Importability does not prove provider credentials, data access, or a successful live run.",
             },
             "host_native": {
-                "implementation": "manifest_and_skill_only",
-                "verification": "not_implemented",
-                "ready": False,
+                "implementation": "stateless_plan_and_atomic_import",
+                "verification": "locally_verified",
+                "ready": True,
+                "credentials_required": False,
+                "execution_owner": "host_harness",
+                "event_delivery": "post_run_import_receipts",
                 "checkpoint": "unavailable",
                 "cancellation": "unavailable",
             },
@@ -102,27 +115,35 @@ def feature_matrix(legacy_path: str | None = None) -> FeatureCapabilityMatrix:
     )
 
 
-def discovery(legacy_path: str | None = None) -> dict[str, object]:
-    matrix = feature_matrix(legacy_path)
+def discovery(legacy_path: str | None = None, *, include_legacy: bool = True) -> dict[str, object]:
+    matrix = feature_matrix(legacy_path, include_legacy=include_legacy)
+    tools = [
+        "discover_capability",
+        "get_feature_matrix",
+        "prepare_fixture",
+        "run_fixture",
+        "prepare_host_run",
+        "import_host_run",
+        "get_run",
+        "get_run_events",
+        "get_run_result",
+        "get_run_view",
+        "launch_local_dashboard",
+        "get_dashboard_report",
+    ]
+    if include_legacy:
+        tools.insert(6, "run_legacy")
     return {
         "name": matrix.capability,
         "schema_version": matrix.schema_version,
         "prototype": True,
         "default_fixture": {"symbol": "ORCL", "external_credentials_required": False},
-        "executors": {"fixture": True, "legacy": legacy_available(legacy_path)},
+        "executors": {
+            "fixture": True,
+            "host_native": True,
+            "legacy": legacy_available(legacy_path) if include_legacy else False,
+        },
         "executor_states": matrix.runtime_readiness,
-        "tools": (
-            "discover_capability",
-            "get_feature_matrix",
-            "prepare_fixture",
-            "run_fixture",
-            "run_legacy",
-            "get_run",
-            "get_run_events",
-            "get_run_result",
-            "get_run_view",
-            "launch_local_dashboard",
-            "get_dashboard_report",
-        ),
+        "tools": tuple(tools),
         "safety_notice": matrix.safety_notice,
     }

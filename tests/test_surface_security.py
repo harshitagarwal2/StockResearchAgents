@@ -7,7 +7,7 @@ import pytest
 
 from tradingagents_portable.capabilities import feature_matrix
 from tradingagents_portable.contracts import RunRequest
-from tradingagents_portable.mcp_server import (
+from tradingagents_portable.legacy_mcp_server import (
     _reject_secret_shaped_keys,
     _request,
     _safe_legacy_config,
@@ -123,7 +123,9 @@ def test_executor_readiness_does_not_claim_unverified_features_supported() -> No
     assert features["legacy_full_topology"] == "optional"
     assert features["checkpoint_resume"] == "optional"
     assert features["live_stage_streaming"] == "unavailable"
-    assert features["host_native_executor"] == "unavailable"
+    assert features["host_native_executor"] == "supported"
+    assert matrix.runtime_readiness["host_native"]["credentials_required"] is False
+    assert matrix.runtime_readiness["host_native"]["checkpoint"] == "unavailable"
     assert features["run_cancellation"] == "unavailable"
 
     legacy = matrix.runtime_readiness["legacy_upstream"]
@@ -134,5 +136,5 @@ def test_executor_readiness_does_not_claim_unverified_features_supported() -> No
     assert legacy["cancellation"] == "unavailable"
 
     host = matrix.runtime_readiness["host_native"]
-    assert host["implementation"] == "manifest_and_skill_only"
-    assert host["verification"] == "not_implemented"
+    assert host["implementation"] == "stateless_plan_and_atomic_import"
+    assert host["verification"] == "locally_verified"

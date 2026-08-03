@@ -13,6 +13,7 @@ from .contracts import RunRequest
 from .dashboard import create_dashboard_server
 from .errors import CapabilitySetupError
 from .fixture import run_fixture
+from .host_native import prepare_host_run, submit_host_run
 from .legacy import LegacyTradingAgentsAdapter
 from .view import build_run_view
 
@@ -70,6 +71,40 @@ def _add_research_command(commands: argparse._SubParsersAction[argparse.Argument
     research.add_argument("--port", default=8765, type=int)
 
 
+def _add_host_commands(commands: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
+    plan = commands.add_parser(
+        "host-plan",
+        help="Emit a credential-free workflow plan for the active agent harness",
+    )
+    plan.add_argument("subject", help="Company/instrument market symbol")
+    plan.add_argument("--date", dest="as_of_date", default=date.today().isoformat())
+    plan.add_argument("--asset-type", choices=("stock", "crypto"), default="stock")
+    plan.add_argument(
+        "--analyst",
+        action="append",
+        dest="analysts",
+        choices=("market", "social", "news", "fundamentals"),
+    )
+    plan.add_argument("--debate-rounds", type=int, default=1)
+    plan.add_argument("--risk-rounds", type=int, default=1)
+    plan.add_argument("--output-language", default="English")
+    plan.add_argument("--output")
+
+    host_import = commands.add_parser(
+        "host-import",
+        help="Validate completed host stage outputs and publish the final dossier",
+    )
+    host_import.add_argument("--input", required=True, help="Complete host-native JSON submission")
+    host_import.add_argument("--output", help="Write the complete normalized JSON response")
+    host_import.add_argument(
+        "--dashboard",
+        action="store_true",
+        help="After successful import, serve only the completed dossier on loopback",
+    )
+    host_import.add_argument("--host", default="127.0.0.1", help=argparse.SUPPRESS)
+    host_import.add_argument("--port", default=8765, type=int)
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="tradingagents-portable",
@@ -84,6 +119,7 @@ def _parser() -> argparse.ArgumentParser:
     fixture.add_argument("--events", action="store_true", help="Include rich events in JSON output")
 
     _add_research_command(commands)
+    _add_host_commands(commands)
 
     dashboard = commands.add_parser("dashboard", help="Serve the packaged dossier and JSON APIs on loopback")
     dashboard.add_argument("--host", default="127.0.0.1")
@@ -106,7 +142,8 @@ def _emit(payload: dict[str, object], output: str | None = None) -> None:
 
 def _serve_dashboard(host: str, port: int, run_id: str | None = None) -> None:
     server = create_dashboard_server(host, port)
-    bound_host, bound_port = server.server_address[:2]
+    bound_host = str(server.server_address[0])
+    bound_port = int(server.server_address[1])
     suffix = f"?run={run_id}" if run_id else ""
     print(f"TradingAgents Portable dashboard: http://{bound_host}:{bound_port}/{suffix}")
     print("Final research projection only; not financial advice. Press Ctrl-C to stop.")
@@ -222,6 +259,62 @@ def _research(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
     return 0
 
 
+def _host_plan(args: argparse.Namespace) -> int:
+    default_analysts = (
+        ("market", "social", "news") if args.asset_type == "crypto" else ("market", "social", "news", "fundamentals")
+    )
+    request = RunRequest(
+        symbol=args.subject,
+        as_of_date=args.as_of_date,
+        asset_type=args.asset_type,
+        analysts=tuple(args.analysts or default_analysts),
+        debate_rounds=args.debate_rounds,
+        risk_rounds=args.risk_rounds,
+        output_language=args.output_language,
+        executor="host_native",
+    )
+    _emit(prepare_host_run(request), args.output)
+    return 0
+
+
+def _host_import(args: argparse.Namespace) -> int:
+    try:
+        source = Path(args.input).expanduser()
+        payload = json.loads(source.read_text(encoding="utf-8"))
+        if not isinstance(payload, dict):
+            raise ValueError("host-native submission root must be a JSON object")
+        result, events = submit_host_run(payload)
+    except (OSError, json.JSONDecodeError, TypeError, ValueError) as exc:
+        _emit(
+            {
+                "ok": False,
+                "guidance": {
+                    "code": "invalid_host_submission",
+                    "message": str(exc),
+                    "steps": [
+                        "Generate the canonical plan with host-plan.",
+                        "Submit every configured analyst, debate, manager, trader, risk, and portfolio output.",
+                        "Do not include API keys, tokens, passwords, provider config, "
+                        "or executable trade instructions.",
+                    ],
+                    "retryable": True,
+                },
+            },
+            args.output,
+        )
+        return 2
+    response = {
+        "ok": True,
+        "result": result.to_dict(),
+        "view": build_run_view(result, events).to_dict(),
+        "events": [event.to_dict() for event in events],
+    }
+    _emit(response, args.output)
+    if args.dashboard:
+        _serve_dashboard(args.host, args.port, result.run_id)
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = _parser()
     args = parser.parse_args(argv)
@@ -241,6 +334,12 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.command == "research":
         return _research(args, parser)
+
+    if args.command == "host-plan":
+        return _host_plan(args)
+
+    if args.command == "host-import":
+        return _host_import(args)
 
     if args.fixture:
         run_fixture(RunRequest(as_of_date=args.as_of_date))

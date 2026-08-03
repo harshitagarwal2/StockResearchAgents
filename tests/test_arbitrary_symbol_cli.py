@@ -5,7 +5,7 @@ from typing import Any
 
 import pytest
 
-from tradingagents_portable import cli, mcp_server
+from tradingagents_portable import cli, legacy_mcp_server
 from tradingagents_portable.contracts import RunRequest
 from tradingagents_portable.legacy import LegacyTradingAgentsAdapter
 from tradingagents_portable.store import RunStore
@@ -211,9 +211,9 @@ def test_mcp_run_legacy_accepts_arbitrary_symbol_and_returns_complete_normalized
     analysts: list[str],
     effective_analysts: list[str],
 ) -> None:
-    monkeypatch.setattr(mcp_server, "LegacyTradingAgentsAdapter", RecordingAdapter)
+    monkeypatch.setattr(legacy_mcp_server, "LegacyTradingAgentsAdapter", RecordingAdapter)
 
-    payload = mcp_server.run_legacy(
+    payload = legacy_mcp_server.run_legacy(
         symbol=symbol,
         as_of_date="2026-07-15",
         asset_type=asset_type,
@@ -252,9 +252,9 @@ def test_mcp_run_legacy_preserves_upstream_environment_defaults_when_omitted(
                 "checkpoint_enabled": True,
             }
 
-    monkeypatch.setattr(mcp_server, "LegacyTradingAgentsAdapter", EnvironmentDefaultsAdapter)
+    monkeypatch.setattr(legacy_mcp_server, "LegacyTradingAgentsAdapter", EnvironmentDefaultsAdapter)
 
-    payload = mcp_server.run_legacy(symbol="MSFT", as_of_date="2026-07-15")
+    payload = legacy_mcp_server.run_legacy(symbol="MSFT", as_of_date="2026-07-15")
 
     assert payload["ok"] is True
     request = payload["result"]["request"]
@@ -266,10 +266,10 @@ def test_mcp_run_legacy_preserves_upstream_environment_defaults_when_omitted(
 def test_openai_codex_provider_is_forwarded_without_oauth_material(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(mcp_server, "LegacyTradingAgentsAdapter", RecordingAdapter)
+    monkeypatch.setattr(legacy_mcp_server, "LegacyTradingAgentsAdapter", RecordingAdapter)
     monkeypatch.setenv("TRADINGAGENTS_CODEX_AUTH_PATH", "/private/runtime-owned/codex-auth.json")
 
-    payload = mcp_server.run_legacy(
+    payload = legacy_mcp_server.run_legacy(
         symbol="AAPL",
         as_of_date="2026-07-15",
         llm_provider="openai_codex",

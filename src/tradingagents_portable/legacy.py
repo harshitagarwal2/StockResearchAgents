@@ -12,7 +12,7 @@ import sys
 from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal, cast
 from uuid import uuid4
 
 from .contracts import (
@@ -57,11 +57,45 @@ class LegacyTradingAgentsAdapter:
     def _activate_legacy_path(self) -> None:
         if self.legacy_path:
             root = Path(self.legacy_path).expanduser().resolve()
-            if not (root / "tradingagents").is_dir():
+            package_root = root / "tradingagents"
+            if not package_root.is_dir():
                 raise self._setup_error(f"Configured legacy path does not contain tradingagents/: {root}")
+
+            loaded_package = sys.modules.get("tradingagents")
+            if loaded_package is not None and not self._module_is_within(loaded_package, package_root):
+                loaded_from = self._module_origin(loaded_package) or "an unknown location"
+                raise self._setup_error(
+                    "Configured legacy path cannot be activated because a different tradingagents package "
+                    f"is already loaded from {loaded_from}. Start a fresh process for {root}."
+                )
+
             root_string = str(root)
-            if root_string not in sys.path:
-                sys.path.insert(0, root_string)
+            # An explicit checkout must take precedence over any installed copy.
+            # Preserve every unrelated sys.path entry while moving this exact root
+            # to the front.
+            sys.path[:] = [entry for entry in sys.path if entry != root_string]
+            sys.path.insert(0, root_string)
+
+    @staticmethod
+    def _module_origin(module: Any) -> str | None:
+        module_file = getattr(module, "__file__", None)
+        if module_file:
+            return str(Path(module_file).expanduser().resolve())
+        module_paths = getattr(module, "__path__", None)
+        if module_paths:
+            return ", ".join(str(Path(entry).expanduser().resolve()) for entry in module_paths)
+        return None
+
+    @classmethod
+    def _module_is_within(cls, module: Any, package_root: Path) -> bool:
+        candidates: list[Path] = []
+        module_file = getattr(module, "__file__", None)
+        if module_file:
+            candidates.append(Path(module_file).expanduser().resolve())
+        module_paths = getattr(module, "__path__", None)
+        if module_paths:
+            candidates.extend(Path(entry).expanduser().resolve() for entry in module_paths)
+        return bool(candidates) and all(candidate.is_relative_to(package_root) for candidate in candidates)
 
     def _load(self) -> tuple[type[Any], dict[str, Any]]:
         self._activate_legacy_path()
@@ -77,21 +111,25 @@ class LegacyTradingAgentsAdapter:
         _, defaults = self._load()
         return defaults
 
-    def resolve_subject(self, subject: str, asset_type: str = "auto") -> tuple[str, str]:
+    def resolve_subject(self, subject: str, asset_type: str = "auto") -> tuple[str, Literal["stock", "crypto"]]:
         """Apply the same canonical-symbol and crypto detection boundary as upstream CLI."""
         self._activate_legacy_path()
         raw = subject.strip()
         try:
             symbol_module = importlib.import_module("tradingagents.dataflows.symbol_utils")
-            canonical = str(symbol_module.normalize_symbol(raw))
-        except Exception:
+        except ModuleNotFoundError as exc:
+            optional_modules = {"tradingagents", "tradingagents.dataflows", "tradingagents.dataflows.symbol_utils"}
+            if exc.name not in optional_modules:
+                raise
             canonical = raw.upper()
+        else:
+            canonical = str(symbol_module.normalize_symbol(raw))
         resolved_type = asset_type
         if asset_type == "auto":
             resolved_type = "crypto" if canonical.endswith(("-USD", "-USDT", "-USDC", "-BTC", "-ETH")) else "stock"
         if resolved_type not in {"stock", "crypto"}:
             raise ValueError("asset_type must be 'auto', 'stock', or 'crypto'")
-        return canonical, resolved_type
+        return canonical, cast(Literal["stock", "crypto"], resolved_type)
 
     def clear_checkpoints(self) -> int:
         """Delegate the upstream CLI's scoped checkpoint cleanup helper."""

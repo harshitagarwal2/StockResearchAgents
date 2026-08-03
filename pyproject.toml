@@ -15,6 +15,7 @@ dependencies = ["mcp>=2.0,<3"]
 [project.scripts]
 tradingagents-portable = "tradingagents_portable.cli:main"
 tradingagents-portable-mcp = "tradingagents_portable.mcp_server:main"
+tradingagents-portable-legacy-mcp = "tradingagents_portable.legacy_mcp_server:main"
 
 [project.optional-dependencies]
 dev = ["pytest>=8", "ruff>=0.9"]

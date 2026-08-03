@@ -9,7 +9,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from ipaddress import ip_address
 from pathlib import Path
 from threading import Thread
-from urllib.parse import unquote, urlparse
+from urllib.parse import quote, unquote, urlparse
 
 from .contracts import PROTOTYPE_NOTICE
 from .store import RUN_STORE, RunStore
@@ -164,15 +164,21 @@ def launch_dashboard(
     host: str = "127.0.0.1",
     port: int = 0,
     web_root: str | Path | None = None,
+    run_id: str | None = None,
+    store: RunStore = RUN_STORE,
 ) -> dict[str, object]:
-    server = create_dashboard_server(host, port, web_root)
+    if run_id is not None and store.get_result(run_id) is None:
+        raise ValueError(f"completed run not found: {run_id}")
+    server = create_dashboard_server(host, port, web_root, store)
     thread = Thread(target=server.serve_forever, name="tradingagents-dashboard", daemon=True)
     thread.start()
     _SERVERS.append(server)
-    bound_host, bound_port = server.server_address[:2]
+    bound_host = str(server.server_address[0])
+    bound_port = int(server.server_address[1])
     return {
         "ok": True,
-        "url": f"http://{bound_host}:{bound_port}/",
+        "url": f"http://{bound_host}:{bound_port}/" + (f"?run={quote(run_id, safe='')}" if run_id else ""),
+        "run_id": run_id,
         "host": bound_host,
         "port": bound_port,
         "loopback_only": True,

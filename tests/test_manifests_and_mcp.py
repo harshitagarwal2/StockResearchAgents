@@ -3,6 +3,8 @@ from __future__ import annotations
 import ast
 import importlib
 import json
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -35,51 +37,30 @@ def test_mcp_manifest_has_exact_local_stdio_launch_command() -> None:
     assert server["command"] == "uv"
     assert server["args"] == [
         "run",
-        "--extra",
-        "upstream",
+        "--no-project",
+        "--with",
+        "mcp>=2.0,<3",
         "python",
         "-m",
         "tradingagents_portable.mcp_server",
     ]
     assert server["cwd"] == "."
     assert server["env"]["PYTHONPATH"] == "src"
-    forwarded = set(server["env_vars"])
-    assert {
-        "TRADINGAGENTS_LEGACY_PATH",
-        "TRADINGAGENTS_CODEX_AUTH_PATH",
-        "OPENAI_API_KEY",
-        "ANTHROPIC_API_KEY",
-        "GOOGLE_API_KEY",
-        "AZURE_OPENAI_API_KEY",
-        "AWS_BEARER_TOKEN_BEDROCK",
-        "XAI_API_KEY",
-        "DEEPSEEK_API_KEY",
-        "DASHSCOPE_API_KEY",
-        "ZHIPU_API_KEY",
-        "MINIMAX_API_KEY",
-        "OPENROUTER_API_KEY",
-        "MISTRAL_API_KEY",
-        "MOONSHOT_API_KEY",
-        "GROQ_API_KEY",
-        "NVIDIA_API_KEY",
-        "OPENAI_COMPATIBLE_API_KEY",
-        "ALPHA_VANTAGE_API_KEY",
-        "FRED_API_KEY",
-        "TRADINGAGENTS_LLM_PROVIDER",
-        "TRADINGAGENTS_RESULTS_DIR",
-        "TRADINGAGENTS_CACHE_DIR",
-        "TRADINGAGENTS_MEMORY_LOG_PATH",
-    } <= forwarded
+    assert "--no-project" in server["args"]
+    assert "env_vars" not in server
+    assert "API_KEY" not in json.dumps(server)
+    assert "CODEX_AUTH" not in json.dumps(server)
 
 
 def test_mcp_discovery_and_function_schemas_cover_required_surface() -> None:
-    payload = discovery(legacy_path=str(ROOT / "does-not-exist"))
+    payload = discovery(legacy_path=str(ROOT / "does-not-exist"), include_legacy=False)
     expected_tools = {
         "discover_capability",
         "get_feature_matrix",
         "prepare_fixture",
         "run_fixture",
-        "run_legacy",
+        "prepare_host_run",
+        "import_host_run",
         "get_run",
         "get_run_events",
         "get_run_result",
@@ -90,7 +71,7 @@ def test_mcp_discovery_and_function_schemas_cover_required_surface() -> None:
 
     assert set(payload["tools"]) == expected_tools
     assert payload["default_fixture"] == {"symbol": "ORCL", "external_credentials_required": False}
-    assert payload["executors"] == {"fixture": True, "legacy": False}
+    assert payload["executors"] == {"fixture": True, "host_native": True, "legacy": False}
 
     source = (ROOT / "src" / "tradingagents_portable" / "mcp_server.py").read_text(encoding="utf-8")
     module = ast.parse(source)
@@ -111,9 +92,8 @@ def test_mcp_discovery_and_function_schemas_cover_required_surface() -> None:
 
     assert defaults("run_fixture")["debate_rounds"] == 1
     assert defaults("run_fixture")["risk_rounds"] == 1
-    assert defaults("run_legacy")["debate_rounds"] is None
-    assert defaults("run_legacy")["risk_rounds"] is None
-    assert defaults("run_legacy")["checkpoint_enabled"] is None
+    assert defaults("prepare_host_run")["debate_rounds"] == 1
+    assert defaults("prepare_host_run")["risk_rounds"] == 1
     assert defaults("launch_local_dashboard")["host"] == "127.0.0.1"
     assert defaults("launch_local_dashboard")["port"] == 0
 
@@ -131,4 +111,63 @@ def test_registered_mcp_tool_names_match_discovery() -> None:
     registered = mcp_server.mcp._tool_manager.list_tools()
     names = {tool.name for tool in registered}
 
-    assert names == set(discovery(legacy_path=str(ROOT / "does-not-exist"))["tools"])
+    assert names == set(discovery(legacy_path=str(ROOT / "does-not-exist"), include_legacy=False)["tools"])
+    assert "run_legacy" not in names
+
+
+def test_opt_in_legacy_mcp_adds_only_the_explicit_legacy_tool() -> None:
+    pytest.importorskip("mcp")
+    safe_server = importlib.import_module("tradingagents_portable.mcp_server")
+    legacy_server = importlib.import_module("tradingagents_portable.legacy_mcp_server")
+    safe_names = {tool.name for tool in safe_server.mcp._tool_manager.list_tools()}
+    legacy_names = {tool.name for tool in legacy_server.mcp._tool_manager.list_tools()}
+
+    assert legacy_names == safe_names | {"run_legacy"}
+
+
+def test_safe_mcp_import_does_not_load_legacy_or_upstream_modules() -> None:
+    script = """
+import importlib
+import json
+import sys
+importlib.import_module('tradingagents_portable.mcp_server')
+loaded = sorted(
+    name for name in sys.modules
+    if name == 'tradingagents_portable.legacy' or name == 'tradingagents' or name.startswith('tradingagents.')
+)
+print(json.dumps(loaded))
+"""
+    completed = subprocess.run(  # noqa: S603 - fixed interpreter and test-owned script
+        [sys.executable, "-c", script],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    assert json.loads(completed.stdout) == []
+
+
+def test_legacy_adapter_top_level_export_is_lazy() -> None:
+    script = """
+import json
+import sys
+import tradingagents_portable
+before = 'tradingagents_portable.legacy' in sys.modules
+adapter = tradingagents_portable.LegacyTradingAgentsAdapter
+after = 'tradingagents_portable.legacy' in sys.modules
+print(json.dumps({'before': before, 'after': after, 'name': adapter.__name__}))
+"""
+    completed = subprocess.run(  # noqa: S603 - fixed interpreter and test-owned script
+        [sys.executable, "-c", script],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    assert json.loads(completed.stdout) == {
+        "before": False,
+        "after": True,
+        "name": "LegacyTradingAgentsAdapter",
+    }

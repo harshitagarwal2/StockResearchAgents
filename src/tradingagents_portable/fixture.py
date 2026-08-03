@@ -15,6 +15,7 @@ from .contracts import (
     EventKind,
     EvidenceItem,
     ExecutionConfig,
+    InstrumentIdentity,
     PersistenceMetadata,
     PortfolioDecision,
     Provenance,
@@ -66,12 +67,18 @@ def prepare_fixture(request: RunRequest) -> dict[str, Any]:
 
 def _fixture_evidence(request: RunRequest) -> tuple[EvidenceItem, ...]:
     retrieved = f"{request.as_of_date}T12:00:00+00:00"
-    shared = dict(
-        retrieved_at=retrieved,
-        source_date=request.as_of_date,
-        fixture=True,
-        notes=("Synthetic static values for integration testing; not live market data.",),
-    )
+
+    def provenance(source_type: str, source_uri: str) -> Provenance:
+        return Provenance(
+            provider="portable-fixture",
+            source_type=source_type,
+            source_uri=source_uri,
+            retrieved_at=retrieved,
+            source_date=request.as_of_date,
+            fixture=True,
+            notes=("Synthetic static values for integration testing; not live market data.",),
+        )
+
     return (
         EvidenceItem(
             id="ev-market",
@@ -79,12 +86,7 @@ def _fixture_evidence(request: RunRequest) -> tuple[EvidenceItem, ...]:
             title="ORCL deterministic market snapshot",
             summary="Fixture price is above its fixture 50-day average with moderate volatility.",
             values={"close_usd": 162.4, "sma_50_usd": 156.1, "rsi_14": 58.2},
-            provenance=Provenance(
-                provider="portable-fixture",
-                source_type="synthetic_market",
-                source_uri="fixture://orcl/market",
-                **shared,
-            ),
+            provenance=provenance("synthetic_market", "fixture://orcl/market"),
             limitations=("Not suitable for pricing, backtesting, or an investment decision.",),
         ),
         EvidenceItem(
@@ -93,12 +95,7 @@ def _fixture_evidence(request: RunRequest) -> tuple[EvidenceItem, ...]:
             title="ORCL deterministic sentiment sample",
             summary="Fixture discussion is constructive but includes valuation concern.",
             values={"positive": 7, "neutral": 2, "negative": 3, "sample_size": 12},
-            provenance=Provenance(
-                provider="portable-fixture",
-                source_type="synthetic_sentiment",
-                source_uri="fixture://orcl/social",
-                **shared,
-            ),
+            provenance=provenance("synthetic_sentiment", "fixture://orcl/social"),
             limitations=("Tiny synthetic sample; no population inference is valid.",),
         ),
         EvidenceItem(
@@ -107,9 +104,7 @@ def _fixture_evidence(request: RunRequest) -> tuple[EvidenceItem, ...]:
             title="ORCL deterministic news digest",
             summary="Fixture items balance cloud demand momentum against execution risk.",
             values={"items": 3, "positive": 1, "mixed": 1, "risk": 1},
-            provenance=Provenance(
-                provider="portable-fixture", source_type="synthetic_news", source_uri="fixture://orcl/news", **shared
-            ),
+            provenance=provenance("synthetic_news", "fixture://orcl/news"),
             limitations=("Synthetic headlines are not claims about real events.",),
         ),
         EvidenceItem(
@@ -118,12 +113,7 @@ def _fixture_evidence(request: RunRequest) -> tuple[EvidenceItem, ...]:
             title="ORCL deterministic fundamentals snapshot",
             summary="Fixture profile combines recurring revenue strength with leverage and valuation risk.",
             values={"revenue_growth_pct": 8.1, "operating_margin_pct": 31.4, "net_debt_to_ebitda": 3.2},
-            provenance=Provenance(
-                provider="portable-fixture",
-                source_type="synthetic_fundamentals",
-                source_uri="fixture://orcl/fundamentals",
-                **shared,
-            ),
+            provenance=provenance("synthetic_fundamentals", "fixture://orcl/fundamentals"),
             limitations=("Static synthetic values have no point-in-time financial validity.",),
         ),
     )
@@ -252,6 +242,13 @@ def run_fixture(request: RunRequest, store: RunStore = RUN_STORE) -> tuple[RunRe
     base_result = RunResult(
         run_id=run_id,
         request=request,
+        instrument=InstrumentIdentity(
+            requested_symbol=request.symbol,
+            company_of_interest="Oracle Corporation",
+            trade_date=request.as_of_date,
+            asset_type=request.asset_type,
+            instrument_context="Deterministic synthetic NYSE common-stock fixture.",
+        ),
         topology=topology,
         evidence=evidence,
         analyst_reports=reports,

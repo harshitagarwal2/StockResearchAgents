@@ -36,6 +36,7 @@ def _mapping(value: object) -> Mapping[str, Any]:
 
 def _snapshot(value: object, *, risk: bool) -> DebateSnapshot:
     state = _mapping(value)
+    roles: tuple[str, ...]
     if risk:
         roles = ("aggressive", "conservative", "neutral")
     else:

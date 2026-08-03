@@ -4,7 +4,7 @@
 
 This repository is an incubation environment for consuming upstream TradingAgents research through a portable CLI/MCP boundary and presenting the completed output as a read-only dossier.
 
-The portable layer is an adapter and projection surface, not a second TradingAgents execution engine. Complete live feature execution remains owned by upstream `TradingAgentsGraph`.
+The portable layer owns workflow contracts, validation, and projection, not model inference. The active host harness can execute the complete workflow with its own internal agents; optional legacy execution remains owned by upstream `TradingAgentsGraph`.
 
 ## Boundary
 
@@ -13,6 +13,8 @@ TradingAgents Portable owns:
 - versioned run, workflow, event, evidence, decision, artifact, and dashboard contracts;
 - the deterministic ORCL demonstration fixture;
 - harness-neutral MCP tools and a Codex plugin/skill bundle;
+- a stateless host plan plus atomic completed-run import boundary that accepts no model credentials;
+- a versioned JSON Schema, per-stage context/tool/output contracts, capability negotiation, and a reference sequential executor;
 - the post-run dossier projection, inline MCP view, loopback browser UI, and JSON/Markdown artifacts;
 - conformance tests and the feature-parity ledger.
 
@@ -23,20 +25,25 @@ The main TradingAgents repository remains the source of truth for:
 - data-vendor implementations;
 - LangGraph execution, legacy checkpoints, reports, and decision memory.
 
-The thin upstream adapter imports and calls that implementation. It must not copy or fork its business logic.
+The portable manifest records the upstream workflow's observable role, tool-capability, routing, context, and final-information semantics. The thin upstream adapter still imports and calls the original implementation; no provider client, model loop, or LangGraph node implementation is forked.
 
-The installable `upstream` extra pins the official base commit used for conformance. A compatible checkout supplied through `TRADINGAGENTS_LEGACY_PATH` takes precedence, so an alternate branch such as PR #1195 can add a provider without changing the portable contracts. Credentials and Codex OAuth state remain owned and read by upstream; the portable layer forwards only environment-variable names and never serializes their values.
+The installable `upstream` extra pins the official base commit used for conformance. A compatible checkout supplied through `TRADINGAGENTS_LEGACY_PATH` takes precedence, so an alternate branch such as PR #1195 can add a provider without changing the portable contracts. The Codex plugin does not register or import this path. Credentials and Codex OAuth state remain owned by an explicitly launched standalone compatibility process and are never serialized into portable contracts.
 
 ## Runtime shape
 
 ```mermaid
 flowchart LR
-    H["CLI or MCP client"] --> P["Portable typed request"]
+    H["Codex or another host harness"] --> P["Portable typed request and plan"]
+    P --> N["Host-owned agents and tools"]
+    P --> S["Reference sequential fallback"]
     P --> F["Deterministic ORCL fixture"]
     P --> A["Thin upstream adapter"]
     A --> G["TradingAgentsGraph"]
+    N --> I["Strict atomic host import"]
+    S --> I
     F --> C["Completed portable result"]
     G --> C
+    I --> C
     C --> V["Merged read-only dossier"]
     V --> E["Inline MCP view"]
     V --> B["Loopback browser UI"]
@@ -56,15 +63,15 @@ For effective analysts `A`, research depth `N`, and risk depth `R`, a complete r
 5. exactly `3 × R` aggressive/conservative/neutral risk turns;
 6. terminal Portfolio Manager decision.
 
-For live execution, the portable layer passes the supported non-secret request settings to upstream and projects the completed logical state. Provider behavior, data access, workflow decisions, and checkpoint mechanics remain upstream responsibilities.
+For host-native execution, the portable layer expands these semantics into exact stage descriptors with context projections, allowed tool-capability IDs, instructions, output schema references, and requested output language. Codex or another harness owns agent spawning, reasoning, and concrete tool binding. A reference sequential executor proves the contract without Codex or LangGraph. A strict importer validates completeness, provenance dates/cutoff, evidence references, non-executability, and credential-shaped fields before atomic publication. For optional legacy execution, provider behavior, data access, workflow decisions, and checkpoint mechanics remain upstream responsibilities.
 
 ## Execution modes
 
 - **Fixture:** deterministic, credential-free, network-free ORCL run used for local proof and conformance.
-- **Upstream delegation:** accepts arbitrary Yahoo-style company/instrument symbols through CLI or MCP, calls upstream `TradingAgentsGraph`, and maps completed state into portable contracts without copying business logic.
-- **Host-native execution:** a declared future boundary; no host-native stage executor exists.
+- **Host-native:** preferred credential-free path. The current harness executes the exact topology with its own agents/tools and submits one complete result. The portable server does not invoke a model, persist partial state, or accept provider configuration.
+- **Upstream delegation:** accepts arbitrary Yahoo-style company/instrument symbols through the standalone CLI or explicit opt-in legacy MCP, calls upstream `TradingAgentsGraph`, and maps completed state into portable contracts. This mode is absent from the Codex plugin.
 
-The fixture and fake-graph tests prove the portable contracts, delegation seam, result mapping, and post-run UI projection. They do not prove live provider credentials, data-vendor access, checkpoint resume, or successful credentialed upstream execution. Live stage streaming is unavailable because the current adapter receives completed state rather than upstream stage callbacks.
+Host-native tests prove plan expansion, plan/request round trip, provenance cutoff validation, credential rejection, generic sequential execution for multiple symbols, canonical projection, idempotent atomic publication, and CLI/MCP portability. They do not prove token-level live streaming or a universal checkpoint implementation; those remain negotiated host/adapter capabilities. Fixture and fake-graph tests separately prove the delegated adapter seam. Live legacy provider credentials and data-vendor access remain unverified.
 
 ## Dashboard model
 
@@ -92,11 +99,14 @@ Any proposal back to the main project must distinguish verified portable behavio
 - the deterministic ORCL flow completes every required stage and report section;
 - the plugin and skill manifests validate;
 - the exact MCP stdio command starts cleanly and tools are discoverable;
+- the default MCP exposes only the 12 credential-free tools and imports no legacy/upstream module;
+- every expanded stage resolves to a versioned context/tool/output contract and the generic sequential conformance runner completes multiple company symbols;
 - the loopback server binds only to loopback and serves the same run/result/events/view projections;
 - backend, UI-contract, security, and integration tests pass without network or secrets;
 - the adapter delegates arbitrary supported symbols to `TradingAgentsGraph`, maps completed state, and fails with typed setup guidance when unavailable;
 - live provider execution and checkpoint resume remain explicitly unverified until credentialed evidence exists;
-- host-native execution and live upstream event streaming remain explicitly unimplemented;
+- host-native plan/import is verified; its events are post-run import receipts, not fabricated execution telemetry;
+- live upstream event streaming remains explicitly unimplemented;
 - there is no broker/order execution surface;
 - an independent review confirms that no business logic was duplicated from the sibling repository.
 

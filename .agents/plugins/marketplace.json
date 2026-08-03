@@ -1,0 +1,20 @@
+{
+  "name": "tradingagents-portable-local",
+  "interface": {
+    "displayName": "TradingAgents Portable local"
+  },
+  "plugins": [
+    {
+      "name": "tradingagents-portable",
+      "source": {
+        "source": "local",
+        "path": "./"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Finance"
+    }
+  ]
+}

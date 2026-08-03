@@ -66,6 +66,49 @@
     return element;
   }
 
+  function cleanMarkdownText(value) {
+    return text(value, "").replace(/\*\*|__|`/g, "").trim();
+  }
+
+  function richText(value, fallback = "—") {
+    const container = node("div", "rich-text");
+    const source = text(value, fallback).replace(/\r\n/g, "\n");
+    source.split(/\n{2,}/).forEach((rawBlock) => {
+      const block = rawBlock.trim();
+      if (!block) return;
+      const heading = block.match(/^#{2,4}\s+(.+)$/s);
+      if (heading && !heading[1].includes("\n")) {
+        container.append(node("h4", "", cleanMarkdownText(heading[1])));
+        return;
+      }
+      const lines = block.split("\n").map((line) => line.trim()).filter(Boolean);
+      if (lines.length && lines.every((line) => /^[-*]\s+/.test(line))) {
+        const items = node("ul");
+        lines.forEach((line) => items.append(node("li", "", cleanMarkdownText(line.replace(/^[-*]\s+/, "")))));
+        container.append(items);
+        return;
+      }
+      container.append(node("p", "", cleanMarkdownText(lines.join(" "))));
+    });
+    if (!container.childElementCount) container.append(node("p", "", fallback));
+    return container;
+  }
+
+  function publicSourceLink(value) {
+    const uri = text(value, "");
+    try {
+      const parsed = new URL(uri);
+      if (!['http:', 'https:'].includes(parsed.protocol)) return node("span", "", text(value));
+      const link = node("a", "source-link", uri);
+      link.href = parsed.href;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      return link;
+    } catch (_error) {
+      return node("span", "", text(value));
+    }
+  }
+
   function set(selector, value, fallback = "—") {
     const element = q(selector);
     if (element) element.textContent = text(value, fallback);
@@ -144,7 +187,7 @@
     set("#research-confidence", percentage(research.confidence));
     set("#decision-action", humanize(portfolio.action));
     set("#risk-level", humanize(risk.risk_level));
-    set("#processed-signal", signal.processed_signal);
+    set("#processed-signal", humanize(signal.processed_signal));
     set("#signal-meaning", signal.meaning);
 
     const status = q("#run-status");
@@ -173,7 +216,8 @@
       const heading = node("header");
       heading.append(node("p", "eyebrow", humanize(report.analyst)), node("span", "confidence", percentage(report.confidence)));
       const thesis = node("h3", "", text(report.thesis));
-      const content = node("p", "analyst-content", text(report.content, text(report.thesis)));
+      const content = richText(report.content, text(report.thesis));
+      content.classList.add("analyst-content");
       const sources = node("footer");
       sources.append(node("span", "", "Evidence"), node("p", "", evidenceNames(report.evidence_ids, lookup).join(" · ") || "No evidence references declared"));
       card.append(heading, thesis, content, sources);
@@ -210,7 +254,8 @@
     const outputs = record(view.outputs);
     set("#trader-stance", humanize(trader.stance));
     set("#trader-executable", trader.executable ? "Executable" : "Non-executable analytical output");
-    set("#trader-plan", trader.plan);
+    const plan = q("#trader-plan");
+    if (plan) plan.replaceChildren(...richText(trader.plan).childNodes);
     set("#investment-plan", outputs.investment_plan || outputs.trader_investment_plan);
     renderList("#trader-caveats", trader.caveats, "No trader caveats declared in RunView.");
   }
@@ -278,7 +323,9 @@
         ["Fixture", provenance.fixture]
       ].forEach(([label, value]) => {
         const row = node("div");
-        row.append(node("dt", "", label), node("dd", "", text(value)));
+        const description = node("dd");
+        description.append(label === "Source URI" ? publicSourceLink(value) : node("span", "", text(value)));
+        row.append(node("dt", "", label), description);
         receipt.append(row);
       });
       article.append(receipt);
@@ -391,13 +438,25 @@
     set("#interface-status", message);
   }
 
+  function resolveViewEndpoint(search = "") {
+    const runId = new URLSearchParams(search).get("run");
+    if (runId === null || runId === "") return "/api/runs/current/view";
+    if (!/^[A-Za-z0-9._-]{1,128}$/.test(runId)) return null;
+    return `/api/runs/${encodeURIComponent(runId)}/view`;
+  }
+
   async function load() {
     if (window.location.protocol === "file:") {
       showEmpty("Offline preview only. Start the loopback report server to load the canonical final RunView.");
       return;
     }
     try {
-      const response = await fetch("/api/runs/current/view", {
+      const endpoint = resolveViewEndpoint(window.location.search);
+      if (!endpoint) {
+        showEmpty("The requested run identifier is invalid.");
+        return;
+      }
+      const response = await fetch(endpoint, {
         headers: { Accept: "application/json" },
         cache: "no-store"
       });
@@ -422,7 +481,8 @@
       RESEARCH_SNAPSHOT_ROLES,
       RISK_SNAPSHOT_ROLES,
       resolveDebateEntries,
-      snapshotRoleEntries
+      snapshotRoleEntries,
+      resolveViewEndpoint
     };
   }
 
