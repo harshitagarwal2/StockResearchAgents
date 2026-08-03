@@ -9,6 +9,10 @@ The safety boundary is external side effects, not financial vocabulary. Research
 | Arbitrary stock/crypto symbols | Supported | `host-plan` and host import are symbol-neutral; crypto omits unsupported fundamentals by contract. |
 | Selected analyst stages | Supported | Market, social, news, and fundamentals roles expand in canonical order. |
 | Analyst evidence and provenance | Supported contract; host-dependent retrieval | Cutoff, source dates, URLs, limitations, and evidence references are validated. Concrete tools and authentication remain host-owned. |
+| Latest-data and adaptive-history policy | Supported contract; host-dependent retrieval | Hosts verify the newest cutoff-valid filings, results, guidance, market session, amendments, and follow-ups first; baseline windows cover five-year market/annual history, eight quarters, a 90-day intensive news review, and a 12-month material chronology, then extend through relevant cycles or company changes without padding. |
+| Detailed news intelligence | Supported contract; host-dependent retrieval | The manifest prioritizes filings and investor relations, broadens through public-web discovery, requires attributable opened sources, deduplicates repeated coverage, and preserves claim type, verification status, stance, and why each item matters. Search snippets and aggregators are discovery only. |
+| Multi-period fundamentals ledger | Supported contract; host-dependent retrieval | Hosts may preserve units, fiscal periods, reporting basis, trends, calculation provenance, reconciliation limits, and explicit unknowns for filings, results, balance sheet, cash flow, guidance, commitments, and valuation inputs. |
+| Additive research-intelligence projection | Supported | Optional nested `EvidenceItem.values` records are normalized into coverage, source mix, freshness, metrics, news, catalysts, risks, conflicts, unknowns, and monitoring conditions without changing frozen `host-submission.v2`. |
 | Analyst tool-call loop | Supported protocol; host-owned execution | The manifest constrains allowed capabilities and safe receipts. The host owns concrete tool calls, authentication, and reasoning. |
 | Bull/Bear debate | Supported | Ordered turns and configured round counts are validated. |
 | Research Manager decision | Supported | Five-tier recommendation, rationale, strategic actions, confidence, and raw Markdown survive the portable result. |
@@ -17,7 +21,7 @@ The safety boundary is external side effects, not financial vocabulary. Research
 | Portfolio Manager decision | Supported | Five-tier rating, executive summary, thesis, optional target/horizon, and raw Markdown are preserved. |
 | Processed signal | Supported | Deterministically derived from the Portfolio rating only; it never overwrites Trader output. |
 | Final report groups | Supported | Analysts, research, Trader, risk, Portfolio, structured result, and consolidated Markdown artifacts are produced. |
-| Read-only final UI | Supported | The post-run dossier merges all completed results and exposes no setup, orchestration, or broker controls. |
+| Read-only final UI | Supported | The post-run dossier merges all completed results, including a source-to-rating evidence-integrity chain and decision ledgers, and exposes no setup, orchestration, or broker controls. Explicit references remain distinct from projected downstream relationships. |
 | Codex plugin and skill | Supported | Codex can plan, execute with its internal task agents/tools, import, and display the completed dossier without model API keys at the portable boundary. |
 | MCP tools-only use | Supported | The default credential-free server exposes 27 discovery, lifecycle, memory, export, conformance, result, and final-view tools. |
 | Generic single-agent fallback | Supported | A reference sequential executor runs the same stage contract without subagents or LangGraph. |
@@ -43,3 +47,4 @@ A completed ORCL, MSFT, JPM, or 0700.HK host-native dossier proves that the acti
 2. Add optional push delivery where a harness supports it; cursor polling remains the portable baseline.
 3. Compare generated content only when equivalent models, prompts, data, cutoff, and configuration are available; exact model text is not a portable invariant.
 4. Preserve the completed-result-only browser boundary: lifecycle control belongs to CLI/MCP, not the dossier UI.
+5. Research depth depends on the host's available sources and tools. The portable layer requires honest source quality, verification status, limitations, and unknowns; it cannot create evidence that the host did not retrieve.

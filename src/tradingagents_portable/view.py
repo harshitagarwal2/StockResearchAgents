@@ -2,11 +2,30 @@
 
 from __future__ import annotations
 
+from collections import Counter
+from collections.abc import Mapping
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Any
+from urllib.parse import urlparse
 
-from .contracts import RunEvent, RunResult
+from .contracts import EvidenceItem, RunEvent, RunResult
 from .reporting import report_groups
+
+SOURCE_QUALITY_VOCABULARY = frozenset(
+    {
+        "primary_regulatory",
+        "primary_company",
+        "primary_agency",
+        "primary_partner",
+        "established_market_data",
+        "reputable_journalism",
+        "aggregator_discovery",
+        "public_discussion",
+        "synthetic_fixture",
+        "unknown",
+    }
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -21,6 +40,187 @@ class RunView:
 
 def _badge(label: str, value: object, tone: str, detail: str) -> dict[str, object]:
     return {"label": label, "value": value, "tone": tone, "detail": detail}
+
+
+def _safe_web_url(value: object) -> str | None:
+    if not isinstance(value, str):
+        return None
+    parsed = urlparse(value)
+    hostname = (parsed.hostname or "").lower()
+    safe = (
+        parsed.scheme in {"http", "https"}
+        and bool(parsed.netloc)
+        and parsed.username is None
+        and parsed.password is None
+        and not hostname.endswith(".invalid")
+    )
+    return value if safe else None
+
+
+def _timestamp_extreme(values: list[str], *, latest: bool) -> str | None:
+    parsed: list[tuple[str, datetime]] = []
+    for value in values:
+        try:
+            timestamp = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            continue
+        if timestamp.tzinfo is None:
+            timestamp = timestamp.replace(tzinfo=UTC)
+        parsed.append((value, timestamp.astimezone(UTC)))
+    if not parsed:
+        return None
+    chooser = max if latest else min
+    return chooser(parsed, key=lambda item: item[1])[0]
+
+
+def _date_distance_days(earlier: str | None, later: str | None) -> int | None:
+    if earlier is None or later is None:
+        return None
+    try:
+        return (datetime.fromisoformat(later).date() - datetime.fromisoformat(earlier).date()).days
+    except ValueError:
+        return None
+
+
+def _evidence_context(item: EvidenceItem) -> dict[str, str]:
+    return {"evidence_id": item.id, "category": item.category}
+
+
+def _normalize_records(item: EvidenceItem, key: str, text_key: str) -> list[dict[str, Any]]:
+    value = item.values.get(key)
+    if not isinstance(value, list | tuple):
+        return []
+
+    records: list[dict[str, Any]] = []
+    for entry in value:
+        if isinstance(entry, str):
+            record: dict[str, Any] = {text_key: entry}
+        elif isinstance(entry, Mapping):
+            record = {str(field): field_value for field, field_value in entry.items()}
+        else:
+            continue
+        record.update(_evidence_context(item))
+        records.append(record)
+    return records
+
+
+def _normalize_metrics(item: EvidenceItem) -> list[dict[str, Any]]:
+    value = item.values.get("metrics")
+    records: list[dict[str, Any]] = []
+    if isinstance(value, Mapping):
+        for name, metric_value in value.items():
+            if isinstance(metric_value, Mapping):
+                record = {str(field): field_value for field, field_value in metric_value.items()}
+                record.setdefault("name", str(name))
+            else:
+                record = {"name": str(name), "value": metric_value}
+            record.update(_evidence_context(item))
+            records.append(record)
+    elif isinstance(value, list | tuple):
+        for metric in value:
+            if not isinstance(metric, Mapping):
+                continue
+            record = {str(field): field_value for field, field_value in metric.items()}
+            record.update(_evidence_context(item))
+            records.append(record)
+    return records
+
+
+def _source_quality(item: EvidenceItem) -> str:
+    value = item.values.get("source_quality")
+    if item.provenance.fixture:
+        return "synthetic_fixture"
+    return value if isinstance(value, str) and value in SOURCE_QUALITY_VOCABULARY else "unknown"
+
+
+def _has_unrecognized_source_quality(item: EvidenceItem) -> bool:
+    value = item.values.get("source_quality")
+    return (
+        not item.provenance.fixture
+        and isinstance(value, str)
+        and bool(value.strip())
+        and value not in SOURCE_QUALITY_VOCABULARY
+    )
+
+
+def _intelligence_projection(result: RunResult) -> dict[str, Any]:
+    source_qualities = Counter(_source_quality(item) for item in result.evidence)
+    categories = Counter(item.category for item in result.evidence)
+    providers = Counter(item.provenance.provider or "unknown" for item in result.evidence)
+    source_types = Counter(item.provenance.source_type or "unknown" for item in result.evidence)
+    source_urls = [
+        source_url for item in result.evidence if (source_url := _safe_web_url(item.provenance.source_uri)) is not None
+    ]
+    source_dates = [item.provenance.source_date for item in result.evidence if item.provenance.source_date]
+    retrieved_dates = [item.provenance.retrieved_at for item in result.evidence if item.provenance.retrieved_at]
+    oldest_source_date = min(source_dates, default=None)
+    latest_source_date = max(source_dates, default=None)
+
+    news: list[dict[str, Any]] = []
+    for item in result.evidence:
+        for article in _normalize_records(item, "articles", "headline"):
+            if article.get("source_quality") not in SOURCE_QUALITY_VOCABULARY:
+                article["source_quality"] = _source_quality(item)
+            for url_key in ("url", "source_url"):
+                if url_key in article:
+                    safe_url = _safe_web_url(article[url_key])
+                    if safe_url is None:
+                        article.pop(url_key)
+                    else:
+                        article[url_key] = safe_url
+                        source_urls.append(safe_url)
+            news.append(article)
+
+    risk_register = [record for item in result.evidence for record in _normalize_records(item, "risks", "risk")]
+    risk_register.extend(
+        {"risk": constraint, "source": "risk_decision.constraints"} for constraint in result.risk_decision.constraints
+    )
+    unknowns = [record for item in result.evidence for record in _normalize_records(item, "unknowns", "unknown")]
+    unknowns.extend(
+        {"unknown": unresolved, "source": "risk_decision.unresolved"} for unresolved in result.risk_decision.unresolved
+    )
+    monitoring_conditions = [
+        record for item in result.evidence for record in _normalize_records(item, "monitoring_conditions", "condition")
+    ]
+
+    return {
+        "coverage": {
+            "evidence_count": len(result.evidence),
+            "analyst_count": len(result.analyst_reports),
+            "limitation_count": sum(len(item.limitations) for item in result.evidence),
+            "source_url_count": len(source_urls),
+            "dated_source_count": len(source_dates),
+            "source_quality_buckets": dict(sorted(source_qualities.items())),
+            "unrecognized_source_quality_count": sum(
+                _has_unrecognized_source_quality(item) for item in result.evidence
+            ),
+        },
+        "source_mix": {
+            "categories": dict(sorted(categories.items())),
+            "providers": dict(sorted(providers.items())),
+            "source_types": dict(sorted(source_types.items())),
+        },
+        "freshness": {
+            "cutoff": result.request.as_of_date,
+            "oldest_source_date": oldest_source_date,
+            "latest_source_date": latest_source_date,
+            "source_history_days": _date_distance_days(oldest_source_date, latest_source_date),
+            "latest_source_lag_days": _date_distance_days(latest_source_date, result.request.as_of_date),
+            "oldest_retrieved_at": _timestamp_extreme(retrieved_dates, latest=False),
+            "latest_retrieved_at": _timestamp_extreme(retrieved_dates, latest=True),
+        },
+        "evidence_metrics": [record for item in result.evidence for record in _normalize_metrics(item)],
+        "news": news,
+        "catalysts": [
+            record for item in result.evidence for record in _normalize_records(item, "catalysts", "catalyst")
+        ],
+        "risk_register": risk_register,
+        "conflicts": [
+            record for item in result.evidence for record in _normalize_records(item, "conflicts", "conflict")
+        ],
+        "unknowns": unknowns,
+        "monitoring_conditions": monitoring_conditions,
+    }
 
 
 def build_run_view(result: RunResult, events: tuple[RunEvent, ...]) -> RunView:
@@ -61,6 +261,7 @@ def build_run_view(result: RunResult, events: tuple[RunEvent, ...]) -> RunView:
         "execution_config": result.execution_config.to_dict(),
         "topology": result.topology.to_dict(),
         "evidence": [item.to_dict() for item in result.evidence],
+        "intelligence": _intelligence_projection(result),
         "analyst_reports": [report.to_dict() for report in result.analyst_reports],
         "report_sections": result.report_sections.to_dict(),
         "reports": {

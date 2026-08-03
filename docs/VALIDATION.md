@@ -2,7 +2,16 @@
 
 This checklist records current evidence, not intended capability. Checked items must have a fresh local test or static assertion. Credentialed upstream execution was not performed.
 
-Fresh evidence on `2026-08-02`: `215 passed` from the credential-free local suite; Ruff, Ruff format, mypy, and compile checks pass. Coverage includes canonical atomic bundle recovery, lifecycle publication-pending retries, dashboard-wide completion gating, private SQLite state, linked execution receipts, publication-gated decision memory, crash-recoverable export replacement, all five Portfolio ratings, and portable observable-invariant validation with optional pinned-checkout identity. Credentialed upstream execution was not performed.
+Fresh evidence on `2026-08-03`: `229 passed` from the credential-free local suite. Ruff, Ruff format, mypy, compileall, wheel build, the 27-tool MCP smoke, source-plugin validation, and installed-plugin cache validation also pass. Browser checks cover desktop and mobile layouts, completion-only rendering, synthetic-fixture disclosure, safe source links, and an empty console. Credentialed upstream execution was not performed.
+
+## Verified research-intelligence dossier increment
+
+- [x] Projection tests confirm backward-compatible normalization of `EvidenceItem.values` metrics, articles, catalysts, risks, conflicts, unknowns, and monitoring conditions, including safe public URLs, recognized source-quality values, mixed timezone offsets, and sparse legacy evidence.
+- [x] Workflow and skill tests confirm newest-cutoff-valid retrieval, adaptive history, primary-source-first news, discovery-only aggregator handling, multi-period fundamentals, explicit source quality, verification status, deduplication, and no-key fallback guidance.
+- [x] UI contract and browser checks confirm the evidence-integrity chain, coverage/source/freshness panels, metric and news ledgers, catalysts, risk register, conflicts, unknowns, and monitoring conditions render only for completed runs without controls or executable actions.
+- [x] The deterministic ORCL fixture demonstrates the richer structures while labeling every fixture date and timestamp as synthetic and explicitly stating that no live retrieval occurred.
+- [x] The full credential-free suite, Ruff, Ruff format, mypy, compileall, build, MCP smoke checks, source-plugin validation, and installed-plugin cache validation pass after the increment.
+- [x] Desktop and 390-pixel mobile browser checks show no page-level horizontal overflow; navigation and the metrics ledger scroll independently, metric headers expose column scopes, fixture source links remain non-clickable, and browser logs are empty.
 
 ## Verified credential-free proof
 

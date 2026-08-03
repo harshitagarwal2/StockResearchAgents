@@ -18,7 +18,8 @@ TradingAgents Portable owns:
 - publication-gated SQLite decision memory: up to five same-symbol and three cross-symbol published records plus append-only later outcomes/reflections;
 - an upstream-compatible report export with atomic first publication, journaled crash-recoverable overwrite, structured result/events, optional sanitized lifecycle JSONL, and SHA-256 digests;
 - versioned per-stage context/tool/output contracts, capability negotiation, interactive portable CLI commands, and a reference sequential executor;
-- the completed-run dossier projection, inline MCP view, and loopback browser UI;
+- additive research-intelligence conventions inside `EvidenceItem.values`, preserving the frozen `host-submission.v2` schema;
+- the completed-run dossier projection, normalized intelligence view, inline MCP view, and loopback browser UI;
 - conformance tests and the feature-parity ledger.
 
 The main TradingAgents repository remains the source of truth for:
@@ -84,6 +85,8 @@ For effective analysts `A`, research depth `N`, and risk depth `R`, a complete r
 
 For host-native execution, the portable layer expands these semantics into exact stage descriptors with context projections, allowed tool-capability IDs, instructions, output schema references, and requested output language. Codex or another harness owns agent spawning, reasoning, and concrete tool binding. A reference sequential executor proves the contract without Codex or LangGraph. Each stage commit validates its schema before checkpointing; finalization validates completeness, provenance dates/cutoff, evidence references, non-executability, and credential-shaped fields before atomic publication. For optional legacy execution, provider behavior, data access, workflow decisions, and checkpoint mechanics remain upstream responsibilities.
 
+The manifest defines an additive research-intelligence convention under `EvidenceItem.values`. It permits declared source-quality labels, multi-period metrics, attributable article records, and catalyst, risk, conflict, unknown, and monitoring ledgers without changing the frozen outer schema. Original scalar values remain available to existing consumers. The convention requires primary regulatory and company sources before independent reporting, treats aggregators and snippets as discovery only, preserves units and periods, distinguishes reported facts from estimates and inference, and records missing fields rather than inventing them. Its adaptive-history policy resolves the newest cutoff-valid data first, uses evidence-specific baseline windows, extends through still-relevant company or industry cycles, and stops when older evidence no longer changes a decision-relevant conclusion. Concrete retrieval and any tool authentication remain host-owned.
+
 ## Execution modes
 
 - **Fixture:** deterministic, credential-free, network-free ORCL run used for local proof and conformance.
@@ -109,10 +112,14 @@ It exposes available completed-run data:
 - every analyst report and every available debate turn, with aggregate role-history fallback for completed upstream state;
 - Research Manager, Trader, all three risk roles, and Portfolio Manager outputs;
 - structured evidence/provenance when the executor supplies it, plus the complete upstream report text otherwise;
-- available source dates, providers, degradation, and diagnostics without inventing missing metadata;
+- a normalized intelligence projection covering evidence counts, source mix and quality, freshness, metrics, articles, catalysts, risks, conflicts, unknowns, and monitoring conditions;
+- an evidence-integrity chain that distinguishes explicit evidence references from projected downstream relationships and shows what would change the final view;
+- available source dates, providers, degradation, and diagnostics without inventing missing metadata or publisher-quality scores;
 - durable reports/logs plus structured JSON, lifecycle/final events, Markdown artifacts, and verifiable export references.
 
 It does not expose controls for configuration, launch, orchestration, live progress, cancellation, checkpoint cleanup, or resume. The HTTP API is read-only and includes the merged dossier at `GET /api/runs/{run_id}/view` and `GET /api/runs/current/view`.
+
+The intelligence projection is additive and presentation-oriented. `EvidenceItem` remains the authoritative source record, and optional nested intelligence structures remain host-supplied. The projection sanitizes public article links and falls back to explicit `unknown` or synthetic-fixture source quality when richer metadata is absent; it does not claim that a host opened, corroborated, or independently verified a source unless the submitted record says so.
 
 Analytical ratings, targets, stops, and sizing scenarios remain visible as research artifacts. Every Trader and Portfolio decision records `executable=false`, `execution_authority=none`, and `submitted=false`; no projection exposes an order action or broker mutation.
 

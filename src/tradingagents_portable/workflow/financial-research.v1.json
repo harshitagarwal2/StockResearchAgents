@@ -49,11 +49,15 @@
     "portable_fallback": "compatible"
   },
   "tool_capabilities": {
-    "market.price_history": "Retrieve point-in-time daily OHLCV history through the cutoff without provider credentials.",
+    "market.price_history": "Retrieve point-in-time daily OHLCV history through the cutoff without provider credentials, widening the lookback when needed to cover the current regime and at least one meaningful cycle.",
     "market.indicators": "Calculate indicators only from retrieved series and disclose unavailable inputs.",
     "market.verified_snapshot": "Cross-check the latest completed session and disclose requested versus effective market date.",
+    "filings.regulatory": "Retrieve point-in-time regulatory filings, exhibits, and amendments from an official regulator or exchange source.",
+    "company.investor_relations": "Retrieve official earnings releases, presentations, transcripts, guidance, and material company announcements through the cutoff.",
+    "news.discovery": "Discover a broad dated candidate set across the public web; discovery results are leads, not verified evidence, until an attributable article or primary source is opened.",
     "news.company": "Retrieve dated company-specific reporting and official releases.",
     "news.global": "Retrieve dated macro, sector, and geopolitical context relevant to the company.",
+    "news.reputable": "Open attributable reporting from reputable publishers and preserve title, publisher, publication time, canonical URL, and the claim actually supported.",
     "macro.indicators": "Retrieve public macro series with observation dates and provenance.",
     "prediction_markets": "Retrieve attributable public probability signals when keyless and legally available.",
     "social.stocktwits": "Retrieve at most 30 recent public StockTwits messages as non-representative narrative evidence.",
@@ -76,29 +80,84 @@
       "official agencies and primary partner announcements",
       "established keyless market-data sources",
       "reputable journalism with explicit attribution",
+      "aggregators and search results used for discovery only until the underlying source is opened",
       "social discussion used only as non-representative narrative evidence"
     ],
     "windows": {
-      "market": "Use at least 252 daily sessions when keyless data is available; calculate only indicators supported by the retrieved series and disclose missing series.",
-      "fundamentals": "Use the latest annual filing, latest quarterly filing or earnings release, current guidance, balance-sheet data, cash flow, and material commitments available by the cutoff.",
-      "news": "Review the prior 90 calendar days plus the latest earnings, filings, and older still-active material catalysts.",
-    "social": "Use up to 7 days of dated company news and at most 30 recent public StockTwits and Reddit items when available. Treat samples as qualitative narrative context; any band or score must be explicitly sample-bound, confidence-qualified, and never treated as a company fact."
+      "market": "Retrieve up to five years of daily sessions when keyless data is available, with at least 252 sessions for ordinary analysis. Extend toward ten years or the maximum available when the current regime, drawdown, listing history, or industry cycle requires a longer comparison. Calculate only indicators supported by the retrieved series and disclose missing history.",
+      "fundamentals": "Use the newest cutoff-valid filing or official result, at least five fiscal years of annual history, at least eight comparable quarters, latest trailing-twelve-month figures, current guidance, segment history, balance-sheet data, cash flow, material commitments, and longer history when the current business model or capital structure requires it. Record missing periods rather than filling them.",
+      "news": "Review the prior 90 calendar days intensively, build a material-event chronology for at least the prior 12 months, include the latest earnings and filings, and follow older still-active catalysts, legal matters, acquisitions, leadership changes, capital-allocation decisions, or strategic shifts as far back as they remain thesis-relevant. Search broadly, then open and verify the strongest primary or attributable sources; do not pad the dossier with duplicate or immaterial links.",
+      "social": "Use up to 7 days of dated company news and at most 30 recent public StockTwits and Reddit items when available. Treat samples as qualitative narrative context; any band or score must be explicitly sample-bound, confidence-qualified, and never treated as a company fact."
+    },
+    "adaptive_history": {
+      "principle": "Use the newest evidence available by the cutoff and go back far enough to explain the present company, expose trend breaks, and cover at least one meaningful operating or market cycle. Depth is evidence-specific; older material is retained only while it changes the thesis, risk register, valuation context, or monitoring conditions.",
+      "latest_data_checks": [
+        "Verify the newest regulatory filing, official earnings release, guidance, and material company announcement available by the cutoff.",
+        "Verify the latest completed market session on or before the cutoff and record requested versus effective market date.",
+        "Search for later corrections, amendments, restatements, follow-up reporting, and superseding guidance before treating an older claim as current.",
+        "For every retained item preserve source date, retrieval time, canonical source, reporting period, and whether it is reported, calculated, estimated, or inferred."
+      ],
+      "valuation_and_capital_structure": "Use current inputs plus a five-to-ten-year range when available; include the history since any material acquisition, financing, recapitalization, or business-model change that still affects the current balance sheet or valuation.",
+      "industry_and_macro": "Use enough history to span the relevant demand, rate, commodity, regulatory, or technology cycle, normally five years and up to ten or more for cyclical industries.",
+      "stop_conditions": [
+        "No newer primary or attributable source exists by the cutoff.",
+        "The retained history spans the current business model and at least one meaningful comparison cycle.",
+        "Adding older evidence no longer changes a key trend, assumption, catalyst, risk, conflict, unknown, valuation range, or rating-change condition."
+      ],
+      "anti_padding": "Completeness means decision-relevant coverage, not the largest possible link count. Summarize repetitive history and retain the primary or best attributable source for each material event."
     },
     "fallback": "When a keyless source or tool is unavailable, record the missing field and limitation. Never request an API key, start an external model client, or fabricate a substitute value."
   },
+  "research_intelligence_conventions": {
+    "storage": "Store these optional structures inside EvidenceItem.values so frozen host-submission.v2 remains compatible. Preserve the original scalar values beside them.",
+    "source_quality": {
+      "field": "source_quality",
+      "vocabulary": [
+        "primary_regulatory",
+        "primary_company",
+        "primary_agency",
+        "primary_partner",
+        "established_market_data",
+        "reputable_journalism",
+        "aggregator_discovery",
+        "public_discussion",
+        "synthetic_fixture",
+        "unknown"
+      ],
+      "rule": "Declare source quality from the actual source type and provenance. Never infer a quality label from a publisher name, visual branding, or search ranking, and never convert it into a fabricated numeric score."
+    },
+    "metrics": {
+      "field": "metrics",
+      "shape": "Array of objects with label, value, unit, period, basis, trend, context, and source_date where known.",
+      "rule": "Retain reported units and periods; distinguish reported figures, calculations, consensus estimates, and analytical assumptions. Use null or Not declared instead of guessing."
+    },
+    "articles": {
+      "field": "articles",
+      "shape": "Array of objects with title, publisher, published_at, url, source_quality, claim_type, verification_status, summary, why_it_matters, and stance.",
+      "claim_types": ["reported_fact", "company_guidance", "third_party_estimate", "market_reaction", "inference"],
+      "verification_statuses": ["primary_confirmed", "multi_source_confirmed", "single_source_reported", "discovery_only", "unverified"],
+      "rule": "Deduplicate by canonical URL and materially identical headline or event. Keep only links actually opened or label them discovery_only; record why each retained item changes or confirms the investment case."
+    },
+    "decision_ledgers": {
+      "fields": ["catalysts", "risks", "conflicts", "unknowns", "monitoring_conditions"],
+      "shape": "Each field is an array of strings or objects. Objects may declare title, detail, horizon, status, probability, impact, evidence_ids, trigger, threshold, and consequence when known.",
+      "rule": "Every catalyst and risk must be falsifiable or monitorable. Preserve disagreements between sources as conflicts, missing decision-critical facts as unknowns, and explicit upgrade, downgrade, or invalidation triggers as monitoring_conditions. Never invent probability, severity, threshold, or evidence attribution."
+    },
+    "differentiated_analysis": "Separate consensus facts from variant interpretation. State the key assumptions, the strongest counter-evidence, what is already priced in when supportable, and the shortest evidence path that would change the rating."
+  },
   "stage_instructions": {
-    "analyst.market": "Use price history first, then supported indicators, then a verified latest-session snapshot. Describe the technical regime through the cutoff, distinguish short- and long-horizon signals, include a compact evidence table, cite evidence IDs, and state data gaps. Do not forecast price.",
+    "analyst.market": "Use the adaptive-history policy: retrieve the latest completed session first, then enough price history to cover the current regime and at least one meaningful cycle, normally five years and up to ten or the maximum available when relevant. Calculate supported indicators, finish with a verified latest-session snapshot, and record requested versus effective market date. Describe the technical regime through the cutoff, distinguish short- and long-horizon signals, include multi-period metrics in EvidenceItem.values.metrics, cite evidence IDs, and state data gaps. Identify support, resistance, trend failure, volatility, drawdown, and volume-confirmation conditions only when the retrieved series supports them. Do not forecast price.",
     "analyst.social": "Compare the dated 7-day media sample with up to 30 recent StockTwits and Reddit items. Report an overall qualitative band, any sample-bound score, confidence, source divergence, sample sizes, bullish and bearish narratives, and limitations. Never treat discussion as factual company evidence or invent a representative score.",
-    "analyst.news": "Review company and global news, macro indicators, and prediction-market signals when keyless and relevant. Identify material developments, catalysts, and risks; separate reported fact, management guidance, market signal, and inference; prioritize primary sources and include a compact evidence table.",
-    "analyst.fundamentals": "Use company fundamentals, balance sheet, cash flow, and income statement. Assess growth, earnings quality, cash conversion, leverage, commitments, valuation inputs when available, concentration, guidance, and disclosed unknowns in a compact evidence table.",
-    "research.bull": "Consume every selected analyst report plus prior debate history. Build the strongest falsifiable upside case, address the strongest bear evidence directly, and cite evidence IDs in the requested output language.",
-    "research.bear": "Consume every selected analyst report plus the current bull case and prior debate history. Rebut the strongest upside case, build the strongest falsifiable downside case, and cite evidence IDs in the requested output language.",
-    "research.manager": "Consume every analyst report and the full ordered Bull/Bear history. Return a structured ResearchPlan: recommendation must be exactly Buy, Overweight, Hold, Underweight, or Sell; include rationale, concrete analytical strategic_actions, and confidence from zero to one. Hold is a neutral research rating, not No Action. Analytical sizing guidance is allowed, but it has no broker authority.",
+    "analyst.news": "Build a material-event ledger through the cutoff using the adaptive-history policy: inspect the latest 90 days intensively, cover at least 12 months of material events, and follow older active catalysts, legal matters, acquisitions, leadership changes, capital allocation, or strategic shifts as far back as they still affect the thesis. Start with official investor-relations and regulatory sources, use broad public-web discovery to find additional developments, then open attributable reputable reporting for independent context. Check for corrections, amendments, follow-ups, and superseding guidance. Deduplicate repeated coverage and retain only decision-relevant items. In EvidenceItem.values, declare source_quality and structured articles, catalysts, risks, conflicts, unknowns, and monitoring_conditions. For every article record publication time, canonical URL, claim type, verification status, concise supported claim, why it matters, and bull, bear, or neutral stance. Separate reported fact, management guidance, third-party estimate, market reaction, and inference; never treat a search snippet or aggregator headline as verified evidence.",
+    "analyst.fundamentals": "Use the newest cutoff-valid regulatory filings and official results plus enough history to explain the current company: normally five fiscal years, eight comparable quarters, current trailing-twelve-month figures, segment history, and longer history after a material acquisition, financing, recapitalization, or business-model change. Build a multi-period metrics ledger in EvidenceItem.values.metrics with units, fiscal periods, reporting basis, trend, and context. Assess revenue and segment growth, margins, earnings quality, cash conversion, capex and free-cash-flow reconciliation, leverage and liquidity, dilution, commitments, concentration, guidance, current and through-cycle valuation inputs when available, and estimate dependence. Reconcile conflicting figures, distinguish company-reported values from calculations or consensus estimates, and record missing decision-critical fields as unknowns rather than guessing.",
+    "research.bull": "Consume every selected analyst report plus prior debate history. Build the strongest falsifiable upside case, identify the variant perception and assumptions required, connect each catalyst to evidence and a time horizon, address the strongest bear evidence directly, state what would invalidate the case, and cite evidence IDs in the requested output language.",
+    "research.bear": "Consume every selected analyst report plus the current bull case and prior debate history. Rebut the strongest upside case, build the strongest falsifiable downside case, identify what may already be priced in when supported, connect each risk to evidence and a time horizon, state what would invalidate the bear case, and cite evidence IDs in the requested output language.",
+    "research.manager": "Consume every analyst report and the full ordered Bull/Bear history. Reconcile facts, assumptions, conflicts, and unknowns before choosing a rating. Return a structured ResearchPlan: recommendation must be exactly Buy, Overweight, Hold, Underweight, or Sell; include rationale, concrete analytical strategic_actions that specify the key thesis, variant view, catalysts, risks, and explicit upgrade, downgrade, or invalidation conditions, plus confidence from zero to one. Hold is a neutral research rating, not No Action. Analytical sizing guidance is allowed, but it has no broker authority.",
     "trader": "Consume the research-manager synthesis and instrument context. Return a structured TraderProposal: action must be exactly Buy, Hold, or Sell; include reasoning and optional analytical entry_price, stop_loss, and position_sizing. These are research scenarios only: executable is false, execution_authority is none, submitted is false, and no broker-ready order or side effect is permitted.",
-    "risk.aggressive": "Consume the trader plan, every analyst report, and prior risk history. State the strongest responsible higher-risk interpretation and the evidence gates required to upgrade the research stance.",
-    "risk.conservative": "Consume the trader plan, every analyst report, and prior risk history. State the strongest capital-preservation interpretation and the evidence required before risk falls.",
-    "risk.neutral": "Consume the trader plan, every analyst report, and prior risk history. Reconcile aggressive and conservative views into measurable upgrade and downgrade gates while preserving uncertainty.",
-    "portfolio": "Consume all analyst reports, research decision, trader proposal, complete risk history, and optional host-owned past context. Return risk_decision plus a structured PortfolioDecision whose rating is exactly Buy, Overweight, Hold, Underweight, or Sell, with executive_summary, investment_thesis, optional price_target, and optional time_horizon. final_trade_decision must contain an explicit matching Rating label. Non-executable means the rating cannot authorize an order; it never means No Action. executable is false, execution_authority is none, submitted is false, and no trade side effect is permitted."
+    "risk.aggressive": "Consume the trader plan, every analyst report, and prior risk history. State the strongest responsible higher-risk interpretation, identify upside optionality and opportunity cost, challenge overly conservative assumptions, and name the evidence gates required to upgrade the research stance.",
+    "risk.conservative": "Consume the trader plan, every analyst report, and prior risk history. State the strongest capital-preservation interpretation, identify permanent-loss paths, liquidity, leverage, concentration, execution, valuation, and event risks when supported, and name the evidence required before risk falls.",
+    "risk.neutral": "Consume the trader plan, every analyst report, and prior risk history. Reconcile aggressive and conservative views into a risk register with explicit evidence, unresolved unknowns, conflicts, and measurable upgrade, downgrade, stop, or invalidation gates while preserving uncertainty.",
+    "portfolio": "Consume all analyst reports, research decision, trader proposal, complete risk history, and optional host-owned past context. Return risk_decision plus a structured PortfolioDecision whose rating is exactly Buy, Overweight, Hold, Underweight, or Sell, with an executive_summary that states the decision and decisive evidence, an investment_thesis that separates facts from assumptions and identifies catalysts, risks, conflicts, unknowns, and what would change the view, plus optional price_target and time_horizon. Do not provide a target unless its basis and horizon are supportable. final_trade_decision must contain an explicit matching Rating label. Non-executable means the rating cannot authorize an order; it never means No Action. executable is false, execution_authority is none, submitted is false, and no trade side effect is permitted."
   },
   "stage_contracts": {
     "analyst.market": {
@@ -115,14 +174,14 @@
     },
     "analyst.news": {
       "context": ["request", "instrument_identity"],
-      "allowed_tools": ["news.company", "news.global", "macro.indicators", "prediction_markets"],
-      "tool_policy": "Use only available keyless capabilities; distinguish unavailable optional signals from zero or neutral values.",
+      "allowed_tools": ["filings.regulatory", "company.investor_relations", "news.discovery", "news.company", "news.global", "news.reputable", "macro.indicators", "prediction_markets"],
+      "tool_policy": "Use only available keyless or host-native capabilities. Search broadly, open and verify retained sources, deduplicate repeated coverage, and distinguish unavailable optional signals from zero or neutral values. Discovery snippets are never final evidence.",
       "output_ref": "host-submission.v2.schema.json#/$defs/analystStageOutput"
     },
     "analyst.fundamentals": {
       "context": ["request", "instrument_identity"],
-      "allowed_tools": ["fundamentals.company", "financials.balance_sheet", "financials.cash_flow", "financials.income_statement"],
-      "tool_policy": "Prefer filings and official results; retain units, reporting periods, and reconciliation limitations.",
+      "allowed_tools": ["filings.regulatory", "company.investor_relations", "fundamentals.company", "financials.balance_sheet", "financials.cash_flow", "financials.income_statement"],
+      "tool_policy": "Prefer filings and official results; retain units, reporting periods, reporting basis, calculation provenance, and reconciliation limitations. Use at least three comparable periods when available and explicitly mark missing history.",
       "output_ref": "host-submission.v2.schema.json#/$defs/analystStageOutput"
     },
     "research.bull": {

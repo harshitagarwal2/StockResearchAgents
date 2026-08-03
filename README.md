@@ -9,6 +9,7 @@ An isolated, harness-neutral TradingAgents capability that lets the active host 
 - The preferred Codex and generic-harness path is the durable `host_native` lifecycle: create, start, append safe receipts, commit each completed stage, optionally pause/resume or request/acknowledge cancellation, then finalize one validated result. The portable boundary accepts no API keys or model-provider configuration; concrete tools and any tool authentication remain host-owned.
 - The optional `research` CLI and explicit `tradingagents-portable-legacy-mcp` executable retain backward-compatible delegation to upstream `TradingAgentsGraph`; neither is registered by the Codex plugin.
 - This repository does not copy analyst, debate, trader, risk, portfolio-manager, provider, or checkpoint business logic from upstream.
+- Richer research remains backward compatible with the frozen terminal schema. Hosts may add structured `source_quality`, `metrics`, `articles`, `catalysts`, `risks`, `conflicts`, `unknowns`, and `monitoring_conditions` under `EvidenceItem.values`; older scalar values remain valid.
 - The UI is a strictly completed-result, read-only dossier. Lifecycle-backed runs stay absent from every dashboard surface while `get_run_control` or `poll_run_events` reports `finalizing` with `publication_pending=true`; direct fixture/import runs remain available without a lifecycle record. Lifecycle control and cursor polling are CLI/MCP concerns, and the browser does not configure, start, orchestrate, monitor, cancel, or resume a run.
 - The deterministic ORCL fixture is the credential-free local proof. It uses synthetic data, executes every declared fixture stage, and emits ordered events without network access.
 - The mutable `run-lifecycle.v1` protocol is separate from the frozen terminal `host-submission.v2` schema. Private SQLite/WAL checkpoints, atomic canonical result/event bundles, optimistic revisions, receipt-linked observation, stage-boundary resume, cooperative cancellation, publication-gated decision memory, and report export are locally verified.
@@ -41,6 +42,18 @@ uv run tradingagents-portable host-import --input ./orcl-host-run.json --dashboa
 6. `host-finalize` validates all committed stages, stages result/events and memory behind hidden publication boundaries, commits the lifecycle, then atomically publishes the canonical completed bundle. Any boundary failure is retryable; memory is excluded from recall until lifecycle completion. Launch the browser only after this succeeds.
 
 `run-events RUN_ID --after CURSOR` provides portable live progress through a monotonic polling cursor. A harness may add push delivery, but push is not required by the contract.
+
+### Research intelligence convention
+
+The workflow manifest asks host-native analysts to build a decision-useful evidence record without changing `host-submission.v2`:
+
+- News starts with regulatory filings and official investor-relations material, broadens through public-web discovery, and retains attributable reporting only after the underlying source is opened. Search snippets and aggregators remain discovery leads, not verified evidence.
+- Fundamentals retain comparable periods, units, reporting basis, trend, calculation provenance, and reconciliation limits for reported figures, cash flow, leverage, commitments, guidance, and valuation inputs when available.
+- History is adaptive: resolve the newest cutoff-valid evidence first, then normally cover five years of market and annual financial history, eight quarters, current trailing-twelve-month figures, a 90-day intensive news review, and a 12-month material-event chronology. Extend toward ten years, listing inception, or a still-relevant strategic or capital-structure change when it materially explains the current company or spans the relevant cycle; stop when older evidence no longer changes the thesis.
+- `EvidenceItem.values` may carry structured metrics and article records plus falsifiable catalyst, risk, conflict, unknown, and monitoring ledgers. Source quality and verification status must be declared from provenance; the portable layer does not infer publisher quality or invent scores.
+- Missing tools or data become explicit limitations or unknowns. The portable boundary never requests an API key or fabricates a substitute value.
+
+Concrete retrieval remains host-owned. A capable harness may use its internal web, filing, market-data, and research tools; a tools-only or single-agent harness follows the same manifest and records unavailable capabilities explicitly. Completeness means decision-relevant coverage, not maximizing article or data-point counts.
 
 ### Backward-compatible atomic import
 
@@ -143,7 +156,9 @@ The server rejects non-loopback bind addresses. Its read-only endpoints are:
 - `GET /api/runs/{run_id}/view`
 - `GET /api/runs/current/view`
 
-The `/view` response is the merged, UI-ready post-run dossier. `current` resolves to the latest stored run and also works with the run, events, and result endpoints. A saved `/?run=<run_id>` URL stays pinned to that completed run even after a later run becomes current. Everything else is served from the packaged `tradingagents_portable/web/` assets, with SPA fallback to `index.html` and path traversal protection.
+The `/view` response is the merged, UI-ready post-run dossier. Its additive `intelligence` projection normalizes evidence coverage, source mix, freshness, metrics, news, catalysts, risks, conflicts, unknowns, and monitoring conditions while preserving the original evidence records. The browser presents this as an evidence-integrity chain from sources through analyst claims and debates to the final rating, with explicit conditions that would change the view. It does not infer missing attribution or turn a projected relationship into verified provenance.
+
+`current` resolves to the latest stored run and also works with the run, events, and result endpoints. A saved `/?run=<run_id>` URL stays pinned to that completed run even after a later run becomes current. Everything else is served from the packaged `tradingagents_portable/web/` assets, with SPA fallback to `index.html` and path traversal protection.
 
 Durable host-native runs use private SQLite/WAL lifecycle state plus canonical atomic result/event bundles and compatibility projections under the configured state directory. The browser still reads completed results only; lifecycle status and live cursor receipts remain on CLI/MCP surfaces. Preserve exported bundles when a portable, independently verifiable archive is required.
 

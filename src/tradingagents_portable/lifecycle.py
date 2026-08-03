@@ -53,6 +53,14 @@ _MAX_RECEIPTS_PER_BATCH = 100
 _MAX_TOTAL_RECEIPTS = 2048
 _MAX_EVIDENCE_IDS_PER_RECEIPT = 256
 _MAX_LIFECYCLE_RECORD_BYTES = 16_000_000
+
+
+def is_lifecycle_run_id(run_id: object) -> bool:
+    """Return whether a run ID can belong to the durable host lifecycle."""
+
+    return isinstance(run_id, str) and _RUN_ID_PATTERN.fullmatch(run_id) is not None
+
+
 _RECEIPT_KINDS = frozenset(
     {
         "stage_started",
@@ -230,7 +238,7 @@ class LifecycleStore:
 
     @staticmethod
     def _validate_run_id(run_id: str) -> str:
-        if not isinstance(run_id, str) or not _RUN_ID_PATTERN.fullmatch(run_id):
+        if not is_lifecycle_run_id(run_id):
             raise ValueError("lifecycle run_id must match host- followed by 12 lowercase hexadecimal characters")
         return run_id
 

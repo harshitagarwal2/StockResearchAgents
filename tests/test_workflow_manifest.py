@@ -5,7 +5,10 @@ import json
 import pytest
 
 from tradingagents_portable.contracts import RunRequest
+from tradingagents_portable.fixture import run_fixture
+from tradingagents_portable.store import RunStore
 from tradingagents_portable.topology import build_legacy_topology
+from tradingagents_portable.view import SOURCE_QUALITY_VOCABULARY, build_run_view
 from tradingagents_portable.workflow import (
     DEFAULT_MANIFEST,
     expand_workflow,
@@ -73,6 +76,94 @@ def test_every_expanded_stage_has_an_executable_runtime_contract() -> None:
     ]
     assert contracts[-1]["id"] == "portfolio"
     assert contracts[-1]["allowed_tools"] == []
+
+
+def test_manifest_declares_compatible_research_intelligence_values() -> None:
+    payload = json.loads(DEFAULT_MANIFEST.read_text(encoding="utf-8"))
+    conventions = payload["research_intelligence_conventions"]
+
+    assert "EvidenceItem.values" in conventions["storage"]
+    assert conventions["source_quality"]["field"] == "source_quality"
+    assert set(conventions["decision_ledgers"]["fields"]) == {
+        "catalysts",
+        "risks",
+        "conflicts",
+        "unknowns",
+        "monitoring_conditions",
+    }
+
+
+def test_manifest_requires_explicit_source_quality_and_article_verification() -> None:
+    payload = json.loads(DEFAULT_MANIFEST.read_text(encoding="utf-8"))
+    conventions = payload["research_intelligence_conventions"]
+
+    assert "Never infer" in conventions["source_quality"]["rule"]
+    assert "aggregator_discovery" in conventions["source_quality"]["vocabulary"]
+    assert "primary_confirmed" in conventions["articles"]["verification_statuses"]
+    assert "discovery_only" in conventions["articles"]["verification_statuses"]
+    assert "Deduplicate" in conventions["articles"]["rule"]
+
+
+def test_fixture_source_quality_uses_the_manifest_vocabulary() -> None:
+    payload = json.loads(DEFAULT_MANIFEST.read_text(encoding="utf-8"))
+    vocabulary = set(payload["research_intelligence_conventions"]["source_quality"]["vocabulary"])
+    result, events = run_fixture(RunRequest(), RunStore())
+    intelligence = build_run_view(result, events).to_dict()["intelligence"]
+    buckets = set(intelligence["coverage"]["source_quality_buckets"])
+
+    assert buckets <= vocabulary
+    assert vocabulary == SOURCE_QUALITY_VOCABULARY
+
+
+def test_news_stage_uses_primary_discovery_and_attributable_reporting() -> None:
+    manifest = load_workflow_manifest()
+    tools = set(manifest.stage_contracts["analyst.news"]["allowed_tools"])
+    instructions = manifest.stage_instructions["analyst.news"]
+
+    assert {
+        "filings.regulatory",
+        "company.investor_relations",
+        "news.discovery",
+        "news.reputable",
+    } <= tools
+    assert "Deduplicate" in instructions
+    assert "canonical URL" in instructions
+    assert "verification status" in instructions
+    assert "search snippet or aggregator headline" in instructions
+
+
+def test_manifest_uses_adaptive_history_for_latest_and_through_cycle_research() -> None:
+    manifest = json.loads(DEFAULT_MANIFEST.read_text(encoding="utf-8"))
+    policy = manifest["evidence_policy"]["adaptive_history"]
+    windows = manifest["evidence_policy"]["windows"]
+
+    assert "newest evidence" in policy["principle"]
+    assert "meaningful operating or market cycle" in policy["principle"]
+    assert len(policy["latest_data_checks"]) == 4
+    assert len(policy["stop_conditions"]) == 3
+    assert "five years" in windows["market"]
+    assert "ten years" in windows["market"]
+    assert "five fiscal years" in windows["fundamentals"]
+    assert "eight comparable quarters" in windows["fundamentals"]
+    assert "prior 12 months" in windows["news"]
+    assert "do not pad" in windows["news"]
+
+
+def test_fundamentals_stage_requires_multi_period_reconciled_metrics() -> None:
+    manifest = load_workflow_manifest()
+    tools = set(manifest.stage_contracts["analyst.fundamentals"]["allowed_tools"])
+    instructions = manifest.stage_instructions["analyst.fundamentals"]
+
+    assert {
+        "filings.regulatory",
+        "company.investor_relations",
+        "financials.balance_sheet",
+        "financials.cash_flow",
+        "financials.income_statement",
+    } <= tools
+    assert "multi-period metrics ledger" in instructions
+    assert "capex and free-cash-flow reconciliation" in instructions
+    assert "unknowns rather than guessing" in instructions
 
 
 def test_host_submission_schema_covers_every_stage_and_final_field() -> None:

@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from tradingagents_portable import cli
 from tradingagents_portable.lifecycle import HostRunCoordinator, LifecycleStore
 from tradingagents_portable.store import RunStore
@@ -11,6 +13,26 @@ from tradingagents_portable.store import RunStore
 def _payload(capsys: object) -> dict[str, object]:
     output = capsys.readouterr().out  # type: ignore[attr-defined]
     return json.loads(output)
+
+
+def test_cli_publication_gate_uses_lifecycle_namespace_without_masking_errors(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class StrictCoordinator:
+        def __init__(self) -> None:
+            self.calls: list[str] = []
+
+        def control(self, run_id: str) -> dict[str, object]:
+            self.calls.append(run_id)
+            raise ValueError("corrupt lifecycle state")
+
+    coordinator = StrictCoordinator()
+    monkeypatch.setattr(cli, "HOST_RUN_COORDINATOR", coordinator)
+
+    assert cli._publication_control("fixture-direct") is None
+    assert coordinator.calls == []
+    with pytest.raises(ValueError, match="corrupt lifecycle state"):
+        cli._publication_control("host-abcdef012345")
 
 
 def test_cli_exposes_durable_control_events_and_cooperative_cancellation(

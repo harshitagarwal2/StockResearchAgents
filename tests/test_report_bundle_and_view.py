@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from pathlib import Path
 from threading import Thread
 from typing import Any
@@ -106,6 +107,143 @@ def test_run_view_is_lossless_and_keeps_decision_and_signal_separate() -> None:
     assert all(action["id"] != "execute_trade" for action in view["actions"])
 
 
+def test_run_view_projects_full_fixture_intelligence_without_inventing_sources() -> None:
+    result, events = run_fixture(RunRequest(), RunStore())
+    view = build_run_view(result, events).to_dict()
+    intelligence = view["intelligence"]
+
+    assert set(intelligence) == {
+        "coverage",
+        "source_mix",
+        "freshness",
+        "evidence_metrics",
+        "news",
+        "catalysts",
+        "risk_register",
+        "conflicts",
+        "unknowns",
+        "monitoring_conditions",
+    }
+    assert intelligence["coverage"] == {
+        "evidence_count": 4,
+        "analyst_count": 4,
+        "limitation_count": 4,
+        "source_url_count": 0,
+        "dated_source_count": 4,
+        "source_quality_buckets": {"synthetic_fixture": 4},
+        "unrecognized_source_quality_count": 0,
+    }
+    assert intelligence["source_mix"]["categories"] == {
+        "fundamentals": 1,
+        "market": 1,
+        "news": 1,
+        "social": 1,
+    }
+    assert intelligence["source_mix"]["providers"] == {"portable-fixture": 4}
+    assert intelligence["freshness"] == {
+        "cutoff": result.request.as_of_date,
+        "oldest_source_date": result.request.as_of_date,
+        "latest_source_date": result.request.as_of_date,
+        "source_history_days": 0,
+        "latest_source_lag_days": 0,
+        "oldest_retrieved_at": f"{result.request.as_of_date}T12:00:00+00:00",
+        "latest_retrieved_at": f"{result.request.as_of_date}T12:00:00+00:00",
+    }
+    assert len(intelligence["evidence_metrics"]) == 11
+    assert len(intelligence["news"]) == 3
+    assert all("url" not in article for article in intelligence["news"])
+    assert len(intelligence["catalysts"]) == 3
+    assert len(intelligence["risk_register"]) == 6
+    assert len(intelligence["conflicts"]) == 2
+    assert len(intelligence["unknowns"]) == 5
+    assert len(intelligence["monitoring_conditions"]) == 3
+    for section in ("evidence_metrics", "news", "catalysts", "conflicts"):
+        assert all(record["evidence_id"] and record["category"] for record in intelligence[section])
+    assert all(article["synthetic"] is True for article in intelligence["news"])
+    assert any(item.get("source") == "risk_decision.constraints" for item in intelligence["risk_register"])
+    assert any(item.get("source") == "risk_decision.unresolved" for item in intelligence["unknowns"])
+    assert all("evidence_id" in item for item in intelligence["monitoring_conditions"])
+
+
+def test_run_view_intelligence_is_backward_compatible_and_quality_fallback_is_safe() -> None:
+    result, events = run_fixture(RunRequest(), RunStore())
+    explicit = replace(
+        result.evidence[0],
+        values={"close_usd": 162.4, "source_quality": "primary"},
+        provenance=replace(
+            result.evidence[0].provenance,
+            source_uri="https://source.example/market",
+            source_date=None,
+            fixture=False,
+        ),
+    )
+    unknown = replace(
+        result.evidence[1],
+        values={"positive": 7},
+        provenance=replace(
+            result.evidence[1].provenance,
+            source_uri="javascript:alert(1)",
+            fixture=False,
+        ),
+    )
+    projected_result = replace(result, evidence=(explicit, unknown))
+    view = build_run_view(projected_result, events).to_dict()
+
+    assert view["evidence"] == [explicit.to_dict(), unknown.to_dict()]
+    assert view["evidence"][0]["values"]["close_usd"] == 162.4
+    assert view["evidence"][1]["values"]["positive"] == 7
+    assert view["intelligence"]["coverage"] == {
+        "evidence_count": 2,
+        "analyst_count": 4,
+        "limitation_count": 2,
+        "source_url_count": 1,
+        "dated_source_count": 1,
+        "source_quality_buckets": {"unknown": 2},
+        "unrecognized_source_quality_count": 1,
+    }
+    assert view["intelligence"]["evidence_metrics"] == []
+    assert view["intelligence"]["news"] == []
+
+
+def test_run_view_orders_retrieval_freshness_by_instant_across_offsets() -> None:
+    result, events = run_fixture(RunRequest(), RunStore())
+    earlier = replace(
+        result.evidence[0],
+        provenance=replace(result.evidence[0].provenance, retrieved_at="2026-07-03T00:30:00+02:00"),
+    )
+    later = replace(
+        result.evidence[1],
+        provenance=replace(result.evidence[1].provenance, retrieved_at="2026-07-02T23:00:00+00:00"),
+    )
+    view = build_run_view(replace(result, evidence=(earlier, later)), events).to_dict()
+
+    assert view["intelligence"]["freshness"]["oldest_retrieved_at"] == "2026-07-03T00:30:00+02:00"
+    assert view["intelligence"]["freshness"]["latest_retrieved_at"] == "2026-07-02T23:00:00+00:00"
+
+
+def test_run_view_filters_credentialed_and_reserved_article_urls() -> None:
+    result, events = run_fixture(RunRequest(), RunStore())
+    live_news = replace(
+        result.evidence[2],
+        values={
+            "source_quality": "reputable_journalism",
+            "articles": [
+                {"headline": "Credentialed URL", "url": "https://user:password@example.com/story"},
+                {"headline": "Reserved URL", "url": "https://example.invalid/story"},
+                {"headline": "Public URL", "url": "https://www.sec.gov/example"},
+            ],
+        },
+        provenance=replace(result.evidence[2].provenance, fixture=False),
+    )
+    view = build_run_view(replace(result, evidence=(live_news,)), events).to_dict()
+
+    assert [article.get("url") for article in view["intelligence"]["news"]] == [
+        None,
+        None,
+        "https://www.sec.gov/example",
+    ]
+
+
 def test_legacy_projection_preserves_source_report_contents_in_memory() -> None:
     final_state = {
         "market_report": "MARKET",
@@ -166,9 +304,10 @@ def test_dashboard_serves_run_view_and_current_alias() -> None:
     thread = Thread(target=server.serve_forever, daemon=True)
     thread.start()
     host, port = server.server_address[:2]
+    host_text = host.decode() if isinstance(host, bytes) else host
     try:
         for run_id in (result.run_id, "current"):
-            with urlopen(f"http://{host}:{port}/api/runs/{run_id}/view", timeout=5) as response:  # noqa: S310
+            with urlopen(f"http://{host_text}:{port}/api/runs/{run_id}/view", timeout=5) as response:  # noqa: S310
                 payload = json.load(response)
             assert payload["ok"] is True
             assert payload["view"]["run_id"] == result.run_id

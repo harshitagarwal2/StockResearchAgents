@@ -30,6 +30,18 @@ class PublicationCoordinatorStub:
             raise KeyError(f"unknown lifecycle run: {run_id}") from exc
 
 
+class StrictLifecycleCoordinatorStub(PublicationCoordinatorStub):
+    def __init__(self, controls: dict[str, dict[str, object]]) -> None:
+        super().__init__(controls)
+        self.calls: list[str] = []
+
+    def control(self, run_id: str) -> dict[str, object]:
+        self.calls.append(run_id)
+        if not run_id.startswith("host-"):
+            raise ValueError("lifecycle run IDs must use the host namespace")
+        return super().control(run_id)
+
+
 class DashboardMarkup(HTMLParser):
     def __init__(self) -> None:
         super().__init__()
@@ -73,6 +85,20 @@ def test_dashboard_markup_contains_complete_final_report_information() -> None:
 
     required_information_ids = {
         "warning-list",
+        "decision-trace",
+        "decision-trace-chain",
+        "decision-trace-change",
+        "intelligence",
+        "coverage-grid",
+        "source-mix",
+        "freshness-grid",
+        "evidence-metrics",
+        "news-intelligence",
+        "catalyst-ledger",
+        "risk-register",
+        "conflict-ledger",
+        "unknown-ledger",
+        "monitoring-ledger",
         "analyst-grid",
         "research-debate-list",
         "research-recommendation",
@@ -227,6 +253,27 @@ def test_dashboard_keeps_runs_without_lifecycle_records_visible() -> None:
 
     assert report["ok"] is True
     assert report["run_id"] == result.run_id
+
+
+def test_dashboard_view_skips_lifecycle_validation_for_direct_fixture_runs() -> None:
+    store = RunStore()
+    result, _events = run_fixture(RunRequest(), store)
+    coordinator = StrictLifecycleCoordinatorStub({})
+    server = create_dashboard_server("127.0.0.1", 0, WEB_ROOT, store, coordinator=coordinator)
+    thread = Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    host, port = server.server_address[:2]
+    try:
+        with urlopen(f"http://{host}:{port}/api/runs/current/view", timeout=5) as response:  # noqa: S310
+            payload = json.load(response)
+        assert payload["ok"] is True
+        assert payload["view"]["run_id"] == result.run_id
+        assert payload["view"]["intelligence"]["coverage"]["evidence_count"] == 4
+        assert coordinator.calls == []
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
 
 
 @pytest.mark.parametrize("host", ["0.0.0.0", "8.8.8.8", "localhost"])

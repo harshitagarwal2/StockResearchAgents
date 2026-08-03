@@ -14,6 +14,18 @@
     ["conservative", "Conservative Analyst"],
     ["neutral", "Neutral Analyst"]
   ];
+  const SOURCE_QUALITY_ORDER = [
+    "primary_regulatory",
+    "primary_company",
+    "primary_agency",
+    "primary_partner",
+    "established_market_data",
+    "reputable_journalism",
+    "aggregator_discovery",
+    "public_discussion",
+    "synthetic_fixture",
+    "unknown"
+  ];
 
   function text(value, fallback = "—") {
     if (value === null || value === undefined || value === "") return fallback;
@@ -53,8 +65,19 @@
     return `${Math.round(parsed * 100)}%`;
   }
 
+  function daySpan(value) {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) return "Not declared";
+    return `${parsed.toLocaleString()} ${parsed === 1 ? "day" : "days"}`;
+  }
+
   function scalar(value) {
-    if (Array.isArray(value)) return value.map((item) => text(item)).join(", ");
+    if (Array.isArray(value)) {
+      if (value.length && value.every((item) => item && typeof item === "object")) {
+        return `${value.length} structured ${value.length === 1 ? "record" : "records"}`;
+      }
+      return value.map((item) => text(item)).join(", ");
+    }
     if (value && typeof value === "object") return Object.keys(value).join(", ") || "—";
     return text(value);
   }
@@ -98,7 +121,11 @@
     const uri = text(value, "");
     try {
       const parsed = new URL(uri);
-      if (!['http:', 'https:'].includes(parsed.protocol)) return node("span", "", text(value));
+      if (!["http:", "https:"].includes(parsed.protocol)) return node("span", "", text(value));
+      if (parsed.username || parsed.password) return node("span", "", "Source URL withheld");
+      if (parsed.hostname.toLowerCase().endsWith(".invalid")) {
+        return node("span", "", "Synthetic placeholder · not a public link");
+      }
       const link = node("a", "source-link", uri);
       link.href = parsed.href;
       link.target = "_blank";
@@ -117,6 +144,10 @@
   function replace(selector, children) {
     const element = q(selector);
     if (element) element.replaceChildren(...children);
+  }
+
+  function replaceRich(selector, value, fallback = "—") {
+    replace(selector, [richText(value, fallback)]);
   }
 
   function emptyItem(copy) {
@@ -173,6 +204,7 @@
     const portfolio = record(record(view.decisions).portfolio);
     const signal = record(view.signal);
     const companyName = text(overview.company_name || overview.company_of_interest || record(view.request).company_name, "");
+    const fixtureMode = list(view.evidence).length > 0 && list(view.evidence).every((item) => record(item.provenance).fixture === true);
     const title = companyName ? `${companyName} research dossier` : `${text(overview.symbol, "Company")} research dossier`;
 
     set("#data-source-label", `Canonical RunView · ${text(view.run_id)}`);
@@ -182,6 +214,7 @@
     set("#report-title", title);
     set("#decision-summary", portfolio.executive_summary);
     set("#analysis-date", date(overview.as_of_date));
+    set("#research-mode", fixtureMode ? "Synthetic fixture · not current" : "Host-supplied research");
     set("#run-id", view.run_id);
     set("#completed-at", timestamp(overview.completed_at));
     set("#research-confidence", percentage(research.confidence));
@@ -208,6 +241,293 @@
     set("#research-rationale", research.rationale);
     set("#research-strategic-actions", research.strategic_actions);
     set("#supporting-turns", list(research.supporting_turns).join(", "), "None declared");
+  }
+
+  function declaredSourceQuality(entry, lookup) {
+    const direct = text(record(entry).source_quality, "");
+    if (SOURCE_QUALITY_ORDER.includes(direct)) return direct;
+    const evidence = lookup.get(String(record(entry).evidence_id));
+    const inherited = text(record(record(evidence).values).source_quality, "unknown");
+    return SOURCE_QUALITY_ORDER.includes(inherited) ? inherited : "unknown";
+  }
+
+  function traceNode(step, title, linkKind, headline, detail, references = []) {
+    const item = node("li", "trace-node");
+    item.dataset.link = linkKind;
+    const header = node("header");
+    header.append(node("span", "trace-step", String(step).padStart(2, "0")), node("span", "trace-status", humanize(linkKind)));
+    item.append(header, node("h3", "", title), node("strong", "", headline), node("p", "", detail));
+    const receipt = node("small", "trace-references", list(references).join(" · ") || "No direct references declared");
+    item.append(receipt);
+    return item;
+  }
+
+  function renderDecisionTrace(view) {
+    const lookup = evidenceLookup(view);
+    const evidenceIds = Array.from(lookup.keys());
+    const reports = list(view.analyst_reports);
+    const analystReferences = reports.flatMap((report) => list(report.evidence_ids).map(String));
+    const analystMissing = analystReferences.filter((id) => !lookup.has(id));
+    const researchTurns = list(record(record(view.debates).research).turns);
+    const researchReferences = researchTurns.flatMap((turn) => list(turn.evidence_ids).map(String));
+    const researchMissing = researchReferences.filter((id) => !lookup.has(id));
+    const riskTurns = list(record(record(view.debates).risk).turns);
+    const riskReferences = riskTurns.flatMap((turn) => list(turn.evidence_ids).map(String));
+    const riskMissing = riskReferences.filter((id) => !lookup.has(id));
+    const researchDecision = record(record(view.decisions).research);
+    const portfolio = record(record(view.decisions).portfolio);
+    const intelligence = record(view.intelligence);
+    const coverage = record(intelligence.coverage);
+    const qualities = Object.entries(record(coverage.source_quality_buckets)).map(([quality, count]) => `${humanize(quality)} ${count}`);
+    const supportingTurns = list(researchDecision.supporting_turns).map(String);
+
+    const nodes = [
+      traceNode(
+        1,
+        "Evidence",
+        evidenceIds.length ? "explicit" : "missing",
+        `${evidenceIds.length} retained records`,
+        `${text(coverage.limitation_count, 0)} limitations · ${qualities.join(" · ") || "source quality not declared"}`,
+        evidenceIds
+      ),
+      traceNode(
+        2,
+        "Analyst claims",
+        analystReferences.length && !analystMissing.length ? "explicit" : "missing",
+        `${reports.length} independent reports`,
+        analystMissing.length ? `${analystMissing.length} unresolved evidence references` : `${analystReferences.length} explicit evidence references`,
+        analystReferences
+      ),
+      traceNode(
+        3,
+        "Bull / bear",
+        researchReferences.length && !researchMissing.length ? "explicit" : "missing",
+        `${researchTurns.length} preserved turns`,
+        researchMissing.length ? `${researchMissing.length} unresolved evidence references` : "Ordered challenge history with retained evidence IDs",
+        researchTurns.map((turn) => `turn ${text(turn.turn)}`)
+      ),
+      traceNode(
+        4,
+        "Research manager",
+        supportingTurns.length ? "explicit" : "projected",
+        humanize(researchDecision.recommendation),
+        supportingTurns.length ? "Decision names supporting debate turns" : "No supporting-turn attribution declared",
+        supportingTurns.map((turn) => `turn ${turn}`)
+      ),
+      traceNode(
+        5,
+        "Risk review",
+        riskReferences.length && !riskMissing.length ? "explicit" : riskTurns.length ? "projected" : "missing",
+        `${riskTurns.length} preserved turns`,
+        riskReferences.length ? `${riskReferences.length} evidence references across risk perspectives` : "Risk history is present without direct evidence references",
+        riskTurns.map((turn) => `turn ${text(turn.turn)}`)
+      ),
+      traceNode(
+        6,
+        "Portfolio rating",
+        "projected",
+        humanize(portfolio.rating),
+        "Attribution gap: PortfolioDecision has no direct evidence-ID field; this link is a transparent projection from the completed manager and risk record.",
+        []
+      )
+    ];
+    replace("#decision-trace-chain", nodes);
+
+    const changes = list(intelligence.monitoring_conditions).map((condition) => {
+      const entry = record(condition);
+      const item = node("li");
+      item.append(
+        node("p", "", text(entry.condition || entry.trigger || entry.title || entry.monitoring_condition)),
+        node("small", "", `${text(entry.evidence_id, entry.source || "Declared research condition")} · ${humanize(entry.category, "Cross-stage")}`)
+      );
+      return item;
+    });
+    replace("#decision-trace-change", changes.length ? changes : [emptyItem("No structured view-change condition was declared.")]);
+  }
+
+  function renderCountGroups(selector, groups) {
+    const sections = groups.map(([title, values]) => {
+      const section = node("section", "count-group");
+      section.append(node("h4", "", title));
+      const ledger = node("dl");
+      const entries = Object.entries(record(values));
+      entries.forEach(([label, value]) => {
+        const row = node("div");
+        row.append(node("dt", "", humanize(label)), node("dd", "", scalar(value)));
+        ledger.append(row);
+      });
+      section.append(entries.length ? ledger : node("p", "empty-row", "No declared values."));
+      return section;
+    });
+    replace(selector, sections);
+  }
+
+  function researchTable(captionCopy, columns, rows) {
+    const table = node("table", "research-table");
+    table.append(node("caption", "", captionCopy));
+    const head = node("thead");
+    const headRow = node("tr");
+    columns.forEach(([label]) => {
+      const header = node("th", "", label);
+      header.scope = "col";
+      headRow.append(header);
+    });
+    head.append(headRow);
+    const body = node("tbody");
+    rows.forEach((row) => {
+      const tableRow = node("tr");
+      columns.forEach(([, field]) => tableRow.append(node("td", "", text(row[field], "Not declared"))));
+      body.append(tableRow);
+    });
+    table.append(head, body);
+    return table;
+  }
+
+  function renderEvidenceMetrics(intelligence) {
+    const rows = list(intelligence.evidence_metrics).map((metric) => {
+      const item = record(metric);
+      const unit = text(item.unit, "");
+      const value = scalar(item.value);
+      return {
+        metric: humanize(item.label || item.name || item.metric),
+        value: unit ? `${value} ${unit}` : value,
+        period: text(item.period || item.fiscal_period || item.source_date),
+        basis: text(item.basis || item.reporting_basis || item.trend || item.context),
+        source: `${text(item.evidence_id)} · ${humanize(item.category)}`
+      };
+    });
+    const content = rows.length
+      ? researchTable(
+          "Structured evidence metrics",
+          [["Metric", "metric"], ["Value", "value"], ["Period", "period"], ["Basis / trend", "basis"], ["Evidence", "source"]],
+          rows
+        )
+      : node("p", "empty-row", "No structured metrics were declared. Raw evidence remains available in the source ledger.");
+    replace("#evidence-metrics", [content]);
+  }
+
+  function renderNewsIntelligence(view, intelligence) {
+    const lookup = evidenceLookup(view);
+    const groups = new Map();
+    list(intelligence.news).forEach((article) => {
+      const quality = declaredSourceQuality(article, lookup);
+      if (!groups.has(quality)) groups.set(quality, []);
+      groups.get(quality).push(article);
+    });
+
+    const ordered = Array.from(groups.entries()).sort(([left], [right]) => {
+      const leftRank = SOURCE_QUALITY_ORDER.includes(left)
+        ? SOURCE_QUALITY_ORDER.indexOf(left)
+        : SOURCE_QUALITY_ORDER.length;
+      const rightRank = SOURCE_QUALITY_ORDER.includes(right)
+        ? SOURCE_QUALITY_ORDER.indexOf(right)
+        : SOURCE_QUALITY_ORDER.length;
+      return leftRank - rightRank || left.localeCompare(right);
+    });
+
+    const sections = ordered.map(([quality, articles]) => {
+      const section = node("section", "news-quality-group");
+      const heading = node("header");
+      heading.append(node("h4", "", humanize(quality)), node("span", "count-receipt", `${articles.length} retained`));
+      section.append(heading);
+      const records = node("div", "news-records");
+      articles.forEach((article) => {
+        const item = record(article);
+        const recordNode = node("article", "news-record");
+        const receipt = node("p", "news-receipt");
+        receipt.append(
+          node("span", "", text(item.publisher, "Publisher not declared")),
+          node("span", "", date(item.published_at || item.date)),
+          node("span", "", humanize(item.verification_status, "Verification not declared")),
+          node("span", "", humanize(item.claim_type, "Claim type not declared"))
+        );
+        recordNode.append(
+          receipt,
+          node("h5", "", text(item.title || item.headline)),
+          node("p", "news-summary", text(item.summary, "No supported summary declared."))
+        );
+        if (item.why_it_matters) {
+          const why = node("p", "why-it-matters");
+          why.append(node("b", "", "Why it matters"), node("span", "", text(item.why_it_matters)));
+          recordNode.append(why);
+        }
+        const footer = node("footer");
+        footer.append(
+          node("span", "", `${text(item.evidence_id)} · ${humanize(item.stance || item.sentiment, "Stance not declared")}`),
+          publicSourceLink(item.url || item.source_url)
+        );
+        recordNode.append(footer);
+        records.append(recordNode);
+      });
+      section.append(records);
+      return section;
+    });
+    replace("#news-intelligence", sections.length ? sections : [node("p", "empty-row", "No structured article intelligence was declared.")]);
+  }
+
+  function ledgerPrimary(entry, keys) {
+    for (const key of keys) {
+      const value = text(entry[key], "");
+      if (value) return value;
+    }
+    return "Structured item without a declared summary";
+  }
+
+  function renderStructuredLedger(selector, values, primaryKeys, emptyCopy) {
+    const records = list(values).map((value) => {
+      const entry = record(value);
+      const item = node("article", "structured-record");
+      item.append(node("p", "", ledgerPrimary(entry, primaryKeys)));
+      const metadata = node("dl");
+      Object.entries(entry)
+        .filter(([key, fieldValue]) => !primaryKeys.includes(key) && !["evidence_id", "category"].includes(key) && text(fieldValue, ""))
+        .forEach(([key, fieldValue]) => {
+          const row = node("div");
+          row.append(node("dt", "", humanize(key)), node("dd", "", scalar(fieldValue)));
+          metadata.append(row);
+        });
+      if (metadata.childElementCount) item.append(metadata);
+      item.append(node("small", "", `${text(entry.evidence_id, entry.source || "Decision record")} · ${humanize(entry.category, "Cross-stage")}`));
+      return item;
+    });
+    replace(selector, records.length ? records : [node("p", "empty-row", emptyCopy)]);
+  }
+
+  function renderIntelligence(view) {
+    const intelligence = record(view.intelligence);
+    const coverage = record(intelligence.coverage);
+    const freshness = record(intelligence.freshness);
+    const fixtureMode = list(view.evidence).length > 0 && list(view.evidence).every((item) => record(item.provenance).fixture === true);
+    renderDefinitionList("#coverage-grid", [
+      ["Evidence records", coverage.evidence_count, "Retained in canonical RunView"],
+      ["Analyst reports", coverage.analyst_count, "Independent stage outputs"],
+      ["Traceable public URLs", coverage.source_url_count, "Sanitized source and article links"],
+      ["Dated sources", coverage.dated_source_count, "Source date explicitly declared"],
+      ["Limitations", coverage.limitation_count, "Evidence-level disclosures"],
+      ["Quality buckets", Object.entries(record(coverage.source_quality_buckets)).map(([key, value]) => `${humanize(key)} ${value}`).join(" · "), "Declared vocabulary only"],
+      ["Unrecognized quality labels", coverage.unrecognized_source_quality_count, "Projected as Unknown; raw evidence is preserved"]
+    ]);
+    renderCountGroups("#source-mix", [
+      ["Evidence categories", record(record(intelligence.source_mix).categories)],
+      ["Providers", record(record(intelligence.source_mix).providers)],
+      ["Source types", record(record(intelligence.source_mix).source_types)]
+    ]);
+    renderDefinitionList("#freshness-grid", [
+      ["Research cutoff", date(freshness.cutoff), fixtureMode ? "Synthetic fixture date · not a current market cutoff" : "No later evidence is allowed"],
+      ["Oldest source", date(freshness.oldest_source_date), fixtureMode ? "Synthetic fixture source date" : "Declared source date"],
+      ["Latest source", date(freshness.latest_source_date), fixtureMode ? "Synthetic fixture source date" : "Declared source date"],
+      ["Source-history span", daySpan(freshness.source_history_days), "Publication-date range in retained evidence"],
+      ["Latest-source lag", daySpan(freshness.latest_source_lag_days), "Distance from latest retained source to cutoff"],
+      ["First retrieval", timestamp(freshness.oldest_retrieved_at), fixtureMode ? "Synthetic fixture timestamp · no retrieval occurred" : "Host retrieval receipt"],
+      ["Latest retrieval", timestamp(freshness.latest_retrieved_at), fixtureMode ? "Synthetic fixture timestamp · no retrieval occurred" : "Host retrieval receipt"]
+    ]);
+    renderEvidenceMetrics(intelligence);
+    renderNewsIntelligence(view, intelligence);
+    renderStructuredLedger("#catalyst-ledger", intelligence.catalysts, ["catalyst", "title", "detail"], "No structured catalysts were declared.");
+    renderStructuredLedger("#risk-register", intelligence.risk_register, ["risk", "title", "detail"], "No structured risks were declared.");
+    renderStructuredLedger("#conflict-ledger", intelligence.conflicts, ["conflict", "title", "detail"], "No structured conflicts were declared.");
+    renderStructuredLedger("#unknown-ledger", intelligence.unknowns, ["unknown", "title", "detail"], "No structured unknowns were declared.");
+    renderStructuredLedger("#monitoring-ledger", intelligence.monitoring_conditions, ["condition", "trigger", "title", "detail"], "No structured monitoring conditions were declared.");
   }
 
   function renderAnalysts(view) {
@@ -247,7 +567,7 @@
     const lookup = evidenceLookup(view);
     const turns = resolveDebateEntries(research.turns, snapshot, RESEARCH_SNAPSHOT_ROLES).map((turn) => debateTurn(turn, lookup));
     replace("#research-debate-list", turns.length ? turns : [emptyItem("No research debate turns declared in RunView.")]);
-    set("#research-manager", snapshot.judge_decision || record(record(view.decisions).research).rationale);
+    replaceRich("#research-manager", snapshot.judge_decision || record(record(view.decisions).research).rationale);
   }
 
   function renderTrader(view) {
@@ -297,7 +617,7 @@
     replace("#risk-perspectives", cards.length ? cards : [node("p", "empty-row", "No risk perspectives declared in RunView.")]);
     renderList("#risk-constraints", riskDecision.constraints, "No constraints declared in RunView.");
     renderList("#risk-unresolved", riskDecision.unresolved, "No unresolved risks declared in RunView.");
-    set("#risk-manager-judgment", record(riskDebate.snapshot).judge_decision || portfolio.executive_summary);
+    replaceRich("#risk-manager-judgment", record(riskDebate.snapshot).judge_decision || portfolio.executive_summary);
   }
 
   function renderEvidence(view) {
@@ -349,10 +669,18 @@
 
   function renderWarnings(view) {
     const overview = record(view.overview);
-    const warnings = list(overview.warnings);
+    const intelligence = record(view.intelligence);
+    const conflicts = list(intelligence.conflicts).map((item) => `Conflict: ${ledgerPrimary(record(item), ["conflict", "title", "detail"])}`);
+    const unknowns = list(intelligence.unknowns).map((item) => `Unknown: ${ledgerPrimary(record(item), ["unknown", "title", "detail"])}`);
+    const warnings = [...list(overview.warnings), ...conflicts, ...unknowns];
     const limitations = list(view.evidence).flatMap((item) => list(item.limitations));
-    renderList("#warning-list", warnings, "No run-level warnings declared in RunView.");
-    set("#degradation-note", limitations.length ? `Evidence limitations: ${limitations.join(" · ")}` : "No evidence-level limitations declared in RunView.");
+    renderList("#warning-list", warnings, "No run-level warnings, conflicts, or unknowns declared in RunView.");
+    set(
+      "#degradation-note",
+      limitations.length
+        ? `${limitations.length} evidence limitations: ${limitations.join(" · ")}`
+        : "No evidence-level limitations declared in RunView."
+    );
   }
 
   function badgeEntries(section) {
@@ -414,6 +742,8 @@
   function render(view) {
     renderHero(view);
     renderExecutive(view);
+    renderDecisionTrace(view);
+    renderIntelligence(view);
     renderAnalysts(view);
     renderResearchDebate(view);
     renderTrader(view);

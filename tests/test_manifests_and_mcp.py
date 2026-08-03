@@ -27,6 +27,9 @@ def test_plugin_manifest_and_skill_are_complete() -> None:
     assert "launch_local_dashboard" in skill
     assert "checkpoint_enabled" in skill
     assert "decision/report persistence" in skill
+    assert "adaptive-history policy" in skill
+    assert "five fiscal years" in skill
+    assert "eight comparable quarters" in skill
     assert "must never place" in skill
 
 
@@ -128,6 +131,29 @@ def test_registered_mcp_tool_names_match_discovery() -> None:
 
     assert names == set(discovery(legacy_path=str(ROOT / "does-not-exist"), include_legacy=False)["tools"])
     assert "run_legacy" not in names
+
+
+def test_mcp_publication_gate_uses_lifecycle_namespace_without_masking_errors(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pytest.importorskip("mcp")
+    mcp_server = importlib.import_module("tradingagents_portable.mcp_server")
+
+    class StrictCoordinator:
+        def __init__(self) -> None:
+            self.calls: list[str] = []
+
+        def control(self, run_id: str) -> dict[str, object]:
+            self.calls.append(run_id)
+            raise ValueError("corrupt lifecycle state")
+
+    coordinator = StrictCoordinator()
+    monkeypatch.setattr(mcp_server, "HOST_RUN_COORDINATOR", coordinator)
+
+    mcp_server._require_completed_publication("fixture-direct")
+    assert coordinator.calls == []
+    with pytest.raises(ValueError, match="corrupt lifecycle state"):
+        mcp_server._require_completed_publication("host-abcdef012345")
 
 
 def test_export_mcp_tool_truthfully_declares_destructive_non_idempotent_behavior() -> None:

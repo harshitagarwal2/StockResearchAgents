@@ -45,6 +45,7 @@
             </div>
             <dl class="run-facts">
               <div><dt>Research date</dt><dd id="analysis-date">—</dd></div>
+              <div><dt>Data mode</dt><dd id="research-mode">—</dd></div>
               <div><dt>Run</dt><dd id="run-id">—</dd></div>
               <div><dt>Completed</dt><dd id="completed-at">—</dd></div>
               <div><dt>Research confidence</dt><dd id="research-confidence">—</dd></div>
@@ -68,12 +69,14 @@
 
         <nav class="report-index" aria-label="Research dossier sections">
           <a href="#executive">Executive case</a>
+          <a href="#decision-trace">Integrity chain</a>
+          <a href="#intelligence">Decision intelligence</a>
           <a href="#analysts">Analyst reports</a>
           <a href="#research-debate">Research debate</a>
-          <a href="#trader">Trader plan</a>
           <a href="#risk">Risk review</a>
           <a href="#evidence">Evidence</a>
-          <a href="#transparency">Transparency</a>
+          <a href="#trader">Analytical plan</a>
+          <a href="#transparency">Appendix</a>
         </nav>
 
         <article class="dossier">
@@ -108,6 +111,95 @@
             </div>
           </section>
 
+          <section class="report-section integrity-section" id="decision-trace" aria-labelledby="decision-trace-title">
+            <header class="section-lead">
+              <p class="section-code">Evidence integrity chain</p>
+              <h2 id="decision-trace-title">How the rating was reached</h2>
+              <p>Solid links are explicit references in the portable schema. Dotted links are projected relationships and remain visibly unverified.</p>
+            </header>
+            <div class="trace-legend" aria-label="Integrity-chain legend">
+              <span><i data-kind="explicit"></i>Explicit schema link</span>
+              <span><i data-kind="projected"></i>Projected relationship</span>
+              <span><i data-kind="missing"></i>Attribution missing</span>
+            </div>
+            <ol class="integrity-chain" id="decision-trace-chain"></ol>
+            <aside class="change-view-ledger" aria-labelledby="change-view-title">
+              <div>
+                <p class="section-code">Decision conditions</p>
+                <h3 id="change-view-title">What would change this view</h3>
+                <p>Explicit monitoring and invalidation conditions only. These are research checks, not orders.</p>
+              </div>
+              <ul id="decision-trace-change"></ul>
+            </aside>
+          </section>
+
+          <section class="report-section intelligence-section" id="intelligence" aria-labelledby="intelligence-title">
+            <header class="section-lead">
+              <p class="section-code">Decision intelligence</p>
+              <h2 id="intelligence-title">The complete underwriting ledger</h2>
+              <p>Coverage, freshness, financial evidence, material reporting, catalysts, contrary evidence, and decision-changing conditions are merged without collapsing their provenance.</p>
+            </header>
+
+            <div class="intelligence-summary">
+              <section aria-labelledby="coverage-title">
+                <h3 id="coverage-title">Coverage</h3>
+                <dl id="coverage-grid"></dl>
+              </section>
+              <section aria-labelledby="source-mix-title">
+                <h3 id="source-mix-title">Source mix</h3>
+                <div id="source-mix"></div>
+              </section>
+              <section aria-labelledby="freshness-title">
+                <h3 id="freshness-title">Freshness</h3>
+                <dl id="freshness-grid"></dl>
+              </section>
+            </div>
+
+            <section class="intelligence-ledger" id="financials" aria-labelledby="financials-title">
+              <header>
+                <p class="section-code">Financial and market ledger</p>
+                <h3 id="financials-title">Reported metrics and analytical context</h3>
+                <p>Units, periods, basis, trend, and source IDs remain separate. Missing fields are shown rather than inferred.</p>
+              </header>
+              <div class="table-frame" id="evidence-metrics" role="region" aria-label="Structured evidence metrics table" tabindex="0"></div>
+            </section>
+
+            <section class="intelligence-ledger" id="news" aria-labelledby="news-title">
+              <header>
+                <p class="section-code">Material reporting</p>
+                <h3 id="news-title">News intelligence by declared source quality</h3>
+                <p>Discovery links and attributable reporting remain distinct. Publisher names are never converted into an invented quality score.</p>
+              </header>
+              <div class="news-intelligence" id="news-intelligence"></div>
+            </section>
+
+            <div class="decision-ledger-grid">
+              <section aria-labelledby="catalyst-title">
+                <header><p class="section-code">Upside path</p><h3 id="catalyst-title">Catalysts</h3></header>
+                <div class="structured-ledger" id="catalyst-ledger"></div>
+              </section>
+              <section aria-labelledby="risk-register-title">
+                <header><p class="section-code">Downside path</p><h3 id="risk-register-title">Risk register</h3></header>
+                <div class="structured-ledger" id="risk-register"></div>
+              </section>
+            </div>
+
+            <div class="decision-ledger-grid decision-ledger-grid--three">
+              <section aria-labelledby="conflict-title">
+                <header><p class="section-code">Contrary evidence</p><h3 id="conflict-title">Conflicts</h3></header>
+                <div class="structured-ledger" id="conflict-ledger"></div>
+              </section>
+              <section aria-labelledby="unknown-title">
+                <header><p class="section-code">Evidence gaps</p><h3 id="unknown-title">Unknowns</h3></header>
+                <div class="structured-ledger" id="unknown-ledger"></div>
+              </section>
+              <section aria-labelledby="monitoring-title">
+                <header><p class="section-code">Change conditions</p><h3 id="monitoring-title">Monitoring</h3></header>
+                <div class="structured-ledger" id="monitoring-ledger"></div>
+              </section>
+            </div>
+          </section>
+
           <section class="report-section" id="analysts" aria-labelledby="analysts-title">
             <header class="section-lead">
               <p class="section-code">Independent reads</p>
@@ -124,7 +216,7 @@
               <p>The debate history is preserved before the manager's ruling.</p>
               <div class="manager-note">
                 <span>Manager synthesis</span>
-                <p id="research-manager">—</p>
+                <div class="manager-synthesis-copy" id="research-manager">—</div>
               </div>
             </header>
             <ol class="debate-thread" id="research-debate-list"></ol>
@@ -165,7 +257,7 @@
               <p>Aggressive, conservative, and neutral perspectives are shown before the portfolio-manager judgment.</p>
               <div class="risk-resolution">
                 <span>Portfolio-manager judgment</span>
-                <p id="risk-manager-judgment">—</p>
+                <div class="manager-synthesis-copy" id="risk-manager-judgment">—</div>
               </div>
             </header>
             <div>

@@ -13,7 +13,7 @@ from .fixture import prepare_fixture as prepare_fixture_request
 from .fixture import run_fixture as execute_fixture
 from .host_native import prepare_host_run as prepare_host_run_request
 from .host_native import submit_host_run as execute_host_run_import
-from .lifecycle import HOST_RUN_COORDINATOR
+from .lifecycle import HOST_RUN_COORDINATOR, is_lifecycle_run_id
 from .store import RUN_STORE
 from .view import build_run_view
 
@@ -248,9 +248,12 @@ def export_completed_run(run_id: str, destination: str, overwrite: bool = False)
     events = RUN_STORE.get_events(run_id)
     if result is None or events is None:
         raise ValueError(f"completed run not found: {run_id}")
-    try:
-        lifecycle_log = HOST_RUN_COORDINATOR.lifecycle_log(run_id)
-    except KeyError:
+    if is_lifecycle_run_id(run_id):
+        try:
+            lifecycle_log = HOST_RUN_COORDINATOR.lifecycle_log(run_id)
+        except KeyError:
+            lifecycle_log = ()
+    else:
         lifecycle_log = ()
     receipt = export_run_bundle(
         result,
@@ -320,9 +323,11 @@ def _resolve_run_id(run_id: str) -> str:
 
 
 def _require_completed_publication(run_id: str) -> None:
+    if not is_lifecycle_run_id(run_id):
+        return
     try:
         control = HOST_RUN_COORDINATOR.control(run_id)
-    except (KeyError, ValueError):
+    except KeyError:
         return
     if control["status"] != "completed" or control["publication_pending"]:
         raise ValueError(f"run publication is not complete: {run_id}")

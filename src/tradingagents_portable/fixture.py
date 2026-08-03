@@ -85,7 +85,50 @@ def _fixture_evidence(request: RunRequest) -> tuple[EvidenceItem, ...]:
             category="market",
             title="ORCL deterministic market snapshot",
             summary="Fixture price is above its fixture 50-day average with moderate volatility.",
-            values={"close_usd": 162.4, "sma_50_usd": 156.1, "rsi_14": 58.2},
+            values={
+                "close_usd": 162.4,
+                "sma_50_usd": 156.1,
+                "rsi_14": 58.2,
+                "source_quality": "synthetic_fixture",
+                "metrics": [
+                    {
+                        "name": "close_usd",
+                        "value": 162.4,
+                        "unit": "USD",
+                        "period": request.as_of_date,
+                        "basis": "synthetic completed-session snapshot",
+                    },
+                    {
+                        "name": "sma_50_usd",
+                        "value": 156.1,
+                        "unit": "USD",
+                        "period": "synthetic 50-session window",
+                        "trend": "fixture close above fixture average",
+                    },
+                    {
+                        "name": "rsi_14",
+                        "value": 58.2,
+                        "period": "synthetic 14-session window",
+                        "context": "constructive but not extended fixture regime",
+                    },
+                ],
+                "catalysts": [
+                    {
+                        "catalyst": "Synthetic momentum remains above the fixture 50-day average",
+                        "rank": 2,
+                        "horizon": "next cutoff-valid market snapshot",
+                        "trigger": "live close and volume confirm the synthetic regime",
+                    }
+                ],
+                "risks": [
+                    {
+                        "risk": "Fixture momentum reversal",
+                        "rank": 3,
+                        "trigger": "cutoff-valid close breaks the live trend support",
+                    }
+                ],
+                "monitoring_conditions": ["Compare the fixture close with cutoff-valid live pricing"],
+            },
             provenance=provenance("synthetic_market", "fixture://orcl/market"),
             limitations=("Not suitable for pricing, backtesting, or an investment decision.",),
         ),
@@ -94,7 +137,19 @@ def _fixture_evidence(request: RunRequest) -> tuple[EvidenceItem, ...]:
             category="social",
             title="ORCL deterministic sentiment sample",
             summary="Fixture discussion is constructive but includes valuation concern.",
-            values={"positive": 7, "neutral": 2, "negative": 3, "sample_size": 12},
+            values={
+                "positive": 7,
+                "neutral": 2,
+                "negative": 3,
+                "sample_size": 12,
+                "source_quality": "synthetic_fixture",
+                "metrics": {
+                    "positive_mentions": {"value": 7, "unit": "mentions"},
+                    "sample_size": {"value": 12, "unit": "mentions"},
+                },
+                "conflicts": ["Synthetic positive discussion conflicts with synthetic valuation concern"],
+                "unknowns": ["Whether a live, representative sample would reproduce fixture sentiment"],
+            },
             provenance=provenance("synthetic_sentiment", "fixture://orcl/social"),
             limitations=("Tiny synthetic sample; no population inference is valid.",),
         ),
@@ -103,7 +158,91 @@ def _fixture_evidence(request: RunRequest) -> tuple[EvidenceItem, ...]:
             category="news",
             title="ORCL deterministic news digest",
             summary="Fixture items balance cloud demand momentum against execution risk.",
-            values={"items": 3, "positive": 1, "mixed": 1, "risk": 1},
+            values={
+                "items": 3,
+                "positive": 1,
+                "mixed": 1,
+                "risk": 1,
+                "source_quality": "synthetic_fixture",
+                "metrics": {"article_count": 3, "positive_count": 1, "risk_count": 1},
+                "articles": [
+                    {
+                        "headline": "Synthetic cloud demand scenario remains constructive",
+                        "publisher": "TradingAgents Portable fixture",
+                        "published_at": request.as_of_date,
+                        "source_quality": "synthetic_fixture",
+                        "claim_type": "inference",
+                        "verification_status": "unverified",
+                        "summary": (
+                            "A synthetic scenario models improving cloud demand; it is not a claim about Oracle's "
+                            "actual results."
+                        ),
+                        "why_it_matters": (
+                            "It demonstrates how a live demand catalyst should connect to the upside case and "
+                            "monitoring ledger."
+                        ),
+                        "stance": "bull",
+                        "url": "https://example.invalid/orcl/synthetic-cloud-demand",
+                        "synthetic": True,
+                    },
+                    {
+                        "headline": "Synthetic capacity expansion scenario has mixed execution effects",
+                        "publisher": "TradingAgents Portable fixture",
+                        "published_at": request.as_of_date,
+                        "source_quality": "synthetic_fixture",
+                        "claim_type": "inference",
+                        "verification_status": "unverified",
+                        "summary": (
+                            "A synthetic capacity build-out creates both revenue opportunity and execution pressure."
+                        ),
+                        "why_it_matters": (
+                            "It tests whether the final thesis preserves a two-sided catalyst instead of flattening "
+                            "it into sentiment."
+                        ),
+                        "stance": "neutral",
+                        "url": "https://example.invalid/orcl/synthetic-capacity",
+                        "synthetic": True,
+                    },
+                    {
+                        "headline": "Synthetic leverage scenario highlights downside sensitivity",
+                        "publisher": "TradingAgents Portable fixture",
+                        "published_at": request.as_of_date,
+                        "source_quality": "synthetic_fixture",
+                        "claim_type": "inference",
+                        "verification_status": "unverified",
+                        "summary": (
+                            "A synthetic leverage stress case increases sensitivity to slower growth and valuation "
+                            "compression."
+                        ),
+                        "why_it_matters": (
+                            "It demonstrates a downside item that must remain visible even when the operating thesis "
+                            "is constructive."
+                        ),
+                        "stance": "bear",
+                        "url": "fixture://orcl/synthetic-leverage",
+                        "synthetic": True,
+                    },
+                ],
+                "catalysts": [
+                    {
+                        "catalyst": "Synthetic cloud demand acceleration",
+                        "rank": 1,
+                        "horizon": "next live earnings cycle",
+                        "trigger": "cutoff-valid official results confirm durable demand acceleration",
+                    }
+                ],
+                "risks": [
+                    {
+                        "risk": "Synthetic capacity execution shortfall",
+                        "rank": 2,
+                        "horizon": "next live earnings cycle",
+                        "trigger": "official delivery or margin evidence misses the investment-case assumption",
+                    }
+                ],
+                "monitoring_conditions": [
+                    {"condition": "Replace every synthetic headline with cutoff-valid reporting"}
+                ],
+            },
             provenance=provenance("synthetic_news", "fixture://orcl/news"),
             limitations=("Synthetic headlines are not claims about real events.",),
         ),
@@ -112,7 +251,52 @@ def _fixture_evidence(request: RunRequest) -> tuple[EvidenceItem, ...]:
             category="fundamentals",
             title="ORCL deterministic fundamentals snapshot",
             summary="Fixture profile combines recurring revenue strength with leverage and valuation risk.",
-            values={"revenue_growth_pct": 8.1, "operating_margin_pct": 31.4, "net_debt_to_ebitda": 3.2},
+            values={
+                "revenue_growth_pct": 8.1,
+                "operating_margin_pct": 31.4,
+                "net_debt_to_ebitda": 3.2,
+                "source_quality": "synthetic_fixture",
+                "metrics": [
+                    {
+                        "name": "revenue_growth_pct",
+                        "value": 8.1,
+                        "unit": "percent",
+                        "period": "synthetic trailing year",
+                        "basis": "synthetic non-GAAP-neutral fixture value",
+                    },
+                    {
+                        "name": "operating_margin_pct",
+                        "value": 31.4,
+                        "unit": "percent",
+                        "period": "synthetic trailing year",
+                        "basis": "synthetic operating-margin fixture value",
+                    },
+                    {
+                        "name": "net_debt_to_ebitda",
+                        "value": 3.2,
+                        "unit": "ratio",
+                        "period": request.as_of_date,
+                        "basis": "synthetic leverage fixture value",
+                    },
+                ],
+                "catalysts": [
+                    {
+                        "catalyst": "Synthetic recurring-revenue durability",
+                        "rank": 3,
+                        "horizon": "multi-quarter live validation",
+                    }
+                ],
+                "risks": [
+                    {
+                        "risk": "Synthetic leverage and valuation compression",
+                        "rank": 1,
+                        "trigger": "live cash conversion or leverage misses the research assumption",
+                    }
+                ],
+                "conflicts": [{"conflict": "Synthetic margin strength coexists with synthetic leverage risk"}],
+                "unknowns": ["Cutoff-valid valuation and balance-sheet inputs"],
+                "monitoring_conditions": ["Recalculate leverage from live point-in-time filings"],
+            },
             provenance=provenance("synthetic_fundamentals", "fixture://orcl/fundamentals"),
             limitations=("Static synthetic values have no point-in-time financial validity.",),
         ),

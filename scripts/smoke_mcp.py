@@ -159,8 +159,23 @@ async def smoke() -> None:
             assert view_payload["run_id"] == run_id
             assert view_payload["overview"]["symbol"] == "ORCL"
             assert len(view_payload["analyst_reports"]) == 4
+            intelligence = view_payload["intelligence"]
+            assert intelligence["coverage"]["evidence_count"] == 4
+            assert intelligence["coverage"]["analyst_count"] == 4
+            assert intelligence["coverage"]["source_quality_buckets"] == {"synthetic_fixture": 4}
+            assert len(intelligence["evidence_metrics"]) >= 10
+            assert len(intelligence["news"]) >= 3
+            assert len(intelligence["catalysts"]) >= 3
+            assert intelligence["risk_register"]
+            assert intelligence["conflicts"]
+            assert intelligence["unknowns"]
+            assert intelligence["monitoring_conditions"]
 
-            print(f"ok tools={len(names)} run={run_id} research_turns=4 risk_turns=6 executable=false")
+            print(
+                f"ok tools={len(names)} run={run_id} research_turns=4 risk_turns=6 "
+                f"metrics={len(intelligence['evidence_metrics'])} news={len(intelligence['news'])} "
+                "executable=false"
+            )
 
 
 def main() -> None:

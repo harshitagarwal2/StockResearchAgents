@@ -17,7 +17,7 @@ from .export import export_run_bundle
 from .fixture import run_fixture
 from .host_native import prepare_host_run, submit_host_run
 from .legacy import LegacyTradingAgentsAdapter
-from .lifecycle import HOST_RUN_COORDINATOR
+from .lifecycle import HOST_RUN_COORDINATOR, is_lifecycle_run_id
 from .view import build_run_view
 
 
@@ -475,6 +475,15 @@ def _host_init(args: argparse.Namespace) -> int:
         return 2
 
 
+def _publication_control(run_id: str) -> dict[str, object] | None:
+    if not is_lifecycle_run_id(run_id):
+        return None
+    try:
+        return HOST_RUN_COORDINATOR.control(run_id)
+    except KeyError:
+        return None
+
+
 def _lifecycle_command(args: argparse.Namespace) -> int:
     try:
         if args.command == "host-start":
@@ -532,10 +541,7 @@ def _lifecycle_command(args: argparse.Namespace) -> int:
                 ),
             }
         elif args.command == "run-export":
-            try:
-                publication_control = HOST_RUN_COORDINATOR.control(args.run_id)
-            except (KeyError, ValueError):
-                publication_control = None
+            publication_control = _publication_control(args.run_id)
             if publication_control is not None and (
                 publication_control["status"] != "completed" or publication_control["publication_pending"]
             ):
@@ -544,9 +550,12 @@ def _lifecycle_command(args: argparse.Namespace) -> int:
             export_events = HOST_RUN_COORDINATOR.result_store.get_events(args.run_id)
             if export_result is None or export_events is None:
                 raise ValueError(f"completed run not found: {args.run_id}")
-            try:
-                lifecycle_log = HOST_RUN_COORDINATOR.lifecycle_log(args.run_id)
-            except KeyError:
+            if is_lifecycle_run_id(args.run_id):
+                try:
+                    lifecycle_log = HOST_RUN_COORDINATOR.lifecycle_log(args.run_id)
+                except KeyError:
+                    lifecycle_log = ()
+            else:
                 lifecycle_log = ()
             export_receipt = export_run_bundle(
                 export_result,
@@ -557,10 +566,7 @@ def _lifecycle_command(args: argparse.Namespace) -> int:
             )
             response = {"ok": True, "export": export_receipt.to_dict()}
         elif args.command == "run-conformance":
-            try:
-                publication_control = HOST_RUN_COORDINATOR.control(args.run_id)
-            except (KeyError, ValueError):
-                publication_control = None
+            publication_control = _publication_control(args.run_id)
             if publication_control is not None and (
                 publication_control["status"] != "completed" or publication_control["publication_pending"]
             ):

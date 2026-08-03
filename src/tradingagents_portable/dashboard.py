@@ -13,7 +13,7 @@ from typing import Any, Protocol
 from urllib.parse import parse_qs, quote, unquote, urlparse
 
 from .contracts import PROTOTYPE_NOTICE
-from .lifecycle import HOST_RUN_COORDINATOR
+from .lifecycle import HOST_RUN_COORDINATOR, is_lifecycle_run_id
 from .store import RUN_STORE, RunStore
 from .view import build_run_view
 
@@ -38,12 +38,14 @@ def _publication_coordinator(
 
 
 def _is_publicly_visible(run_id: str, coordinator: PublicationCoordinator | None) -> bool:
-    if coordinator is None:
+    if coordinator is None or not is_lifecycle_run_id(run_id):
+        # Fixture and atomic-import IDs cannot have lifecycle records, so the
+        # lifecycle publication gate does not apply to them.
         return True
     try:
         control = coordinator.control(run_id)
     except KeyError:
-        # Fixture and imported runs have no lifecycle record and remain directly viewable.
+        # A valid host-shaped atomic import may still have no lifecycle record.
         return True
     return control["status"] == "completed" and not control["publication_pending"]
 

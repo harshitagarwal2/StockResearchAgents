@@ -1,6 +1,6 @@
 {
   "name": "tradingagents-portable",
-  "version": "0.1.0+codex.20260803071157",
+  "version": "0.1.0+codex.20260803082529",
   "description": "Run durable TradingAgents research with any host harness and inspect the completed read-only dossier.",
   "author": {
     "name": "TradingAgents Portable contributors"

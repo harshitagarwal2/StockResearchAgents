@@ -31,6 +31,8 @@ def test_ui_exposes_every_merged_final_report_section() -> None:
     html = (WEB_ROOT / "index.html").read_text(encoding="utf-8")
     required_section_ids = {
         "executive",
+        "decision-trace",
+        "intelligence",
         "analysts",
         "research-debate",
         "trader",
@@ -42,6 +44,19 @@ def test_ui_exposes_every_merged_final_report_section() -> None:
         "methodology",
     }
     required_data_ids = {
+        "decision-trace-chain",
+        "decision-trace-change",
+        "coverage-grid",
+        "source-mix",
+        "freshness-grid",
+        "evidence-metrics",
+        "news-intelligence",
+        "catalyst-ledger",
+        "risk-register",
+        "conflict-ledger",
+        "unknown-ledger",
+        "monitoring-ledger",
+        "research-mode",
         "analyst-grid",
         "research-debate-list",
         "research-manager",
@@ -75,6 +90,22 @@ def test_ui_exposes_every_merged_final_report_section() -> None:
         assert f'id="{element_id}"' in html
     for obsolete_id in ("research-decision", "trader-stance", "trader-plan", "portfolio-decision"):
         assert f'id="{obsolete_id}"' not in html
+
+
+def test_ui_renders_the_intelligence_projection_with_safe_dom_helpers() -> None:
+    html = (WEB_ROOT / "index.html").read_text(encoding="utf-8")
+    javascript = (WEB_ROOT / "app.js").read_text(encoding="utf-8")
+
+    assert "renderDecisionTrace" in javascript
+    assert "renderIntelligence" in javascript
+    assert "view.intelligence" in javascript
+    assert "publicSourceLink" in javascript
+    assert 'role="region" aria-label="Structured evidence metrics table" tabindex="0"' in html
+    assert 'header.scope = "col"' in javascript
+    assert "parsed.username ||" in javascript
+    assert 'endsWith(".invalid")' in javascript
+    assert "innerHTML" not in javascript
+    assert "insertAdjacentHTML" not in javascript
 
 
 def test_ui_loads_only_the_canonical_final_view_without_fabricated_fallback() -> None:
