@@ -14,14 +14,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Checkout pinned upstream TradingAgents contract
-        uses: actions/checkout@v4
-        with:
-          repository: TauricResearch/TradingAgents
-          ref: a33fd4c0f134485a43553a2c23a63cb14adbd88f
-          path: upstream-tradingagents
-          persist-credentials: false
-      - name: Expose upstream checkout to conformance tests
-        run: ln -s "$GITHUB_WORKSPACE/upstream-tradingagents" "$GITHUB_WORKSPACE/../tradingAgents"
+        run: |
+          git init "$GITHUB_WORKSPACE/../tradingAgents"
+          git -C "$GITHUB_WORKSPACE/../tradingAgents" remote add origin https://github.com/TauricResearch/TradingAgents.git
+          git -C "$GITHUB_WORKSPACE/../tradingAgents" fetch --depth=1 origin a33fd4c0f134485a43553a2c23a63cb14adbd88f
+          git -C "$GITHUB_WORKSPACE/../tradingAgents" checkout --detach FETCH_HEAD
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
