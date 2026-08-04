@@ -13,6 +13,8 @@ The implemented status and exact default exposure are machine-readable in [resea
 
 This is partial live coverage, not full tools-only company research. Prices and indicators require an entitled host `SourcePort`; Reddit requires host-owned OAuth; neither is registered by default. StockTwits fails closed as denied and is unregistered. Market-data and social/provider gaps therefore remain removal blockers. The cross-provider collection policy is defined in [Source portfolio](SOURCE_PORTFOLIO.md).
 
+Hosts that configure more than one provider for a capability should use the additive `SourcePortfolioCollector`. It attempts every explicit route and emits a deterministic `SourcePortfolioReceipt` while preserving one `SourceBatch` per provider and entitlement. Existing MCP tools continue to return one `SourceBatch`; a future additive portfolio tool may expose the full receipt without changing those wire contracts. The collector is orchestration and auditability, not a provider or an authorization mechanism.
+
 ## Ownership and dependency direction
 
 ```text

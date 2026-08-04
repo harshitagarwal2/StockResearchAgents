@@ -137,6 +137,8 @@ class RunCardV1(StrictModel):
             raise ValueError("run card coordinator commitments must match stage receipt order exactly")
         if not self.artifact_kinds or len(set(self.artifact_kinds)) != len(self.artifact_kinds):
             raise ValueError("run card artifact kinds must be a non-empty unique sequence")
+        if len(set(self.source_batch_ids)) != len(self.source_batch_ids):
+            raise ValueError("run card source batch IDs must be unique")
         for source_id in self.source_batch_ids:
             _validate_id(source_id, "source_batch_ids")
         for limitation in self.limitations:

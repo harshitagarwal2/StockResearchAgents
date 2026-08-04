@@ -321,6 +321,18 @@ def test_nonredistributable_or_unknown_entitlement_cannot_carry_extracts() -> No
             )
 
 
+def test_batch_items_must_share_the_batch_entitlement_receipt() -> None:
+    with pytest.raises(ValueError, match="license receipt must match"):
+        _batch(items=(_observation(license_receipt_id="license-other-provider"),))
+
+
+def test_batch_items_must_share_the_batch_provider_provenance() -> None:
+    with pytest.raises(ValueError, match="provider must match"):
+        _batch(items=(_observation(provider="different-provider"),))
+    with pytest.raises(ValueError, match="provider must match"):
+        _batch(items=(_observation(provider_version="different-version"),))
+
+
 def test_items_are_normalized_to_deterministic_order() -> None:
     later = _observation(source_id="later", content_sha256="b" * 64)
     earlier = _observation(
