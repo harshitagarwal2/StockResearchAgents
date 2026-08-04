@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      STOCKRESEARCHAGENTS_STATE_DIR: ${{ runner.temp }}/stock-research-agents-sync-state
+      STOCKRESEARCHAGENTS_STATE_DIR: /tmp/stock-research-agents-sync-state
     steps:
       - uses: actions/checkout@v4
         with:
