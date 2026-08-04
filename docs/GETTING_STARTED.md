@@ -1,9 +1,11 @@
 # Getting started
 
-- **Purpose:** produce and inspect one safe completed result in under five minutes.
+- **Purpose:** prove the portable boundary locally by producing and inspecting one safe completed result in under five minutes.
 - **Audience:** first-time users and contributors.
 - **Canonical for:** the first local success path.
 - **Not canonical for:** live-provider behavior or host-adapter implementation.
+
+This page exercises the local CLI adapter because it is deterministic and credential-free. It is a conformance and development path, not the primary research runtime. For live or historical research, first choose a host integration: [Codex](INTEGRATION.md#codex-plugin), [MCP](INTEGRATION.md#mcp), [Python](INTEGRATION.md#python), or a [custom harness adapter](INTEGRATION.md#generic-host-adapter-checklist).
 
 ## Prerequisites
 
@@ -11,7 +13,7 @@
 - [`uv`](https://docs.astral.sh/uv/).
 - No API key or provider credential is needed for the deterministic fixture.
 
-## Run the fixture
+## Run the fixture through the CLI adapter
 
 ```bash
 uv sync
@@ -28,9 +30,9 @@ run. Fixture values prove contract behavior, not current research quality.
 uv run stock-research-agents report --fixture
 ```
 
-This foreground command remains useful for diagnostics or an explicitly selected port. Normal completed CLI and
-MCP workflows ensure the shared viewer automatically and return the URL without blocking. The preferred human-facing
-name is **Research Dossier Viewer**; `dashboard` remains a compatibility command.
+This foreground command remains useful for diagnostics or an explicitly selected port. Normal completion adapters,
+including CLI and MCP, ensure the shared viewer automatically and return the URL without blocking. The preferred
+human-facing name is **Research Dossier Viewer**; `dashboard` remains a compatibility command.
 
 The viewer:
 
@@ -39,7 +41,7 @@ The viewer:
 - performs no retrieval, reasoning, calculation, lifecycle mutation, or order action; and
 - remains empty when no completed dossier is available.
 
-## Plan a company-analytics run
+## Inspect a host plan through the CLI adapter
 
 ```bash
 uv run stock-research-agents analytics-plan \

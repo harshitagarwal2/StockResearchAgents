@@ -19,13 +19,13 @@ import uuid
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
-from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Literal
 from urllib.error import URLError
 from urllib.parse import quote, urlencode
 from urllib.request import HTTPRedirectHandler, ProxyHandler, Request, build_opener
 
+from ._version import __version__
 from .contracts import SCHEMA_VERSION, RunStatus
 from .store import RUN_STORE, RunStore
 
@@ -114,10 +114,7 @@ def _error_link(
 
 
 def _package_version() -> str:
-    try:
-        return version("tradingagents-portable")
-    except PackageNotFoundError:
-        return "source"
+    return __version__
 
 
 def _viewer_build_digest() -> str:

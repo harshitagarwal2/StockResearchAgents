@@ -3,10 +3,24 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from tradingagents_portable import cli
 from tradingagents_portable.contracts import InstrumentIdentity, RunRequest, RunResult
 from tradingagents_portable.legacy import LegacyTradingAgentsAdapter
 from tradingagents_portable.store import RunStore
+
+
+def test_cli_help_puts_optional_upstream_compatibility_after_host_workflows(capsys) -> None:
+    parser = cli._parser()
+    help_text = parser.format_help()
+
+    assert help_text.index("host-plan") < help_text.index("Optional compatibility adapter")
+    with pytest.raises(SystemExit) as exit_info:
+        parser.parse_args(["research", "--help"])
+    assert exit_info.value.code == 0
+    research_help = " ".join(capsys.readouterr().out.split())
+    assert "This is a compatibility path, not the portable research runtime" in research_help
 
 
 class FakeUpstreamAdapter:

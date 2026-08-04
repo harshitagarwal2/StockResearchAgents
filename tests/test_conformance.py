@@ -78,6 +78,7 @@ def test_fixture_satisfies_observable_upstream_contract() -> None:
 
     assert report.passed is True
     assert report.verified is True
+    assert report.schema_version == "1.1.0"
     assert len(conformance_digest(report)) == 64
     assert {check.name for check in report.checks} >= {
         "workflow_stage_order",
@@ -106,12 +107,43 @@ def test_conformance_without_upstream_checkout_is_explicitly_unverified() -> Non
     report = evaluate_conformance(result, events)
 
     identity = next(check for check in report.checks if check.name == "pinned_upstream_identity")
-    assert report.passed is False
-    assert report.verified is False
+    assert report.passed is True
+    assert report.verified is True
+    assert report.portable_passed is True
+    assert report.portable_verified is True
+    assert report.upstream_compatible is False
+    assert report.upstream_compatibility_verified is False
+    assert report.overall_status == "portable_conformant_upstream_unverified"
     assert identity.status == "skipped"
     assert identity.passed is False
     assert identity.to_dict()["status"] == "skipped"
-    assert report.to_dict()["verified"] is False
+    assert report.to_dict()["upstream_compatibility"] == {
+        "passed": False,
+        "verified": False,
+        "status": "skipped",
+    }
+    assert report.to_dict()["portable_conformance"] == {"passed": True, "verified": True}
+
+
+def test_upstream_revision_mismatch_does_not_fail_portable_conformance(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    result, events = run_fixture(RunRequest(), store=RunStore())
+    monkeypatch.setattr(
+        "tradingagents_portable.conformance.upstream_revision",
+        lambda _path: "0" * 40,
+    )
+
+    report = evaluate_conformance(result, events, upstream_path="unused")
+
+    assert report.passed is True
+    assert report.verified is True
+    assert report.upstream_compatible is False
+    assert report.upstream_compatibility_verified is True
+    assert report.overall_status == "portable_conformant_upstream_incompatible"
+    compatibility = report.to_dict()["upstream_compatibility"]
+    assert isinstance(compatibility, dict)
+    assert compatibility["status"] == "failed"
 
 
 @REQUIRES_UPSTREAM
@@ -127,6 +159,6 @@ def test_bare_execution_observed_flags_are_not_safe_lifecycle_receipts() -> None
     report = evaluate_conformance(result, flagged_events, upstream_path=UPSTREAM)
 
     completion = next(check for check in report.checks if check.name == "stage_completion_receipts")
-    assert report.passed is False
+    assert report.passed is True
     assert completion.status == "skipped"
     assert "structural" in completion.detail

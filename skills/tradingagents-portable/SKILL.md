@@ -34,13 +34,13 @@ Keep these authorities separate:
     one complete v4 payload and does not need lifecycle checkpoints.
 12. After a forecast resolves, append a typed observation with `record_research_outcome`; inspect reproducible records with `get_research_quality`. Corrections must supersede earlier observations rather than overwrite history.
 
-CLI equivalents are `analytics-plan`, `analytics-init`, shared `host-*` / `run-*` lifecycle commands, `analytics-import`, `quality-outcome`, and `quality-show`.
+CLI adapter equivalents are `analytics-plan`, `analytics-init`, shared `host-*` / `run-*` lifecycle commands, `analytics-import`, `quality-outcome`, and `quality-show`.
 
 ## Retrieve current and historical evidence
 
 Start with the newest evidence actually available at `cutoff_at`. Confirm later amendments, corrections, official results, guidance, and the latest completed market session before relying on older material.
 
-Keep the two MCP surfaces distinct. The coordination server registers no research-data tools. The separate `tradingagents-research-data` server registers six SourceBatch v1 public tools by default: SEC regulatory filings, fundamentals, and financial statements; GDELT company and global news metadata plus publisher links; and World Bank macro observations. Treat World Bank values as current-vintage only because its API cannot reconstruct historical revision lineage. Prices and indicators require a licensed host `SourcePort`; Reddit requires host-owned OAuth; neither is registered by default. StockTwits is denied and unregistered. Use lawful host sources for those gaps, and never silently substitute fixture or replay data for live retrieval.
+Keep the two MCP surfaces distinct. The coordination server registers no research-data tools. The separate research-data server, launched with the preferred `stock-research-data-mcp` executable, registers six SourceBatch v1 public tools by default: SEC regulatory filings, fundamentals, and financial statements; GDELT company and global news metadata plus publisher links; and World Bank macro observations. Its manifest key remains `tradingagents-research-data` for compatibility. Treat World Bank values as current-vintage only because its API cannot reconstruct historical revision lineage. Prices and indicators require a licensed host `SourcePort`; Reddit requires host-owned OAuth; neither is registered by default. StockTwits is denied and unregistered. Use lawful host sources for those gaps, and never silently substitute fixture or replay data for live retrieval.
 
 Build a decision-relevant source portfolio before synthesis. For a normal full-company run, attempt every applicable lane and record a coverage receipt even when a lane is unavailable:
 

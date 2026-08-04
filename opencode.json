@@ -1,0 +1,31 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "servers": {
+      "tradingagents-portable": {
+        "type": "local",
+        "command": [
+          "bash",
+          "scripts/run-stock-research-mcp"
+        ],
+        "cwd": ".",
+        "environment": {
+          "PYTHONDONTWRITEBYTECODE": "1",
+          "PYTHONUNBUFFERED": "1"
+        }
+      },
+      "tradingagents-research-data": {
+        "type": "local",
+        "command": [
+          "bash",
+          "scripts/run-stock-research-data-mcp"
+        ],
+        "cwd": ".",
+        "environment": {
+          "PYTHONDONTWRITEBYTECODE": "1",
+          "PYTHONUNBUFFERED": "1"
+        }
+      }
+    }
+  }
+}

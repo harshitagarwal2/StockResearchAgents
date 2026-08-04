@@ -191,8 +191,15 @@ async def smoke() -> None:
 
             conformance_response = await session.call_tool("get_conformance_report", arguments={"run_id": run_id})
             conformance = _payload(conformance_response)
-            assert conformance["ok"] is False
-            assert conformance["conformance"]["verified"] is False
+            assert conformance["ok"] is True
+            assert conformance["conformance"]["passed"] is True
+            assert conformance["conformance"]["verified"] is True
+            assert conformance["conformance"]["overall_status"] == "portable_conformant_upstream_unverified"
+            assert conformance["conformance"]["upstream_compatibility"] == {
+                "passed": False,
+                "verified": False,
+                "status": "skipped",
+            }
             assert not any(check["status"] == "failed" for check in conformance["conformance"]["checks"])
 
             view_response = await session.call_tool("get_run_view", arguments={"run_id": run_id})

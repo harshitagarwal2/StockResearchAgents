@@ -13,7 +13,8 @@
 
 ## Integrate a host
 
-1. [Integration](INTEGRATION.md) — Codex, MCP, Python, and generic harness modes.
+1. [Integration](INTEGRATION.md) — MCP, Python, generic harness modes, and the optional Codex adapter.
+2. [Harnesses](HOSTS.md) — PyPI, Git, GitHub Release, and host-specific MCP launch paths.
 2. [Contract guide](CONTRACTS.md) — request, plan, stage envelope, terminal submission, and completed projection.
 3. [Source portfolio](SOURCE_PORTFOLIO.md) — multi-source coverage, independence, deduplication, and expansion rules.
 4. [Research-data MCP](RESEARCH_DATA_MCP.md) — provider-neutral adapter contracts and missing live-tool proof.
@@ -29,10 +30,11 @@
 
 ## Review and release
 
-1. [Feature parity](FEATURE_PARITY.md) — implemented, host-dependent, and unverified behavior.
+1. [Capability and proof ledger](FEATURE_PARITY.md) — implemented, host-dependent, and unverified behavior.
 2. [Validation](VALIDATION.md) — executable proof and known gaps.
 3. [Legacy transition](LEGACY_TRANSITION.md) — removal gates, deprecation policy, and retained readers.
 4. [Contributing](../CONTRIBUTING.md) — safe change workflow and review expectations.
+5. [Releasing](RELEASING.md) — version checks, TestPyPI preflight, PyPI, GitHub Release, and MCP Registry flow.
 
 ## Document ownership rule
 

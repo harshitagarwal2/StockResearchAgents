@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Resolve the checkout ourselves: several MCP hosts do not define a server cwd.
+set -euo pipefail
+
+script_dir="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(cd -- "$script_dir/.." && pwd)"
+cd "$repo_root"
+
+# Do not write to stdout before the JSON-RPC server starts.
+exec uv run python -m tradingagents_portable.mcp_server

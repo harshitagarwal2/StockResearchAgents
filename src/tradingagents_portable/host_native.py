@@ -290,6 +290,7 @@ def _parse_debate(
     rounds: int,
     speakers: tuple[str, ...],
     evidence_ids: set[str],
+    opening_responds_to: str | None,
 ) -> tuple[DebateTurn, ...]:
     raw_items = _sequence(items, f"{debate}_debate")
     expected = rounds * len(speakers)
@@ -320,6 +321,18 @@ def _parse_debate(
         if missing:
             raise ValueError(f"{debate} debate references unknown evidence: {sorted(missing)}")
         responds_to = item.get("responds_to")
+        declared_response = (
+            _text(responds_to, f"{debate}_debate[{index}].responds_to") if responds_to is not None else None
+        )
+        expected_response = opening_responds_to if index == 0 else turns[-1].speaker
+        if declared_response != expected_response:
+            if expected_response is None:
+                raise ValueError(
+                    f"{debate}_debate[{index}] is the opening turn and must not respond to an unstated opponent"
+                )
+            raise ValueError(
+                f"{debate}_debate[{index}] must respond to the immediately preceding {expected_response} position"
+            )
         turns.append(
             DebateTurn(
                 debate=debate,  # type: ignore[arg-type]
@@ -327,9 +340,7 @@ def _parse_debate(
                 turn=index + 1,
                 speaker=speaker,
                 position=_text(item.get("position"), f"{debate}_debate[{index}].position"),
-                responds_to=_text(responds_to, f"{debate}_debate[{index}].responds_to")
-                if responds_to is not None
-                else None,
+                responds_to=declared_response,
                 evidence_ids=referenced,
             )
         )
@@ -620,6 +631,7 @@ def build_host_run(
         rounds=request.debate_rounds,
         speakers=_RESEARCH_SPEAKERS,
         evidence_ids=evidence_ids,
+        opening_responds_to=None,
     )
     risk_turns = _parse_debate(
         payload.get("risk_debate"),
@@ -627,6 +639,7 @@ def build_host_run(
         rounds=request.risk_rounds,
         speakers=_RISK_SPEAKERS,
         evidence_ids=evidence_ids,
+        opening_responds_to="Trader",
     )
 
     research_data = _mapping(payload.get("research_decision"), "research_decision")

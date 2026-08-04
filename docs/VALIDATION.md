@@ -26,7 +26,8 @@
 - [x] Non-redistributable sources are metadata/reference only and reject all extracts, including bounded extracts; recursive safety checks reject raw-source fields.
 - [x] `SourcePort.fetch(capability, typed_query)` conformance covers fixture, replay, and router adapters; typed queries reject explicit credentials and credential-bearing signed URLs before dispatch.
 - [x] `SourceBatch` v1 validates exact query/capability pairing, cutoff, typed status, provenance, entitlement, completeness, pagination, limitations, and deterministic normalized observations. `SourceObservation.content_sha256_scope` distinguishes source bytes, exact bounded extracts, and normalized source records while preserving the safe normalized-record adapter default.
-- [x] The isolated `tradingagents-research-data` default server registers exactly six conformance-receipted public tools: three SEC, two GDELT metadata/link, and one World Bank macro tool. The coordination MCP registers none of them.
+- [x] Completed compatibility reports emit an explicit retained-evidence provenance sidecar and a structured decision-consistency receipt. The receipt flags legitimate cross-stage rating/action divergence for review without interpreting free-form prose or adding execution authority.
+- [x] The isolated server launched by `stock-research-data-mcp` registers exactly six conformance-receipted public tools: three SEC, two GDELT metadata/link, and one World Bank macro tool. Its manifest key remains `tradingagents-research-data` for compatibility; the coordination MCP registers none of its tools.
 - [x] SEC company-fact observations have provider-order-independent IDs and a hard item cap that reports omitted matches as partial coverage; GDELT observations have canonical-URI deduplication, provider-order-independent IDs, explicit seen-time semantics, and partial coverage at the result cap.
 - [x] Prices and indicators remain unregistered without a licensed host `SourcePort`; Reddit remains unregistered without host OAuth; StockTwits is denied and unregistered.
 
@@ -47,6 +48,7 @@
 - [x] The conformance engine recomputes bounded deterministic formulas, requires all declared metrics/constants, validates formula shape against the typed operation, applies rounding and absolute tolerance, and rejects tampered calculation, valuation, and sensitivity outputs.
 - [x] Peer records require inclusion rationale and normalization methodology.
 - [x] Debate turns require claim links; rebuttals must target an earlier turn in the same debate; concessions and unresolved items must be unique and disjoint.
+- [x] Compatibility imports reject a research opener that responds to an unstated opponent and require every later debate turn to identify the immediately preceding position; the opening risk turn is explicitly anchored to the trader proposal.
 - [x] Supersession links reject missing, self-referential, and cyclic targets.
 - [x] Portfolio fields require an explicit non-execution boundary and reject private account/customer identity.
 - [x] Credential-shaped keys are rejected recursively.
@@ -75,6 +77,7 @@
 - [x] Completed CLI and MCP responses carry a versioned presentation receipt; spawned-process tests prove one private loopback daemon is reused for multiple companies, observes later atomic publications and quality outcomes, survives the short-lived CLI command, recovers from killed or incompatible generations, and leaves publication-pending results hidden.
 - [x] Detached-viewer tests prove per-daemon capability authentication, hostile Host/Origin rejection, restrictive browser headers, private registry permissions, startup diagnostics, headless no-spawn behavior, and per-call MCP presentation policy.
 - [x] Documentation checks validate relative links, required canonical documents, Mermaid source/SVG pairs, poster HTML/PNG pairs, PNG dimensions, and SVG parseability.
+- [x] Test startup assigns an isolated temporary `STOCKRESEARCHAGENTS_STATE_DIR` when the caller does not provide one, so offline verification does not write to a developer's normal state directory.
 - [x] JSON metadata tests parse `.codex-plugin/plugin.json`, `.mcp.json`, workflow manifests, and terminal schemas.
 
 ## Legacy transition proof
@@ -85,6 +88,7 @@
 - [ ] The line-item parity ledger covers every whitelisted observable and the pure-semantic probe passes, but fresh release commit/date/sign-off evidence is still absent.
 - [ ] Concrete provider-neutral research-data MCP adapters are registered and conformant for every required category. Six public categories pass locally, but licensed prices/indicators and lawful social-provider coverage remain open.
 - [x] CI checks out the exact upstream pin and runs a credential-free pure-semantic comparison of scoped observable contracts. This is not an LLM/provider graph dual-run.
+- [x] Portable conformance reports portable pass/verification independently and records missing, matching, or mismatched upstream identity under a separate compatibility status.
 - [ ] A representative live and failure symbol matrix has recorded, reproducible evidence.
 - [x] Python, CLI, MCP, export/reload, dashboard, and RunView return the same canonical completed-run semantic projection and digest; the projection content-addresses every terminal artifact, evidence item, report section, and complete terminal research payload.
 - [x] Complete retained historical-schema `2026-08-02` result/event goldens exercise strict migration plus copy-on-write store/export/memory receipts. These fixtures are not provenance-backed public-release artifacts.

@@ -1,6 +1,6 @@
 {
   "name": "tradingagents-portable",
-  "version": "0.1.0+codex.20260804093215",
+  "version": "0.1.0",
   "description": "Run StockResearchAgents through any host and inspect the completed, auditable company dossier.",
   "author": {
     "name": "StockResearchAgents contributors"

@@ -11,6 +11,8 @@ jobs:
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      STOCKRESEARCHAGENTS_STATE_DIR: ${{ runner.temp }}/stock-research-agents-state
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -25,8 +27,16 @@ jobs:
         run: ruff format --check .
       - name: Browser JavaScript
         run: node --check src/tradingagents_portable/web/app.js
+      - name: Compile Python
+        run: python -m compileall -q src tests
+      - name: Documentation
+        run: python scripts/check_docs.py
+      - name: Upstream pin consistency
+        run: python scripts/upstream_pin.py --check
       - name: Tests
         run: pytest -q
+      - name: Legacy transition remains blocked
+        run: python scripts/verify_legacy_removal.py --expect-blocked
       - name: Backend smoke
         run: python scripts/smoke_backend.py
       - name: MCP smoke
@@ -37,6 +47,8 @@ jobs:
   upstream-semantic-differential:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      STOCKRESEARCHAGENTS_STATE_DIR: ${{ runner.temp }}/stock-research-agents-upstream-state
     steps:
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4

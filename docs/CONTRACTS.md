@@ -34,7 +34,7 @@ Start with `examples/company-request.v3.json`.
 
 `analytics-plan` and `prepare_company_analytics` return the versioned execution policy plus 26 ordered stage roles, objectives, completion criteria, dependencies, capability IDs, output references, research pack, routing semantics, sequential fallback, and a self-contained bundled v4 JSON Schema with typed analytics records. Exact host prompts, concrete providers, and model names are absent. Strict Python models remain authoritative for cross-field semantics that JSON Schema cannot fully express.
 
-The `research-data-tools.v1` manifest is authoritative for the implemented SourceBatch v1 capability matrix. It records six default public tools on the isolated `tradingagents-research-data` server, host-gated prices/indicators/Reddit, and denied-unregistered StockTwits. None of these tools is registered on the coordination MCP. The separate `legacy-transition.v1` manifest remains authoritative for the blocked executor-removal gates; partial research-data coverage does not make removal eligible.
+The `research-data-tools.v1` manifest is authoritative for the implemented SourceBatch v1 capability matrix. It records six default public tools on the isolated server launched by `stock-research-data-mcp`, host-gated prices/indicators/Reddit, and denied-unregistered StockTwits; `tradingagents-research-data` remains the manifest compatibility key. None of these tools is registered on the coordination MCP. The separate `legacy-transition.v1` manifest remains authoritative for the blocked executor-removal gates; partial research-data coverage does not make removal eligible.
 
 ## Host-owned intermediate state
 
@@ -88,6 +88,13 @@ The v3 and analytics profiles use profile-driven coordinators: v3 covers its 15 
 ## Completed projection
 
 Successful finalization atomically publishes the canonical `RunResult`, its events, reports, and embedded authoritative artifacts. Other indexes are hidden until their publish step and recoverable from canonical completed artifacts; no cross-store distributed transaction is claimed. `RunView` is a completed read model. The browser and report aliases render it without interpreting or recalculating dossier content.
+
+Every completed compatibility report also carries two derived, non-authoritative audit sidecars:
+
+- `report.provenance` lists the evidence retained by each analyst, its supplied source-date and retrieval-time ranges, and source references. It explicitly says that it is **not** a full host tool-call ledger or a claim about every retrieval attempt.
+- `analysis.decision_consistency` compares only canonical structured research, trader, portfolio, and processed-signal fields. A divergence is marked `review_required`, not rewritten or rejected: a later risk/portfolio stage may legitimately change the analytical stance. The receipt never parses free-form model prose or grants execution authority.
+
+The compatibility debate importer likewise preserves a single ordered response chain. The opening research turn may not claim to rebut an unstated opponent; the opening risk turn explicitly responds to the trader proposal, and later turns identify the immediately preceding speaker. This prevents a host from presenting a fabricated debate lineage as completed evidence.
 
 ## Contract evolution
 

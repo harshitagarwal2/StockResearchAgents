@@ -12,6 +12,7 @@ from tradingagents_portable.dashboard import create_dashboard_server
 from tradingagents_portable.fixture import run_fixture
 from tradingagents_portable.legacy import LegacyTradingAgentsAdapter
 from tradingagents_portable.projection import LegacyStateProjector
+from tradingagents_portable.reporting import build_report_artifacts
 from tradingagents_portable.store import RunStore
 from tradingagents_portable.view import build_run_view
 
@@ -21,6 +22,8 @@ EXPECTED_FIXTURE_ARTIFACTS = {
     "report.group.3.trading",
     "report.group.4.risk",
     "report.group.5.portfolio",
+    "report.provenance",
+    "analysis.decision_consistency",
     "report.complete",
     "data.run_result",
     "data.run_events",
@@ -75,11 +78,38 @@ def test_fixture_report_bundle_matches_all_five_cli_groups() -> None:
     ]
     complete = next(artifact for artifact in result.artifacts if artifact.id == "report.complete")
     assert all(artifact.title in complete.content for artifact in groups)
+    assert "## Retained evidence provenance" in complete.content
+    assert "## Decision consistency" in complete.content
+    provenance = next(artifact for artifact in result.artifacts if artifact.id == "report.provenance")
+    assert provenance.content["basis"] == "retained_evidence_only"
+    assert provenance.content["host_tool_call_ledger_available"] is False
+    assert provenance.content["analysts"][0]["analyst"] == "market"
+    consistency = next(artifact for artifact in result.artifacts if artifact.id == "analysis.decision_consistency")
+    assert consistency.content["review_required"] is False
+    assert consistency.content["non_executable"] is True
     assert all(
         artifact.content["disk_write_declared"] is False
         for artifact in result.artifacts
         if artifact.id in {"data.run_result", "data.run_events"}
     )
+
+
+def test_decision_consistency_receipt_surfaces_structured_divergence_without_rewriting_it() -> None:
+    result, _ = run_fixture(RunRequest(), RunStore())
+    divergent = replace(
+        result,
+        portfolio_decision=replace(result.portfolio_decision, rating="sell"),
+        processed_signal="SELL",
+    )
+
+    receipt = next(
+        artifact for artifact in build_report_artifacts(divergent) if artifact.id == "analysis.decision_consistency"
+    )
+
+    assert receipt.content["review_required"] is True
+    assert receipt.content["portfolio_rating"] == "sell"
+    assert receipt.content["expected_trader_action_from_portfolio_rating"] == "sell"
+    assert len(receipt.content["review_reasons"]) == 2
 
 
 def test_run_view_is_lossless_and_keeps_decision_and_signal_separate() -> None:
@@ -265,6 +295,33 @@ def test_run_view_orders_retrieval_freshness_by_instant_across_offsets() -> None
 
     assert view["intelligence"]["freshness"]["oldest_retrieved_at"] == "2026-07-03T00:30:00+02:00"
     assert view["intelligence"]["freshness"]["latest_retrieved_at"] == "2026-07-02T23:00:00+00:00"
+
+
+def test_report_provenance_orders_retrieval_ranges_by_instant_across_offsets() -> None:
+    result, _events = run_fixture(RunRequest(), RunStore())
+    earlier = replace(
+        result.evidence[0],
+        provenance=replace(result.evidence[0].provenance, retrieved_at="2026-07-03T00:30:00+02:00"),
+    )
+    later = replace(
+        result.evidence[1],
+        provenance=replace(result.evidence[1].provenance, retrieved_at="2026-07-02T23:00:00+00:00"),
+    )
+    first_report = replace(result.analyst_reports[0], evidence_ids=(earlier.id, later.id))
+    provenance_result = replace(
+        result,
+        evidence=(earlier, later, *result.evidence[2:]),
+        analyst_reports=(first_report, *result.analyst_reports[1:]),
+    )
+    artifacts = build_report_artifacts(provenance_result)
+    provenance = next(artifact for artifact in artifacts if artifact.id == "report.provenance")
+    retrieval_range = provenance.content["analysts"][0]["retained_retrieval_time_range"]
+
+    assert retrieval_range == {
+        "count": 2,
+        "earliest": "2026-07-03T00:30:00+02:00",
+        "latest": "2026-07-02T23:00:00+00:00",
+    }
 
 
 def test_run_view_filters_credentialed_and_reserved_article_urls() -> None:

@@ -9,26 +9,26 @@
 
 ```mermaid
 flowchart LR
-  F[financial-research.v1] --> H2[host-submission.v2]
-  F --> L[run-lifecycle.v1]
-  C2[company-research.v2] --> H3[host-submission.v3]
-  H3 --> D3[research_dossier.v3]
-  C2 --> CC[CompanyResearchCoordinator]
   A1[company-analytics.v1] --> H4[host-submission.v4]
   H4 --> H3
   H4 --> S[analytics and quality sidecars]
+  C2[company-research.v2] --> H3[host-submission.v3]
+  H3 --> D3[research_dossier.v3]
+  C2 --> CC[CompanyResearchCoordinator]
+  F[financial-research.v1 compatibility] --> H2[host-submission.v2]
+  F --> L[run-lifecycle.v1]
 ```
 
 | Profile or artifact | Status | Human-facing name |
 | --- | --- | --- |
-| `financial-research.v1` | Preserved reader and currently available executor | TradingAgents Compatibility Workflow |
-| `host-submission.v2` | Frozen | Compatibility terminal format |
-| `run-lifecycle.v1` | Preserved | Compatibility lifecycle protocol |
+| `company-analytics.v1` | Implemented, primary | Company Analytics |
+| `host-submission.v4` | Implemented wrapper | Completed dossier plus analytics and quality sidecars |
 | `company-research.v2` | Implemented | Evidence-First Company Research |
 | `host-submission.v3` | Frozen | Completed Dossier terminal format |
 | `research_dossier.v3` | Frozen | Completed Research Dossier |
-| `company-analytics.v1` | Implemented, primary | Company Analytics |
-| `host-submission.v4` | Implemented wrapper | Completed dossier plus analytics and quality sidecars |
+| `financial-research.v1` | Preserved compatibility reader and currently available optional executor | Legacy TradingAgents Compatibility Workflow |
+| `host-submission.v2` | Frozen | Compatibility terminal format |
+| `run-lifecycle.v1` | Preserved | Compatibility lifecycle protocol |
 
 ## Rules
 
@@ -45,11 +45,11 @@ flowchart LR
 
 ## StockResearchAgents brand migration
 
-`StockResearchAgents` is the preferred public repository, UI, documentation, and CLI brand. The rename is deliberately layered because install names, Python imports, state paths, schema IDs, workflow digests, and saved artifacts have different compatibility lifecycles.
+`StockResearchAgents` is the public product name across the repository, UI, documentation, plugin display, and human-facing commands. The migration is deliberately layered because install names, Python imports, state paths, schema IDs, workflow digests, and saved artifacts have different compatibility lifecycles. Retained `tradingagents-*` identifiers are compatibility machinery, not a statement that this project is a fork or an upstream-owned runtime.
 
 | Surface | Preferred | Retained compatibility identity |
 | --- | --- | --- |
-| Repository and UI | `StockResearchAgents` | Historical release prose may name TradingAgents Portable |
+| Repository and UI | `StockResearchAgents` | Historical release metadata may retain TradingAgents Portable |
 | CLI | `stock-research-agents`, `stock-research-agents-mcp`, `stock-research-data-mcp` | All `tradingagents-portable*` and `tradingagents-research-data-mcp` scripts |
 | Optional upstream MCP | No new branded alias while the transition inventory is frozen | `tradingagents-portable-legacy-mcp` |
 | Codex display | `StockResearchAgents` | Plugin and skill machine identity `tradingagents-portable` during the compatibility release |
