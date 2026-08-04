@@ -4,6 +4,12 @@ Evidence-first company research that preserves what was known, why a conclusion 
 
 > **Prototype research only. Not financial advice.** StockResearchAgents has no broker integration and cannot submit, modify, approve, cancel, or fill an order.
 
+## Relationship to TradingAgents
+
+StockResearchAgents is an independent, harness-neutral approach inspired by the specialized research roles, adversarial discussion, and risk-review ideas introduced by [TradingAgents](https://github.com/TauricResearch/TradingAgents). The foundational reference is [*TradingAgents: Multi-Agents LLM Financial Trading Framework* (Xiao, Sun, Luo, and Wang, arXiv:2412.20138)](https://arxiv.org/abs/2412.20138).
+
+It is **not a fork or replacement** for TradingAgents. TradingAgents is a LangGraph-based multi-agent trading framework; StockResearchAgents keeps the research workflow portable across Codex, other agent harnesses, and custom applications. The host chooses its models, prompts, tools, credentials, and agent-scheduling mechanics. This repository supplies the versioned research contracts, deterministic validation and analytics, durable lifecycle, and completed-only presentation. An optional pinned upstream adapter exists only for compatibility and conformance—not as the portable core.
+
 [![StockResearchAgents system overview: host-owned research flows through the evidence-first portable core into a completed research dossier and read-only viewer](assets/architecture/system-overview.png)](assets/architecture/system-overview.png)
 
 [Open the full-resolution system overview.](assets/architecture/system-overview.png)
@@ -138,7 +144,7 @@ This path may require provider credentials owned by the upstream runtime. Import
 
 The host-native core is the target architecture, but the legacy executor is currently available and **not yet deprecated**. Removal remains blocked until complete research-data category coverage (including licensed market data and lawful social sources), scoped upstream dual-run conformance, representative live/failure coverage, full surface equivalence, saved-result migrations, and one published deprecation release are verified. Frozen readers and historical results remain supported after any later-major executor removal. See [Legacy transition](docs/LEGACY_TRANSITION.md) and [Research-data MCP](docs/RESEARCH_DATA_MCP.md).
 
-The architecture direction is being discussed upstream in [TradingAgents RFC #1198](https://github.com/TauricResearch/TradingAgents/issues/1198). This independent implementation lives at [harshitagarwal2/StockResearchAgents](https://github.com/harshitagarwal2/StockResearchAgents). Upstream remains intact and pinned as a conformance oracle; its LangGraph runtime is not copied into the portable core.
+The architecture direction is being discussed upstream in [TradingAgents RFC #1198](https://github.com/TauricResearch/TradingAgents/issues/1198). This independent implementation lives at [harshitagarwal2/StockResearchAgents](https://github.com/harshitagarwal2/StockResearchAgents). Upstream remains intact and pinned as a conformance oracle; its LangGraph runtime and workflow business logic are not copied into the portable core.
 
 ## Current proof boundary
 
