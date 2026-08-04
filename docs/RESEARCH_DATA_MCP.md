@@ -7,11 +7,11 @@
 
 ## Current status
 
-`stock-research-data-mcp` launches the separate, read-only research-data server. Its default `PublicResearchDataAdapter` registers six conformance-receipted tools: SEC regulatory filings, fundamentals, and financial statements; GDELT company and global news discovery metadata plus publisher links; and World Bank macro observations. The coordination server remains unchanged and registers none of these tools. The manifest key `tradingagents-research-data` is retained only for compatibility with existing harness configurations.
+`stock-research-data-mcp` launches the separate, read-only research-data server. Its default `PublicResearchDataAdapter` registers seven conformance-receipted tools: SEC regulatory filings, fundamentals, and financial statements; GDELT company and global news discovery metadata plus publisher links; World Bank macro observations; and credential-free `prediction_markets` search through Polymarket Gamma. The coordination server remains unchanged and registers none of these tools. The manifest key `tradingagents-research-data` is retained only for compatibility with existing harness configurations.
 
 The implemented status and exact default exposure are machine-readable in [research-data-tools.v1.json](../src/tradingagents_portable/workflow/research-data-tools.v1.json). `SourceBatch` v1 is implemented and validated for every response. Registration remains conformance-receipt gated: a tool is discoverable only when the configured adapter has a matching receipt.
 
-This is partial live coverage, not full tools-only company research. Prices and indicators require an entitled host `SourcePort`; Reddit requires host-owned OAuth; neither is registered by default. StockTwits fails closed as denied and is unregistered. Market-data and social/provider gaps therefore remain removal blockers. The cross-provider collection policy is defined in [Source portfolio](SOURCE_PORTFOLIO.md).
+This is partial live coverage, not full tools-only company research. Prices and indicators require an entitled host `SourcePort`; Yahoo Finance/`yfinance` remains an explicit host-owned, terms-compatible route rather than a credential-free default. Reddit requires approved host-owned OAuth. StockTwits fails closed as denied and is unregistered. FRED and Alpha Vantage are not default providers. The prediction-market tool does not solve these market-data or social/provider gaps, which remain removal blockers. The cross-provider collection policy is defined in [Source portfolio](SOURCE_PORTFOLIO.md).
 
 Hosts that configure more than one provider for a capability should use the additive `SourcePortfolioCollector`. It attempts every explicit route and emits a deterministic `SourcePortfolioReceipt` while preserving one `SourceBatch` per provider and entitlement. Existing MCP tools continue to return one `SourceBatch`; a future additive portfolio tool may expose the full receipt without changing those wire contracts. The collector is orchestration and auditability, not a provider or an authorization mechanism.
 
@@ -47,8 +47,11 @@ portable workflow and evidence contracts
 | `research_data_get_company_news` | Yes | GDELT DOC 2.0 | Discovery metadata and publisher links; `seendate` is a seen-time proxy, not asserted publication time; no article bodies |
 | `research_data_get_global_news` | Yes | GDELT DOC 2.0 | Discovery metadata and publisher links; `seendate` is a seen-time proxy, not asserted publication time; no article bodies |
 | `research_data_get_macro` | Yes | World Bank API v2 | Current-vintage observations; no historical revision lineage |
+| `research_data_get_prediction_markets` | Yes | Polymarket Gamma | Public search/read-only market metadata; current market-implied probabilities only, with no historical snapshot reconstruction |
 | `research_data_get_stocktwits` | No | Denied | Approved API access is not configured |
 | `research_data_get_reddit` | No | Host OAuth `SourcePort` | Bounded sample only after host OAuth and conformance receipt |
+
+The Polymarket adapter uses Gamma public search only. It exposes no wallet, CLOB, order, position, or trading endpoints. Use it only when a prediction market is relevant to a research decision, and treat returned probabilities as market-implied observations—not truth, forecasts, or executable signals. Because current Gamma search does not reconstruct historical market state, it cannot establish an as-of probability snapshot for a historical replay.
 
 Company investor-relations and verified-market-snapshot adapters may be added as separately versioned capabilities. Provider-specific names remain outside the portable workflow. Issuer pages or publisher documents must be opened through a host-owned restricted document port using an opaque reference from prior discovery; the public MCP must not become an arbitrary-URL fetcher.
 

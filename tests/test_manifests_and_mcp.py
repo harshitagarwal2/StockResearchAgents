@@ -35,7 +35,25 @@ def test_plugin_manifest_and_skill_are_complete() -> None:
     assert "source_batch_ids" in skill
     assert "Reddit must use host-owned approved OAuth access" in skill
     assert "Yahoo Finance" in skill
+    assert "Polymarket Gamma" in skill
+    assert "research_data_get_prediction_markets" in skill
+    assert "no wallet, CLOB, order, position, or trading endpoint" in skill
+    assert "not truth, forecasts, or executable signals" in skill
     assert "must never place" in skill
+
+    research_manifest = json.loads(
+        (ROOT / "src" / "tradingagents_portable" / "workflow" / "research-data-tools.v1.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    prediction_markets = next(tool for tool in research_manifest["tools"] if tool["capability"] == "prediction_markets")
+    assert prediction_markets["mcp_name"] == "research_data_get_prediction_markets"
+    assert prediction_markets["provider"] == "Polymarket Gamma"
+    assert prediction_markets["implementation_status"] == "implemented_public_default"
+    assert prediction_markets["default_exposed"] is True
+    assert prediction_markets["response"]["item_semantics"] == (
+        "normalized_non_executable_prediction_market_probability_snapshot"
+    )
 
 
 def test_mcp_manifest_has_exact_local_stdio_launch_command() -> None:
@@ -168,6 +186,7 @@ def test_isolated_research_data_mcp_registers_only_receipted_public_tools() -> N
         "research_data_get_company_news",
         "research_data_get_global_news",
         "research_data_get_macro",
+        "research_data_get_prediction_markets",
     }
     assert not {"research_data_get_prices", "research_data_get_indicators", "research_data_get_reddit"}.intersection(
         registered

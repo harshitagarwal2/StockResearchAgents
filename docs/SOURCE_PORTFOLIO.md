@@ -55,13 +55,16 @@ Headline similarity, event similarity, or shared entities may cluster near dupli
 
 ## Current default adapters
 
-The credential-free research-data MCP currently exposes six conformance-receipted public tools:
+The credential-free research-data MCP currently exposes seven conformance-receipted public tools:
 
 - SEC EDGAR regulatory filings, company facts, and statement facts;
-- GDELT company and global news discovery metadata with publisher links; and
-- World Bank current-vintage macro observations.
+- GDELT company and global news discovery metadata with publisher links;
+- World Bank current-vintage macro observations; and
+- Polymarket Gamma public search/read-only metadata for `prediction_markets`.
 
-Prices and indicators require an injected entitled host source. Reddit requires host-owned OAuth. StockTwits remains denied and unregistered. Licensed research services, including Seeking Alpha, may be used only through lawful host access with explicit processing and redistribution rights.
+Use Polymarket only when a prediction market is decision-relevant. Its probabilities are current market-implied observations, not truth, forecasts, or executable signals. Gamma search cannot reconstruct a historical snapshot, and the adapter exposes no wallet, CLOB, order, position, or trading endpoints.
+
+Prices and indicators require an injected entitled host source; Yahoo Finance/`yfinance` remains host-owned and terms-compatible rather than a default. Reddit requires approved host-owned OAuth. StockTwits remains denied and unregistered. FRED and Alpha Vantage are not default providers. Licensed research services, including Seeking Alpha, may be used only through lawful host access with explicit processing and redistribution rights. The Polymarket adapter does not close the licensed market-data or lawful social-provider gaps.
 
 ## Host portfolio collection
 
@@ -69,7 +72,7 @@ Prices and indicators require an injected entitled host source. Reddit requires 
 
 The versioned `SourcePortfolioReceipt` records every configured route attempt, sanitized failures, retained batch identities, exact duplicate clusters, provider families, coverage status, and explicit gaps. Route IDs are host-configured identities, while provider claims remain in each batch's provenance. The receipt exposes unique route-qualified `source_batch_ids` for the run card even when two routes return byte-identical batches. Exact deduplication is referential: matching observations remain in their original batches, while the receipt names a deterministic representative. Matching precedence is same-scope content digest, canonical URI, then provider-family/native identity.
 
-This collector does not make a provider available by itself. The credential-free MCP default remains SEC, GDELT, and World Bank. Reddit, entitled market data, issuer publications, document opening, and other sources still require separately conformant host adapters. The receipt can populate the existing run-card batch IDs and source-lineage bindings; publishing the complete attempt/dedup receipt as a terminal portable artifact remains a versioned contract follow-up.
+This collector does not make a provider available by itself. The credential-free MCP default remains SEC, GDELT, World Bank, and Polymarket Gamma. Reddit, entitled market data, issuer publications, document opening, and other sources still require separately conformant host adapters. The receipt can populate the existing run-card batch IDs and source-lineage bindings; publishing the complete attempt/dedup receipt as a terminal portable artifact remains a versioned contract follow-up.
 
 ## Expansion order
 

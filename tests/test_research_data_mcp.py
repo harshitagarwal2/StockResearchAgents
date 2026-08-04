@@ -14,6 +14,7 @@ from tradingagents_host.contracts import (
     GlobalNewsQuery,
     IndicatorsQuery,
     MacroQuery,
+    PredictionMarketsQuery,
     PricesQuery,
     RedditQuery,
     RegulatoryFilingsQuery,
@@ -31,6 +32,7 @@ from tradingagents_host.research_data_mcp import (
     TOOL_NAMES,
     AdapterConformanceReceipt,
     ResearchDataService,
+    create_default_server,
     create_server,
 )
 
@@ -105,6 +107,12 @@ def test_all_manifest_queries_are_exact_typed_round_trips() -> None:
             "2024-01-01T00:00:00+00:00",
             "2025-12-31T00:00:00+00:00",
             "2026-08-04T23:59:59+00:00",
+        ),
+        PredictionMarketsQuery(
+            "q-prediction-markets",
+            ("Oracle earnings", "database demand"),
+            "2026-08-01T23:59:59+00:00",
+            10,
         ),
         StockTwitsQuery("q-stocktwits", "ORCL", "2026-07-28T00:00:00+00:00", "2026-08-01T00:00:00+00:00", 30),
         RedditQuery("q-reddit", "ORCL", "2026-07-28T00:00:00+00:00", "2026-08-01T00:00:00+00:00", 30),
@@ -781,7 +789,7 @@ def test_default_transport_has_bounded_retry_and_configurable_operator_identity(
         def __exit__(self, *args: object) -> None:
             return None
 
-        def read(self) -> bytes:
+        def read(self, _amount: int) -> bytes:
             return b"{}"
 
     def fake_urlopen(request: object, timeout: int) -> Response:
@@ -982,6 +990,26 @@ def test_mcp_registration_requires_matching_source_batch_v1_receipt() -> None:
         AdapterConformanceReceipt("bad", "PublicResearchDataAdapter", "2.0.0", ("macro",))
 
 
+def test_default_server_exposes_exact_public_read_only_tool_set() -> None:
+    tools = {tool.name: tool for tool in create_default_server()._tool_manager.list_tools()}
+    expected = {
+        "research_data_get_regulatory_filings",
+        "research_data_get_fundamentals",
+        "research_data_get_financial_statements",
+        "research_data_get_company_news",
+        "research_data_get_global_news",
+        "research_data_get_macro",
+        "research_data_get_prediction_markets",
+    }
+
+    assert len(tools) == 7
+    assert set(tools) == expected
+    for tool in tools.values():
+        assert tool.annotations is not None
+        assert tool.annotations.read_only_hint is True
+        assert tool.annotations.destructive_hint is False
+
+
 def test_conformant_host_can_register_all_exact_manifest_tool_schemas() -> None:
     adapter = _adapter({})
     receipt = AdapterConformanceReceipt(
@@ -1000,6 +1028,7 @@ def test_conformant_host_can_register_all_exact_manifest_tool_schemas() -> None:
         "company_news": ["symbol", "published_after", "published_before", "max_items"],
         "global_news": ["topics", "published_after", "published_before", "max_items"],
         "macro": ["series", "regions", "start_time", "end_time", "vintage_as_of"],
+        "prediction_markets": ["search_terms", "as_of", "max_items"],
         "stocktwits": ["symbol", "start_time", "end_time", "max_items"],
         "reddit": ["symbol", "start_time", "end_time", "max_items"],
     }
@@ -1029,3 +1058,39 @@ def test_mcp_and_direct_python_share_the_same_canonical_response() -> None:
     assert via_mcp_function == direct
     assert set(tool.parameters["properties"]) == set(fields)
     assert not {"api_key", "token", "authorization", "password"}.intersection(tool.parameters["properties"])
+
+
+def test_prediction_markets_query_shape_and_direct_mcp_parity_are_safe() -> None:
+    adapter = _adapter({"public-search": HTTPResponse(200, {"events": []})})
+    service = ResearchDataService(adapter)
+    server = create_server(adapter, (PUBLIC_ADAPTER_RECEIPT,))
+    fields: dict[str, object] = {
+        "search_terms": ["Oracle earnings", "database demand"],
+        "as_of": "2026-08-01T23:59:59+00:00",
+        "max_items": 10,
+    }
+    tool = next(
+        tool for tool in server._tool_manager.list_tools() if tool.name == "research_data_get_prediction_markets"
+    )
+
+    direct = service.execute("prediction_markets", fields)
+    via_mcp_function = tool.fn(**fields)
+
+    assert tool.name == "research_data_get_prediction_markets"
+    assert tool.parameters["required"] == ["search_terms", "as_of", "max_items"]
+    assert list(tool.parameters["properties"]) == ["search_terms", "as_of", "max_items"]
+    assert direct == via_mcp_function
+    assert direct["query"]["search_terms"] == fields["search_terms"]  # type: ignore[index]
+    prohibited = {
+        "api_key",
+        "token",
+        "authorization",
+        "password",
+        "buy",
+        "sell",
+        "order",
+        "trade",
+        "execute",
+    }
+    assert not prohibited.intersection(tool.parameters["properties"])
+    assert not prohibited.intersection(direct)
