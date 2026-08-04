@@ -63,6 +63,14 @@ The credential-free research-data MCP currently exposes six conformance-receipte
 
 Prices and indicators require an injected entitled host source. Reddit requires host-owned OAuth. StockTwits remains denied and unregistered. Licensed research services, including Seeking Alpha, may be used only through lawful host access with explicit processing and redistribution rights.
 
+## Host portfolio collection
+
+`SourcePortfolioCollector` is the additive host orchestration surface for source breadth. A host registers explicit provider routes for a capability and the collector attempts every configured route instead of stopping after the first success. Each provider response remains an unchanged `SourceBatch` with its own provenance and entitlement; the collector never flattens differently licensed providers into one batch.
+
+The versioned `SourcePortfolioReceipt` records every configured route attempt, sanitized failures, retained batch identities, exact duplicate clusters, provider families, coverage status, and explicit gaps. Route IDs are host-configured identities, while provider claims remain in each batch's provenance. The receipt exposes unique route-qualified `source_batch_ids` for the run card even when two routes return byte-identical batches. Exact deduplication is referential: matching observations remain in their original batches, while the receipt names a deterministic representative. Matching precedence is same-scope content digest, canonical URI, then provider-family/native identity.
+
+This collector does not make a provider available by itself. The credential-free MCP default remains SEC, GDELT, and World Bank. Reddit, entitled market data, issuer publications, document opening, and other sources still require separately conformant host adapters. The receipt can populate the existing run-card batch IDs and source-lineage bindings; publishing the complete attempt/dedup receipt as a terminal portable artifact remains a versioned contract follow-up.
+
 ## Expansion order
 
 1. Correct identity, bounds, timestamps, completeness, and dedup semantics in existing SEC and GDELT adapters.
@@ -70,7 +78,7 @@ Prices and indicators require an injected entitled host source. Reddit requires 
 3. Add an optional host-owned public-document opener restricted to opaque references from prior discovery batches, with strict domain, redirect, MIME, size, robots, and entitlement policy.
 4. Add official macro providers independently, each with its own vintage and conformance semantics; never silently merge them into one provenance record.
 5. Add licensed market, consensus, transcript, positioning, and social adapters only with host-owned credentials and adapter receipts.
-6. Add a source-portfolio receipt that records every attempted batch, coverage result, dedup decision, gap, and retained observation, then bind it to the run card and source-lineage crosswalk.
+6. Publish the implemented host source-portfolio receipt as a versioned terminal artifact and bind its attempted batches, retained observations, coverage, dedup decisions, and gaps to the run card and source-lineage crosswalk.
 
 ## Completion rule
 

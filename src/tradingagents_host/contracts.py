@@ -826,6 +826,13 @@ class SourceBatch:
         )
         provenance_retrieved = _timestamp(self.provenance.retrieved_at, "provenance.retrieved_at")
         for observation in self.items:
+            if (
+                observation.provider != self.provenance.provider
+                or observation.provider_version != self.provenance.provider_version
+            ):
+                raise ValueError("source observation provider must match the batch provenance")
+            if observation.license_receipt_id != self.entitlement.license_receipt_id:
+                raise ValueError("source observation license receipt must match the batch entitlement receipt")
             if _timestamp(observation.available_at, "available_at") > cutoff:
                 raise ValueError("source observation was unavailable at the requested cutoff")
             if _timestamp(observation.retrieved_at, "retrieved_at") > provenance_retrieved:
