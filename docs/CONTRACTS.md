@@ -34,7 +34,7 @@ Start with `examples/company-request.v3.json`.
 
 `analytics-plan` and `prepare_company_analytics` return the versioned execution policy plus 26 ordered stage roles, objectives, completion criteria, dependencies, capability IDs, output references, research pack, routing semantics, sequential fallback, and a self-contained bundled v4 JSON Schema with typed analytics records. Exact host prompts, concrete providers, and model names are absent. Strict Python models remain authoritative for cross-field semantics that JSON Schema cannot fully express.
 
-The `research-data-tools.v1` manifest is authoritative for the implemented SourceBatch v1 capability matrix. It records six default public tools on the isolated `tradingagents-research-data` server, host-gated prices/indicators/Reddit, and denied-unregistered StockTwits. None of these tools is registered on the coordination MCP. The separate `legacy-transition.v1` manifest remains authoritative for the blocked executor-removal gates; partial research-data coverage does not make removal eligible.
+The `research-data-tools.v1` manifest is authoritative for the implemented SourceBatch v1 capability matrix. It records six default public tools on the isolated server launched by `stock-research-data-mcp`, host-gated prices/indicators/Reddit, and denied-unregistered StockTwits; `tradingagents-research-data` remains the manifest compatibility key. None of these tools is registered on the coordination MCP. The separate `legacy-transition.v1` manifest remains authoritative for the blocked executor-removal gates; partial research-data coverage does not make removal eligible.
 
 ## Host-owned intermediate state
 

@@ -24,6 +24,7 @@ from tradingagents_host.contracts import (
     validate_source_response,
 )
 from tradingagents_host.ports import SourcePort
+from tradingagents_portable._version import __version__
 
 try:
     from mcp.server import MCPServer
@@ -122,7 +123,7 @@ def create_server(
 ) -> MCPServer:
     server = MCPServer(
         "StockResearchAgents Research Data",
-        version="0.1.0",
+        version=__version__,
         instructions="Read-only bounded research data. Authentication and provider selection remain host-owned.",
     )
     service = ResearchDataService(adapter)

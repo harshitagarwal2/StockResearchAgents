@@ -4,13 +4,28 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tradingagents-portable"
-version = "0.1.0"
+dynamic = ["version"]
 description = "StockResearchAgents: harness-neutral, evidence-first company research with a completed-only dossier viewer"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "Apache-2.0"
 authors = [{name = "StockResearchAgents contributors"}]
+keywords = ["agent", "company-research", "evidence", "mcp", "model-context-protocol", "research"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
 dependencies = ["mcp>=2.0,<3"]
+
+[project.urls]
+Homepage = "https://github.com/harshitagarwal2/StockResearchAgents"
+Repository = "https://github.com/harshitagarwal2/StockResearchAgents"
+Issues = "https://github.com/harshitagarwal2/StockResearchAgents/issues"
+Changelog = "https://github.com/harshitagarwal2/StockResearchAgents/releases"
 
 [project.scripts]
 stock-research-agents = "tradingagents_portable.cli:main"
@@ -29,6 +44,9 @@ upstream = [
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.dynamic]
+version = {attr = "tradingagents_portable._version.__version__"}
 
 [tool.setuptools.package-data]
 tradingagents_portable = ["web/*.html", "web/*.js", "web/*.css", "workflow/*.json"]

@@ -2,10 +2,8 @@
   "mcpServers": {
     "tradingagents-portable": {
       "type": "stdio",
-      "command": "bash",
-      "args": [
-        "scripts/run-stock-research-mcp"
-      ],
+      "command": "stock-research-agents-mcp",
+      "args": [],
       "env": {
         "PYTHONDONTWRITEBYTECODE": "1",
         "PYTHONUNBUFFERED": "1"
@@ -13,10 +11,8 @@
     },
     "tradingagents-research-data": {
       "type": "stdio",
-      "command": "bash",
-      "args": [
-        "scripts/run-stock-research-data-mcp"
-      ],
+      "command": "stock-research-data-mcp",
+      "args": [],
       "env": {
         "PYTHONDONTWRITEBYTECODE": "1",
         "PYTHONUNBUFFERED": "1"

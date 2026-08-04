@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
+from ._version import __version__
 from .capabilities import discovery, feature_matrix
 from .company_analytics import get_company_research_quality as execute_quality_query
 from .company_analytics import prepare_company_analytics as prepare_company_analytics_request
@@ -549,7 +550,7 @@ def get_research_report_summary(run_id: str) -> dict[str, object]:
 def create_server(*, include_legacy_metadata: bool = False) -> MCPServer:
     server = MCPServer(
         "StockResearchAgents",
-        version="0.1.0",
+        version=__version__,
         instructions=(
             "Prototype financial research only. Fixture values are synthetic. "
             "This server never submits, manages, or authorizes orders."

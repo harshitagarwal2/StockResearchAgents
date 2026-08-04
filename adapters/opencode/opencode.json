@@ -1,0 +1,27 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "servers": {
+      "tradingagents-portable": {
+        "type": "local",
+        "command": [
+          "stock-research-agents-mcp"
+        ],
+        "environment": {
+          "PYTHONDONTWRITEBYTECODE": "1",
+          "PYTHONUNBUFFERED": "1"
+        }
+      },
+      "tradingagents-research-data": {
+        "type": "local",
+        "command": [
+          "stock-research-data-mcp"
+        ],
+        "environment": {
+          "PYTHONDONTWRITEBYTECODE": "1",
+          "PYTHONUNBUFFERED": "1"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,18 @@
+# Copy this into ~/.hermes/config.yaml and replace /absolute/path/to/StockResearchAgents.
+# Hermes MCP processes do not have a documented per-server cwd, so use the
+# CWD-independent repository launchers and set required environment values here.
+mcp_servers:
+  tradingagents-portable:
+    command: bash
+    args:
+      - /absolute/path/to/StockResearchAgents/scripts/run-stock-research-mcp
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUNBUFFERED: "1"
+  tradingagents-research-data:
+    command: bash
+    args:
+      - /absolute/path/to/StockResearchAgents/scripts/run-stock-research-data-mcp
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUNBUFFERED: "1"

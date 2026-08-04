@@ -19,6 +19,8 @@ REQUIRED_DOCS = (
     ROOT / "docs" / "GETTING_STARTED.md",
     ROOT / "docs" / "ARCHITECTURE.md",
     ROOT / "docs" / "INTEGRATION.md",
+    ROOT / "docs" / "HOSTS.md",
+    ROOT / "docs" / "RELEASING.md",
     ROOT / "docs" / "CONTRACTS.md",
     ROOT / "docs" / "OPERATIONS.md",
     ROOT / "docs" / "GLOSSARY.md",

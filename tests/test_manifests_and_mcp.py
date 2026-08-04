@@ -38,38 +38,25 @@ def test_mcp_manifest_has_exact_local_stdio_launch_command() -> None:
     manifest = json.loads((ROOT / ".mcp.json").read_text(encoding="utf-8"))
     server = manifest["mcpServers"]["tradingagents-portable"]
 
-    assert server["command"] == "uv"
-    assert server["args"] == [
-        "run",
-        "--no-project",
-        "--with",
-        "mcp>=2.0,<3",
-        "python",
-        "-m",
-        "tradingagents_portable.mcp_server",
-    ]
-    assert server["cwd"] == "."
-    assert server["env"]["PYTHONPATH"] == "src"
-    assert "--no-project" in server["args"]
+    assert server == {
+        "type": "stdio",
+        "command": "bash",
+        "args": ["scripts/run-stock-research-mcp"],
+        "env": {"PYTHONDONTWRITEBYTECODE": "1", "PYTHONUNBUFFERED": "1"},
+    }
+    assert (ROOT / server["args"][0]).is_file()
     assert "env_vars" not in server
     assert "API_KEY" not in json.dumps(server)
     assert "CODEX_AUTH" not in json.dumps(server)
 
     research_data = manifest["mcpServers"]["tradingagents-research-data"]
     assert research_data == {
-        "command": "uv",
-        "args": [
-            "run",
-            "--no-project",
-            "--with",
-            "mcp>=2.0,<3",
-            "python",
-            "-m",
-            "tradingagents_host.research_data_mcp",
-        ],
-        "cwd": ".",
-        "env": {"PYTHONDONTWRITEBYTECODE": "1", "PYTHONPATH": "src"},
+        "type": "stdio",
+        "command": "bash",
+        "args": ["scripts/run-stock-research-data-mcp"],
+        "env": {"PYTHONDONTWRITEBYTECODE": "1", "PYTHONUNBUFFERED": "1"},
     }
+    assert (ROOT / research_data["args"][0]).is_file()
     assert "API_KEY" not in json.dumps(research_data)
     assert "CODEX_AUTH" not in json.dumps(research_data)
 

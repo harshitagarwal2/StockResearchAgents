@@ -1,6 +1,6 @@
 # StockResearchAgents
 
-Evidence-first company research that preserves what was known, why a conclusion was reached, and how the completed work can be audited.
+<!-- mcp-name: io.github.harshitagarwal2/stock-research-agents -->
 
 Evidence-first company research for agent harnesses, with versioned contracts, deterministic analytics, durable lifecycle controls, and completed-only dossiers.
 
@@ -22,19 +22,22 @@ The boundary is deliberate:
 - **Portable owns** versioned stage roles/objectives/completion-criteria declarations, contracts, deterministic conformance, stage boundaries, recovery, terminal validation, publication, exports, and completed read models. A host attests intermediate criterion satisfaction; opaque nonterminal content remains host-owned and is not called verified by Portable.
 - **The viewer owns no research logic.** It remains empty until a completed result is published.
 
-## Five-minute safe demo
+## Install a released version
 
-Python 3.11+ and [`uv`](https://docs.astral.sh/uv/) are recommended.
+When a tagged version has been published to PyPI, install the CLI in an isolated tool environment:
 
 ```bash
-uv sync
-uv run stock-research-agents fixture --events
+uv tool install "tradingagents-portable==<VERSION>"
+stock-research-agents fixture --events
 ```
 
-Open the returned `presentation.url`. Completed CLI and MCP operations automatically ensure one shared loopback viewer
-and return a URL pinned to that exact run; later companies reuse the same application. The ORCL data is deterministic
-fixture material and is visibly labeled as such; it does not claim to be current market research. The foreground
-`report` command remains available for diagnostics or an explicitly selected port.
+`pipx install "tradingagents-portable==<VERSION>"` is equivalent. Applications can use `python -m pip install "tradingagents-portable==<VERSION>"`, and an MCP host can launch the same package with:
+
+```bash
+uvx --from "tradingagents-portable==<VERSION>" stock-research-agents-mcp
+```
+
+Use a full release tag for direct Git installs, never a moving branch. The release and host-adapter guide documents source, Python, MCP, TestPyPI, and GitHub Release paths: [Harnesses](docs/HOSTS.md) and [Releasing](docs/RELEASING.md).
 
 ## Five-minute deterministic proof
 
@@ -53,15 +56,18 @@ For normal research, start from a host integration. Codex can use the packaged s
 
 | Goal | Start here |
 | --- | --- |
-| See the product safely | [Getting started](docs/GETTING_STARTED.md) |
-| Use the Codex plugin | [Harness integration](docs/INTEGRATION.md#codex-plugin) |
-| Connect any MCP-capable harness | [Harness integration](docs/INTEGRATION.md#mcp) |
+| Connect any MCP-capable harness | [Harnesses](docs/HOSTS.md) and [integration](docs/INTEGRATION.md#mcp) |
+| Use Claude Code, OpenCode, or Hermes | [Host adapters](docs/INTEGRATION.md#host-adapters) |
+| Use the optional Codex plugin | [Harness integration](docs/INTEGRATION.md#optional-codex-adapter) |
+| Embed the portable API in an application | [Harness integration](docs/INTEGRATION.md#python) |
+| Run the deterministic local proof | [Getting started](docs/GETTING_STARTED.md) |
 | Build a durable host adapter | [Contract guide](docs/CONTRACTS.md) and [Architecture](docs/ARCHITECTURE.md) |
 | Improve source breadth and independence | [Source portfolio](docs/SOURCE_PORTFOLIO.md) |
 | Understand SOLID and ports/adapters boundaries | [Ports and adapters](docs/PORTS_AND_ADAPTERS.md) |
 | Operate, export, or troubleshoot runs | [Operations](docs/OPERATIONS.md) |
 | Understand product and UI decisions | [Design](DESIGN.md) |
 | Review forecast accountability | [Research Quality](docs/RESEARCH_QUALITY.md) |
+| Publish or verify a release | [Releasing](docs/RELEASING.md) |
 | Contribute safely | [Contributing](CONTRIBUTING.md) |
 
 The complete documentation map is in [docs/README.md](docs/README.md).
@@ -79,7 +85,7 @@ The implemented **Company Analytics** capability provides:
 - content-addressed completed results and atomic publication;
 - JSON/Markdown exports, harness and MCP reads, and an automatically discovered, shared loopback-only Research Dossier Viewer with exact source identity/access states, deduplicated planned-versus-held coverage, publisher/host concentration, entitlement gaps, and claim-lineage analysis.
 
-The separate `tradingagents-research-data` compatibility server key implements SourceBatch v1 and registers six public tools by default: SEC filings/fundamentals/statements, GDELT company/global news discovery metadata plus publisher links, and World Bank macro observations. The coordination MCP remains isolated from data retrieval. Prices and indicators require an entitled host `SourcePort`, Reddit requires host OAuth, and StockTwits is denied/unregistered. The World Bank API supplies current-vintage values and cannot reconstruct historical revision lineage. GDELT results are discovery records—not opened publisher evidence—and saturated result sets are reported as partial.
+The isolated research-data MCP, launched with the preferred `stock-research-data-mcp` executable, implements SourceBatch v1 and registers six public tools by default: SEC filings/fundamentals/statements, GDELT company/global news discovery metadata plus publisher links, and World Bank macro observations. Its manifest key remains `tradingagents-research-data` for compatibility. The coordination MCP remains isolated from data retrieval. Prices and indicators require an entitled host `SourcePort`, Reddit requires host OAuth, and StockTwits is denied/unregistered. The World Bank API supplies current-vintage values and cannot reconstruct historical revision lineage. GDELT results are discovery records—not opened publisher evidence—and saturated result sets are reported as partial.
 
 Portable therefore has partial live public-source coverage, not complete live company research. Live correctness still depends on source availability, host entitlements, model behavior, exact-cutoff discipline, and the missing market-data/social provider coverage.
 The public `run_sequential_company_lifecycle` fallback is the locally ready execution path: it drives the same 26 durable stage contracts through one host executor and resumes at the first incomplete stage. Full native-agent execution remains host-adapter work, and tools-only execution remains partial because live research provider coverage is incomplete. Native multi-agent harnesses may schedule the same contracts differently without changing their observable meaning.

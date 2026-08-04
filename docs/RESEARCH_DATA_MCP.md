@@ -7,7 +7,7 @@
 
 ## Current status
 
-`tradingagents-research-data` is the stable compatibility key for a separate, read-only MCP server. Its default `PublicResearchDataAdapter` registers six conformance-receipted tools: SEC regulatory filings, fundamentals, and financial statements; GDELT company and global news discovery metadata plus publisher links; and World Bank macro observations. The coordination server remains unchanged and registers none of these tools. The preferred executable name is `stock-research-data-mcp`.
+`stock-research-data-mcp` launches the separate, read-only research-data server. Its default `PublicResearchDataAdapter` registers six conformance-receipted tools: SEC regulatory filings, fundamentals, and financial statements; GDELT company and global news discovery metadata plus publisher links; and World Bank macro observations. The coordination server remains unchanged and registers none of these tools. The manifest key `tradingagents-research-data` is retained only for compatibility with existing harness configurations.
 
 The implemented status and exact default exposure are machine-readable in [research-data-tools.v1.json](../src/tradingagents_portable/workflow/research-data-tools.v1.json). `SourceBatch` v1 is implemented and validated for every response. Registration remains conformance-receipt gated: a tool is discoverable only when the configured adapter has a matching receipt.
 
