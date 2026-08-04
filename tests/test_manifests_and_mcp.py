@@ -31,6 +31,10 @@ def test_plugin_manifest_and_skill_are_complete() -> None:
     assert "adaptive-history policy" in skill
     assert "five fiscal years" in skill
     assert "eight comparable quarters" in skill
+    assert "SourcePortfolioCollector" in skill
+    assert "source_batch_ids" in skill
+    assert "Reddit must use host-owned approved OAuth access" in skill
+    assert "Yahoo Finance" in skill
     assert "must never place" in skill
 
 
