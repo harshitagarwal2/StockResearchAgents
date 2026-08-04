@@ -29,9 +29,10 @@
 - [x] `SourcePortfolioCollector` attempts every explicitly registered provider route without changing `SourceRouter`; its bounded strict v1 receipt preserves each provider batch and entitlement, records sanitized failures and coverage gaps, emits unique deterministic route-qualified run-card batch IDs, and clusters exact duplicates without deleting observations.
 - [x] Every observation in a `SourceBatch` must bind to the batch entitlement's license receipt, and run-card source-batch IDs must be unique.
 - [x] Completed compatibility reports emit an explicit retained-evidence provenance sidecar and a structured decision-consistency receipt. The receipt flags legitimate cross-stage rating/action divergence for review without interpreting free-form prose or adding execution authority.
-- [x] The isolated server launched by `stock-research-data-mcp` registers exactly six conformance-receipted public tools: three SEC, two GDELT metadata/link, and one World Bank macro tool. Its manifest key remains `tradingagents-research-data` for compatibility; the coordination MCP registers none of its tools.
+- [x] The isolated server launched by `stock-research-data-mcp` registers exactly seven conformance-receipted public tools: three SEC, two GDELT metadata/link, one World Bank macro, and one Polymarket Gamma public search/read-only `prediction_markets` tool. Its manifest key remains `tradingagents-research-data` for compatibility; the coordination MCP registers none of its tools.
 - [x] SEC company-fact observations have provider-order-independent IDs and a hard item cap that reports omitted matches as partial coverage; GDELT observations have canonical-URI deduplication, provider-order-independent IDs, explicit seen-time semantics, and partial coverage at the result cap.
-- [x] Prices and indicators remain unregistered without a licensed host `SourcePort`; Reddit remains unregistered without host OAuth; StockTwits is denied and unregistered.
+- [x] Polymarket Gamma results are current public market metadata only: probabilities remain market-implied observations rather than truth, forecasts, or executable signals; search cannot reconstruct historical snapshots; and wallet, CLOB, and order endpoints are absent.
+- [x] Prices and indicators remain unregistered without a licensed host `SourcePort`; Yahoo Finance/`yfinance` remains host-owned and terms-compatible; Reddit remains unregistered without approved host OAuth; StockTwits is denied and unregistered; FRED and Alpha Vantage are not defaults.
 
 ## Company-analytics v1/v4 contract
 
@@ -88,7 +89,7 @@
 - [x] Transition and research-data tool manifests are machine-readable and must not report removal eligibility while a required gate is unverified.
 - [x] The executable legacy-removal verifier fails closed on the canonical empty evidence index and independently derives local, provider/operational, release-attestation, external, and overall gate status. Evidence must bind exact clean `HEAD`, gate-specific referenced hashes, and an authenticated trust-root verifier.
 - [ ] The line-item parity ledger covers every whitelisted observable and the pure-semantic probe passes, but fresh release commit/date/sign-off evidence is still absent.
-- [ ] Concrete provider-neutral research-data MCP adapters are registered and conformant for every required category. Six public categories pass locally, but licensed prices/indicators and lawful social-provider coverage remain open.
+- [ ] Concrete provider-neutral research-data MCP adapters are registered and conformant for every required category. Seven public tools pass locally, but licensed prices/indicators and lawful social-provider coverage remain open; prediction-market metadata does not close either gap.
 - [x] CI checks out the exact upstream pin and runs a credential-free pure-semantic comparison of scoped observable contracts. This is not an LLM/provider graph dual-run.
 - [x] Portable conformance reports portable pass/verification independently and records missing, matching, or mismatched upstream identity under a separate compatibility status.
 - [ ] A representative live and failure symbol matrix has recorded, reproducible evidence.
@@ -134,7 +135,7 @@ Record fresh counts and command results in the release or handoff report. Do not
 - [ ] Exact generated text or recommendation equivalence across hosts.
 - [ ] Token-level continuation of an interrupted agent/tool call.
 - [ ] Host-specific push event delivery or hard-interruption behavior.
-- [ ] Live-network freshness and arbitrary-symbol coverage for the six default SEC/GDELT/World Bank tools; local tests use recorded transports and prove contracts, normalization, and registration rather than current upstream availability.
+- [ ] Live-network freshness and arbitrary-symbol/query coverage for the seven default SEC/GDELT/World Bank/Polymarket Gamma tools; local tests use recorded transports and prove contracts, normalization, and registration rather than current upstream availability.
 - [ ] Concrete licensed price/indicator retrieval, host-OAuth Reddit retrieval, or approved StockTwits access.
 - [ ] Full behavioral upstream dual-run conformance with credentialed live providers; the pure-semantic pinned differential is implemented.
 - [ ] Published-release migration attestation or a published legacy deprecation release.

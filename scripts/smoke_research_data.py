@@ -22,6 +22,7 @@ from tradingagents_host.contracts import (
     GlobalNewsQuery,
     IndicatorsQuery,
     MacroQuery,
+    PredictionMarketsQuery,
     PricesQuery,
     RedditQuery,
     RegulatoryFilingsQuery,
@@ -37,6 +38,7 @@ PUBLIC_CAPABILITIES = (
     "company_news",
     "global_news",
     "macro",
+    "prediction_markets",
 )
 FAIL_CLOSED_CAPABILITIES = ("prices", "indicators", "stocktwits", "reddit")
 PROVIDER_FAILURE_STATUSES = frozenset({"unavailable", "denied", "rate_limited"})
@@ -100,6 +102,8 @@ def _public_query(symbol: str, capability: str, cutoff: datetime) -> SourceQuery
             cutoff_at,
             cutoff_at,
         )
+    if capability == "prediction_markets":
+        return PredictionMarketsQuery(query_id, (symbol, "company"), cutoff_at, 10)
     raise ValueError(f"unsupported public smoke capability: {capability}")
 
 
@@ -244,7 +248,7 @@ def _parser() -> argparse.ArgumentParser:
         "--strictness",
         choices=("contract", "strict-public"),
         default="contract",
-        help="contract tolerates provider failures; strict-public requires all six public probes per symbol.",
+        help="contract tolerates provider failures; strict-public requires all seven public probes per symbol.",
     )
     return parser
 

@@ -165,8 +165,9 @@ def feature_matrix(legacy_path: str | None = None, *, include_legacy: bool = Tru
             CapabilityFeature(
                 "research_data_adapter_contracts",
                 SupportLevel.PARTIAL,
-                "The isolated research-data MCP implements SourceBatch v1 and six default public tools; licensed "
-                "market data and lawful social providers remain optional host-conformance surfaces.",
+                "The isolated research-data MCP implements SourceBatch v1 and seven default public tools, including "
+                "read-only prediction-market context; licensed market data and lawful social providers remain optional "
+                "host-conformance surfaces.",
             ),
             CapabilityFeature(
                 "legacy_executor_transition",
@@ -250,7 +251,7 @@ def feature_matrix(legacy_path: str | None = None, *, include_legacy: bool = Tru
                 "live_provider_coverage": "host_owned_and_not_implied",
             },
             "research_data_adapters": {
-                "implementation": "isolated_sourcebatch_v1_mcp_with_six_default_public_tools",
+                "implementation": "isolated_sourcebatch_v1_mcp_with_seven_default_public_tools",
                 "verification": "locally_verified_public_adapter_and_registration_contracts",
                 "ready": False,
                 "ready_for_default_public_tools": True,

@@ -16,6 +16,7 @@ from tradingagents_host.contracts import (
     GlobalNewsQuery,
     IndicatorsQuery,
     MacroQuery,
+    PredictionMarketsQuery,
     PricesQuery,
     RedditQuery,
     RegulatoryFilingsQuery,
@@ -41,6 +42,7 @@ TOOL_NAMES = {
     "company_news": "research_data_get_company_news",
     "global_news": "research_data_get_global_news",
     "macro": "research_data_get_macro",
+    "prediction_markets": "research_data_get_prediction_markets",
     "stocktwits": "research_data_get_stocktwits",
     "reddit": "research_data_get_reddit",
 }
@@ -73,6 +75,7 @@ PUBLIC_ADAPTER_RECEIPT = AdapterConformanceReceipt(
         "company_news",
         "global_news",
         "macro",
+        "prediction_markets",
     ),
 )
 
@@ -105,10 +108,20 @@ def _query(capability: str, fields: dict[str, object]) -> SourceQuery:
         "company_news": CompanyNewsQuery,
         "global_news": GlobalNewsQuery,
         "macro": MacroQuery,
+        "prediction_markets": PredictionMarketsQuery,
         "stocktwits": StockTwitsQuery,
         "reddit": RedditQuery,
     }
-    for field in ("form_types", "metrics", "statement_types", "periods", "topics", "series", "regions"):
+    for field in (
+        "form_types",
+        "metrics",
+        "statement_types",
+        "periods",
+        "topics",
+        "series",
+        "regions",
+        "search_terms",
+    ):
         if field in payload:
             value = payload[field]
             if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
@@ -240,6 +253,12 @@ def create_server(
             },
         )
 
+    def prediction_markets(search_terms: list[str], as_of: str, max_items: int) -> dict[str, object]:
+        return service.execute(
+            "prediction_markets",
+            {"search_terms": search_terms, "as_of": as_of, "max_items": max_items},
+        )
+
     def stocktwits(symbol: str, start_time: str, end_time: str, max_items: int) -> dict[str, object]:
         return service.execute(
             "stocktwits",
@@ -261,6 +280,7 @@ def create_server(
         "company_news": company_news,
         "global_news": global_news,
         "macro": macro,
+        "prediction_markets": prediction_markets,
         "stocktwits": stocktwits,
         "reddit": reddit,
     }

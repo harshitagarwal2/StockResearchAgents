@@ -9,9 +9,10 @@ import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from decimal import Decimal, InvalidOperation
 from typing import Protocol, cast
 from urllib.error import HTTPError
-from urllib.parse import urlencode, urlsplit, urlunsplit
+from urllib.parse import quote, urlencode, urlsplit, urlunsplit
 from urllib.request import Request, urlopen
 
 from tradingagents_host.contracts import (
@@ -22,6 +23,7 @@ from tradingagents_host.contracts import (
     IndicatorsQuery,
     MacroQuery,
     NormalizedFact,
+    PredictionMarketsQuery,
     PricesQuery,
     RedditQuery,
     RegulatoryFilingsQuery,
@@ -42,6 +44,18 @@ SEC_USER_AGENT = "StockResearchAgents research adapter/0.1 (https://github.com/h
 MAX_SEC_SUBMISSION_FILES = 32
 MAX_SEC_COMPANY_FACT_ITEMS = 1_000
 MAX_WORLD_BANK_PAGES = 100
+# Shared public-provider ceiling; large SEC submissions/companyfacts responses can exceed single-digit MiB.
+MAX_HTTP_RESPONSE_BYTES = 32 * 1024 * 1024
+MAX_POLYMARKET_EVENTS = 25
+MAX_POLYMARKET_MARKETS_PER_EVENT = 100
+MAX_POLYMARKET_TOTAL_MARKETS = MAX_POLYMARKET_EVENTS * MAX_POLYMARKET_MARKETS_PER_EVENT
+MAX_POLYMARKET_TOTAL_RESULTS = 1_000_000
+MAX_POLYMARKET_SLUG_CHARS = 256
+MAX_POLYMARKET_QUESTION_CHARS = 2_000
+MAX_POLYMARKET_SCALAR_CHARS = 2_000
+MAX_POLYMARKET_ARRAY_CHARS = 4_096
+POLYMARKET_SEARCH_URL = "https://gamma-api.polymarket.com/public-search"
+POLYMARKET_TERMS_URL = "https://polymarket.com/tos"
 _RETRYABLE_HTTP_STATUSES = {429, 500, 502, 503, 504}
 _CREDENTIAL_PARAM_PARTS = {"authorization", "cookie", "credential", "key", "password", "secret", "sig", "token"}
 
@@ -76,6 +90,21 @@ class HTTPTransport(Protocol):
         params: Mapping[str, str | int] | None = None,
         headers: Mapping[str, str] | None = None,
     ) -> HTTPResponse: ...
+
+
+def _read_http_body(response: object) -> bytes:
+    reader = getattr(response, "read", None)
+    if not callable(reader):
+        raise ProviderTransportError("public provider response body is unreadable")
+    try:
+        body = reader(MAX_HTTP_RESPONSE_BYTES + 1)
+    except TypeError as exc:
+        raise ProviderTransportError("public provider response body does not support bounded reads") from exc
+    if not isinstance(body, bytes | bytearray):
+        raise ProviderTransportError("public provider response body must be bytes")
+    if len(body) > MAX_HTTP_RESPONSE_BYTES:
+        raise ProviderTransportError("public provider response body exceeds the bounded size limit")
+    return bytes(body)
 
 
 class UrllibHTTPTransport:
@@ -119,7 +148,9 @@ class UrllibHTTPTransport:
         for attempt in range(self._max_attempts):
             try:
                 with urlopen(request, timeout=20) as response:  # noqa: S310 - fixed HTTPS provider URLs
-                    result = HTTPResponse(response.status, json.loads(response.read()), dict(response.headers))
+                    result = HTTPResponse(
+                        response.status, json.loads(_read_http_body(response)), dict(response.headers)
+                    )
             except HTTPError as exc:
                 result = HTTPResponse(exc.code, None, dict(exc.headers or {}))
             if result.status not in _RETRYABLE_HTTP_STATUSES or attempt + 1 == self._max_attempts:
@@ -243,6 +274,108 @@ def _safe_uri(value: object, fallback: str) -> str:
     return urlunsplit((parsed.scheme, parsed.netloc, parsed.path, "", ""))
 
 
+def _canonical_json(value: object) -> str:
+    return json.dumps(value, sort_keys=True, separators=(",", ":"))
+
+
+def _polymarket_array(value: object, field: str, *, strings_only: bool) -> list[str]:
+    if isinstance(value, str):
+        if len(value) > MAX_POLYMARKET_ARRAY_CHARS:
+            raise ProviderPayloadError(f"Polymarket {field} exceeds the bounded encoded-array size")
+        try:
+            value = json.loads(value)
+        except json.JSONDecodeError as exc:
+            raise ProviderPayloadError(f"Polymarket {field} must be a JSON array") from exc
+    if not isinstance(value, list) or not value or len(value) > 32:
+        raise ProviderPayloadError(f"Polymarket {field} must contain between 1 and 32 items")
+    normalized: list[str] = []
+    for item in value:
+        if strings_only:
+            if not isinstance(item, str) or not item.strip() or len(item) > 256:
+                raise ProviderPayloadError(f"Polymarket {field} must contain bounded non-empty strings")
+            normalized.append(item)
+            continue
+        if isinstance(item, bool) or not isinstance(item, str | int | float):
+            raise ProviderPayloadError(f"Polymarket {field} must contain numeric values")
+        if isinstance(item, str) and (not item.strip() or len(item) > 64):
+            raise ProviderPayloadError(f"Polymarket {field} must contain bounded numeric values")
+        try:
+            numeric = Decimal(str(item))
+        except (InvalidOperation, ValueError) as exc:
+            raise ProviderPayloadError(f"Polymarket {field} must contain numeric values") from exc
+        if not numeric.is_finite() or not Decimal(0) <= numeric <= Decimal(1):
+            raise ProviderPayloadError(f"Polymarket {field} values must be probabilities between 0 and 1")
+        normalized.append(str(item))
+    return normalized
+
+
+def _polymarket_scalar(value: object, field: str) -> str | None:
+    if value is None or value == "":
+        return None
+    if isinstance(value, bool) or not isinstance(value, str | int | float):
+        raise ProviderPayloadError(f"Polymarket {field} must be a bounded scalar")
+    normalized = str(value)
+    if not normalized.strip() or len(normalized) > MAX_POLYMARKET_SCALAR_CHARS:
+        raise ProviderPayloadError(f"Polymarket {field} must be a bounded scalar")
+    return normalized
+
+
+def _polymarket_nonnegative_number(value: object, field: str) -> str | None:
+    normalized = _polymarket_scalar(value, field)
+    if normalized is None:
+        return None
+    try:
+        numeric = Decimal(normalized)
+    except InvalidOperation as exc:
+        raise ProviderPayloadError(f"Polymarket {field} must be numeric") from exc
+    if not numeric.is_finite() or numeric < 0:
+        raise ProviderPayloadError(f"Polymarket {field} must be a finite non-negative number")
+    return normalized
+
+
+def _polymarket_fact(name: str, value: str) -> NormalizedFact:
+    try:
+        return NormalizedFact(name, value)
+    except ValueError as exc:
+        raise ProviderPayloadError(f"Polymarket {name} is not a valid bounded fact") from exc
+
+
+def _polymarket_slug(value: object, field: str) -> str | None:
+    if value is None or value == "":
+        return None
+    if not isinstance(value, str) or not value.strip() or len(value) > MAX_POLYMARKET_SLUG_CHARS:
+        raise ProviderPayloadError(f"Polymarket {field} must be a bounded slug")
+    return value.strip()
+
+
+def _polymarket_uri(event_slug: str | None, market_slug: str | None, market_id: str) -> str:
+    if event_slug is not None:
+        path = f"https://polymarket.com/event/{quote(event_slug, safe='')}"
+        if market_slug is not None and market_slug != event_slug:
+            path = f"{path}/{quote(market_slug, safe='')}"
+        return path
+    return f"https://gamma-api.polymarket.com/markets/{quote(market_id, safe='')}"
+
+
+def _polymarket_pagination(value: object, event_count: int) -> tuple[bool, int | None]:
+    if value is None:
+        raise ProviderPayloadError("Polymarket search response must contain pagination")
+    if not isinstance(value, Mapping):
+        raise ProviderPayloadError("Polymarket pagination must be an object")
+    has_more = value.get("hasMore")
+    if not isinstance(has_more, bool):
+        raise ProviderPayloadError("Polymarket pagination.hasMore must be a boolean")
+    total_results = value.get("totalResults")
+    if total_results is not None:
+        if (
+            not isinstance(total_results, int)
+            or isinstance(total_results, bool)
+            or not event_count <= total_results <= MAX_POLYMARKET_TOTAL_RESULTS
+        ):
+            raise ProviderPayloadError("Polymarket pagination.totalResults is outside bounded response limits")
+    return has_more, cast(int | None, total_results)
+
+
 class PublicResearchDataAdapter:
     """One explicit SourcePort covering public providers and fail-closed host integrations."""
 
@@ -276,6 +409,7 @@ class PublicResearchDataAdapter:
             "financial_statements": FinancialStatementsQuery,
             "company_news": CompanyNewsQuery,
             "global_news": GlobalNewsQuery,
+            "prediction_markets": PredictionMarketsQuery,
             "macro": MacroQuery,
             "stocktwits": StockTwitsQuery,
             "reddit": RedditQuery,
@@ -299,6 +433,8 @@ class PublicResearchDataAdapter:
                 return self._sec_facts(cast(FinancialStatementsQuery, query), statements=True)
             if capability in {"company_news", "global_news"}:
                 return self._gdelt(capability, cast(CompanyNewsQuery | GlobalNewsQuery, query))
+            if capability == "prediction_markets":
+                return self._polymarket(cast(PredictionMarketsQuery, query))
             return self._world_bank(cast(MacroQuery, query))
         except (ProviderTransportError, ProviderPayloadError) as exc:
             return self._terminal(
@@ -701,6 +837,199 @@ class PublicResearchDataAdapter:
             redistributable="unknown",
             entitlement_limitation=(
                 "Only GDELT metadata and publisher links are returned; no article body is redistributed."
+            ),
+        )
+
+    def _polymarket(self, query: PredictionMarketsQuery) -> SourceBatch:
+        capability = "prediction_markets"
+        response = self._request(
+            capability,
+            query,
+            POLYMARKET_SEARCH_URL,
+            params={
+                "q": " ".join(term.strip() for term in query.search_terms),
+                "events_status": "active",
+                "limit_per_type": query.max_items,
+                "page": 1,
+                "keep_closed_markets": 0,
+                "search_tags": "false",
+                "search_profiles": "false",
+            },
+            headers=self._public_headers,
+        )
+        if isinstance(response, SourceBatch):
+            return response
+        if not isinstance(response.payload, Mapping):
+            raise ProviderPayloadError("Polymarket search response must be an object")
+        raw_events = response.payload.get("events")
+        if raw_events is None:
+            events_value: list[object] = []
+        elif isinstance(raw_events, list):
+            events_value = raw_events
+        else:
+            raise ProviderPayloadError("Polymarket search response events must be an array or null")
+        if len(events_value) > MAX_POLYMARKET_EVENTS:
+            raise ProviderPayloadError("Polymarket search response exceeds the bounded event limit")
+        provider_has_more, total_results = _polymarket_pagination(response.payload.get("pagination"), len(events_value))
+
+        cutoff = _query_instant(query.as_of)
+        retrieved = _iso(self._clock())
+        retrieved_instant = _instant(retrieved)
+        if retrieved is None or retrieved_instant is None:
+            raise ValueError("validated adapter clock contains an invalid timestamp")
+        historical_gap = (
+            "Polymarket Gamma was retrieved after the requested as_of cutoff; current search cannot reconstruct "
+            "the market universe or probabilities at that cutoff."
+        )
+        if retrieved_instant > cutoff:
+            return self._terminal(capability, query, "unavailable", historical_gap)
+
+        normalized: list[tuple[str, str, str, tuple[NormalizedFact, ...], Mapping[str, object]]] = []
+        seen_market_ids: set[str] = set()
+        total_markets = 0
+        for event_value in events_value:
+            if not isinstance(event_value, Mapping):
+                raise ProviderPayloadError("Polymarket event entries must be objects")
+            event = cast(Mapping[str, object], event_value)
+            event_active = event.get("active")
+            event_closed = event.get("closed")
+            if not isinstance(event_active, bool) or not isinstance(event_closed, bool):
+                raise ProviderPayloadError("Polymarket events must contain boolean active and closed fields")
+            markets_value = event.get("markets")
+            if not isinstance(markets_value, list):
+                raise ProviderPayloadError("Polymarket events must contain a markets array")
+            if len(markets_value) > MAX_POLYMARKET_MARKETS_PER_EVENT:
+                raise ProviderPayloadError("Polymarket event exceeds the bounded nested-market limit")
+            total_markets += len(markets_value)
+            if total_markets > MAX_POLYMARKET_TOTAL_MARKETS:
+                raise ProviderPayloadError("Polymarket response exceeds the bounded total-market limit")
+            event_slug = _polymarket_slug(event.get("slug"), "event.slug")
+            if not event_active or event_closed:
+                continue
+
+            for market_value in markets_value:
+                if not isinstance(market_value, Mapping):
+                    raise ProviderPayloadError("Polymarket market entries must be objects")
+                market = cast(Mapping[str, object], market_value)
+                market_active = market.get("active")
+                market_closed = market.get("closed")
+                if not isinstance(market_active, bool) or not isinstance(market_closed, bool):
+                    raise ProviderPayloadError("Polymarket markets must contain boolean active and closed fields")
+                if not market_active or market_closed:
+                    continue
+
+                market_id = market.get("id")
+                question = market.get("question")
+                if not isinstance(market_id, str) or not market_id.strip() or len(market_id) > 256:
+                    raise ProviderPayloadError("Polymarket active markets must contain a non-empty id")
+                if (
+                    not isinstance(question, str)
+                    or not question.strip()
+                    or len(question) > MAX_POLYMARKET_QUESTION_CHARS
+                ):
+                    raise ProviderPayloadError("Polymarket active markets must contain a non-empty question")
+                if market_id in seen_market_ids:
+                    raise ProviderPayloadError("Polymarket search response contains duplicate market ids")
+                seen_market_ids.add(market_id)
+
+                updated = _iso(market.get("updatedAt"))
+                updated_instant = _instant(updated)
+                if updated is None or updated_instant is None:
+                    raise ProviderPayloadError("Polymarket active markets must contain a valid updatedAt")
+                if updated_instant > retrieved_instant:
+                    raise ProviderPayloadError("Polymarket market updatedAt cannot be later than retrieval time")
+                if updated_instant > cutoff:
+                    continue
+
+                outcomes = _polymarket_array(market.get("outcomes"), "outcomes", strings_only=True)
+                prices = _polymarket_array(market.get("outcomePrices"), "outcomePrices", strings_only=False)
+                if len(outcomes) != len(prices):
+                    raise ProviderPayloadError("Polymarket outcomes and outcomePrices must have equal lengths")
+                facts = [
+                    _polymarket_fact("question", question),
+                    _polymarket_fact("outcomes", _canonical_json(outcomes)),
+                    _polymarket_fact("outcome_prices", _canonical_json(prices)),
+                ]
+                for fact_name, field_name in (
+                    ("volume", "volume"),
+                    ("liquidity", "liquidity"),
+                    ("end_date", "endDate"),
+                    ("resolution_source", "resolutionSource"),
+                    ("resolved_by", "resolvedBy"),
+                    ("resolution_status", "umaResolutionStatus"),
+                ):
+                    if field_name in {"volume", "liquidity"}:
+                        fact_value = _polymarket_nonnegative_number(market.get(field_name), field_name)
+                    else:
+                        fact_value = _polymarket_scalar(market.get(field_name), field_name)
+                    if fact_value is not None:
+                        if field_name == "endDate":
+                            fact_value = _iso(fact_value) or ""
+                            if not fact_value:
+                                raise ProviderPayloadError("Polymarket endDate must be a valid timestamp")
+                        facts.append(_polymarket_fact(fact_name, fact_value))
+
+                market_slug = _polymarket_slug(market.get("slug"), "market.slug")
+                uri = _polymarket_uri(event_slug, market_slug, market_id)
+                digest_record: Mapping[str, object] = {
+                    "market_id": market_id,
+                    "updated_at": updated,
+                    "uri": uri,
+                    "facts": [fact.to_dict() for fact in facts],
+                }
+                normalized.append((market_id, uri, updated, tuple(facts), digest_record))
+
+        normalized.sort(key=lambda row: (row[2], row[0], _digest(row[4])))
+        locally_capped = len(normalized) > query.max_items
+        selected = normalized[: query.max_items]
+        rows = tuple(
+            self._observation(
+                source_id=f"polymarket-{_digest(market_id)[:24]}",
+                source_kind="positioning",
+                uri=uri,
+                observed=retrieved,
+                published=retrieved,
+                available=retrieved,
+                retrieved=retrieved,
+                provider="Polymarket Gamma",
+                provider_version="public-search-v1",
+                license_id="polymarket-gamma-public-metadata-v1",
+                facts=facts,
+                digest_value=digest_record,
+            )
+            for market_id, uri, updated, facts, digest_record in selected
+        )
+        gaps: list[str] = []
+        if provider_has_more:
+            result_count = f" of {total_results}" if total_results is not None else ""
+            gaps.append(f"Polymarket pagination reports additional matching results beyond page 1{result_count}.")
+        if locally_capped:
+            gaps.append("Polymarket returned more active markets than max_items; the normalized result was capped.")
+        gap = tuple(gaps)
+        if gap and not rows:
+            return self._terminal(capability, query, "unavailable", " ".join(gap))
+        limitations = (
+            "Polymarket Gamma exposes a current market snapshot and does not provide historical revision lineage "
+            "for as-of reconstruction.",
+            "Prediction-market prices are positioning signals, not verified outcome facts or executable trading "
+            "instructions.",
+            *gap,
+        )
+        return self._batch(
+            capability,
+            query,
+            rows,
+            "Polymarket Gamma",
+            "public-search-v1",
+            "polymarket-gamma-public-metadata-v1",
+            POLYMARKET_TERMS_URL,
+            status="partial" if gap else "complete",
+            limitations=limitations,
+            gaps=gap,
+            redistributable="unknown",
+            entitlement_limitation=(
+                "Polymarket metadata redistribution rights are not established; normalized facts are returned "
+                "without extracts."
             ),
         )
 

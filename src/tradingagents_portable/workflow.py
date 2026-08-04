@@ -33,6 +33,7 @@ _RESEARCH_DATA_MCP_NAMES = {
     "company_news": "research_data_get_company_news",
     "global_news": "research_data_get_global_news",
     "macro": "research_data_get_macro",
+    "prediction_markets": "research_data_get_prediction_markets",
     "stocktwits": "research_data_get_stocktwits",
     "reddit": "research_data_get_reddit",
 }
@@ -45,6 +46,7 @@ _RESEARCH_DATA_REQUIRED_QUERY_FIELDS = {
     "company_news": ["symbol", "published_after", "published_before", "max_items"],
     "global_news": ["topics", "published_after", "published_before", "max_items"],
     "macro": ["series", "regions", "start_time", "end_time", "vintage_as_of"],
+    "prediction_markets": ["search_terms", "as_of", "max_items"],
     "stocktwits": ["symbol", "start_time", "end_time", "max_items"],
     "reddit": ["symbol", "start_time", "end_time", "max_items"],
 }
@@ -57,6 +59,7 @@ _RESEARCH_DATA_CAPABILITY_POLICY = {
     "company_news": ("implemented_public_default", True, "GDELT"),
     "global_news": ("implemented_public_default", True, "GDELT"),
     "macro": ("implemented_public_default", True, "World Bank"),
+    "prediction_markets": ("implemented_public_default", True, "Polymarket Gamma"),
     "stocktwits": ("denied_unregistered", False, "none"),
     "reddit": ("host_oauth_source_port_required", False, "host_reddit_oauth_source_port"),
 }
