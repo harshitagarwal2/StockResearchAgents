@@ -282,6 +282,15 @@
     const riskMissing = riskReferences.filter((id) => !lookup.has(id));
     const researchDecision = record(record(view.decisions).research);
     const portfolio = record(record(view.decisions).portfolio);
+    const consistencyArtifact = list(view.artifacts).find(
+      (artifact) => text(record(artifact).id, "") === "analysis.decision_consistency"
+    );
+    const consistency = record(record(consistencyArtifact).content);
+    const consistencyDetail = consistencyArtifact
+      ? consistency.review_required
+        ? `Decision consistency receipt requires review: ${list(consistency.review_reasons).join(" ") || "structured decisions diverge."}`
+        : "Decision consistency receipt confirms the retained structured ratings are aligned."
+      : "No decision consistency receipt was retained.";
     const intelligence = record(view.intelligence);
     const coverage = record(intelligence.coverage);
     const qualities = Object.entries(record(coverage.source_quality_buckets)).map(([quality, count]) => `${humanize(quality)} ${count}`);
@@ -336,7 +345,7 @@
         "Portfolio rating",
         "projected",
         humanize(portfolio.rating),
-        "Attribution gap: PortfolioDecision has no direct evidence-ID field; this link is a transparent projection from the completed manager and risk record.",
+        `Attribution gap: PortfolioDecision has no direct evidence-ID field; this link is a transparent projection from the completed manager and risk record. ${consistencyDetail}`,
         []
       )
     ];

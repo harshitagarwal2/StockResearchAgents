@@ -64,7 +64,11 @@ class FakeGenericHarness:
                 },
             }
         if stage.kind is StageKind.RESEARCH_DEBATE:
-            return {"position": f"{stage.role} case.", "evidence_ids": ["ev-market"]}
+            prior_turns = context["research_debate_so_far"]
+            response = {"position": f"{stage.role} case.", "evidence_ids": ["ev-market"]}
+            if prior_turns:
+                response["responds_to"] = prior_turns[-1]["speaker"]
+            return response
         if stage.kind is StageKind.RESEARCH_MANAGER:
             return {
                 "recommendation": "Hold",
@@ -85,7 +89,12 @@ class FakeGenericHarness:
                 "caveats": ["No order."],
             }
         if stage.kind is StageKind.RISK_DEBATE:
-            return {"position": f"{stage.role} risk view.", "evidence_ids": ["ev-market"]}
+            prior_turns = context["risk_debate_so_far"]
+            return {
+                "position": f"{stage.role} risk view.",
+                "responds_to": prior_turns[-1]["speaker"] if prior_turns else "Trader",
+                "evidence_ids": ["ev-market"],
+            }
         return {
             "risk_decision": {
                 "risk_level": "moderate",

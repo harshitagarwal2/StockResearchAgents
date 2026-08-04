@@ -38,38 +38,25 @@ def test_mcp_manifest_has_exact_local_stdio_launch_command() -> None:
     manifest = json.loads((ROOT / ".mcp.json").read_text(encoding="utf-8"))
     server = manifest["mcpServers"]["tradingagents-portable"]
 
-    assert server["command"] == "uv"
-    assert server["args"] == [
-        "run",
-        "--no-project",
-        "--with",
-        "mcp>=2.0,<3",
-        "python",
-        "-m",
-        "tradingagents_portable.mcp_server",
-    ]
-    assert server["cwd"] == "."
-    assert server["env"]["PYTHONPATH"] == "src"
-    assert "--no-project" in server["args"]
+    assert server == {
+        "type": "stdio",
+        "command": "bash",
+        "args": ["scripts/run-stock-research-mcp"],
+        "env": {"PYTHONDONTWRITEBYTECODE": "1", "PYTHONUNBUFFERED": "1"},
+    }
+    assert (ROOT / server["args"][0]).is_file()
     assert "env_vars" not in server
     assert "API_KEY" not in json.dumps(server)
     assert "CODEX_AUTH" not in json.dumps(server)
 
     research_data = manifest["mcpServers"]["tradingagents-research-data"]
     assert research_data == {
-        "command": "uv",
-        "args": [
-            "run",
-            "--no-project",
-            "--with",
-            "mcp>=2.0,<3",
-            "python",
-            "-m",
-            "tradingagents_host.research_data_mcp",
-        ],
-        "cwd": ".",
-        "env": {"PYTHONDONTWRITEBYTECODE": "1", "PYTHONPATH": "src"},
+        "type": "stdio",
+        "command": "bash",
+        "args": ["scripts/run-stock-research-data-mcp"],
+        "env": {"PYTHONDONTWRITEBYTECODE": "1", "PYTHONUNBUFFERED": "1"},
     }
+    assert (ROOT / research_data["args"][0]).is_file()
     assert "API_KEY" not in json.dumps(research_data)
     assert "CODEX_AUTH" not in json.dumps(research_data)
 
@@ -234,6 +221,25 @@ def test_mutating_mcp_tools_do_not_invite_automatic_idempotent_retries() -> None
     assert all(tool.annotations.idempotent_hint is False for tool in mutating)
 
 
+def test_mcp_conformance_keeps_upstream_identity_separate() -> None:
+    pytest.importorskip("mcp")
+    from tradingagents_portable.contracts import RunRequest
+    from tradingagents_portable.fixture import run_fixture
+    from tradingagents_portable.mcp_server import get_conformance_report
+
+    result, _events = run_fixture(RunRequest())
+    payload = get_conformance_report(result.run_id)
+
+    assert payload["ok"] is True
+    assert payload["conformance"]["portable_conformance"] == {"passed": True, "verified": True}
+    assert payload["conformance"]["overall_status"] == "portable_conformant_upstream_unverified"
+    assert payload["conformance"]["upstream_compatibility"] == {
+        "passed": False,
+        "verified": False,
+        "status": "skipped",
+    }
+
+
 def test_opt_in_legacy_mcp_adds_only_the_explicit_legacy_tool() -> None:
     pytest.importorskip("mcp")
     safe_server = importlib.import_module("tradingagents_portable.mcp_server")
@@ -250,6 +256,29 @@ import importlib
 import json
 import sys
 importlib.import_module('tradingagents_portable.mcp_server')
+loaded = sorted(
+    name for name in sys.modules
+    if name == 'tradingagents_portable.legacy' or name == 'tradingagents' or name.startswith('tradingagents.')
+)
+print(json.dumps(loaded))
+"""
+    completed = subprocess.run(  # noqa: S603 - fixed interpreter and test-owned script
+        [sys.executable, "-c", script],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    assert json.loads(completed.stdout) == []
+
+
+def test_default_cli_import_does_not_load_legacy_or_upstream_modules() -> None:
+    script = """
+import importlib
+import json
+import sys
+importlib.import_module('tradingagents_portable.cli')
 loaded = sorted(
     name for name in sys.modules
     if name == 'tradingagents_portable.legacy' or name == 'tradingagents' or name.startswith('tradingagents.')

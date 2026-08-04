@@ -1,0 +1,22 @@
+{
+  "mcpServers": {
+    "tradingagents-portable": {
+      "type": "stdio",
+      "command": "stock-research-agents-mcp",
+      "args": [],
+      "env": {
+        "PYTHONDONTWRITEBYTECODE": "1",
+        "PYTHONUNBUFFERED": "1"
+      }
+    },
+    "tradingagents-research-data": {
+      "type": "stdio",
+      "command": "stock-research-data-mcp",
+      "args": [],
+      "env": {
+        "PYTHONDONTWRITEBYTECODE": "1",
+        "PYTHONUNBUFFERED": "1"
+      }
+    }
+  }
+}

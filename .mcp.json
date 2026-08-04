@@ -1,37 +1,25 @@
 {
   "mcpServers": {
     "tradingagents-portable": {
-      "command": "uv",
+      "type": "stdio",
+      "command": "bash",
       "args": [
-        "run",
-        "--no-project",
-        "--with",
-        "mcp>=2.0,<3",
-        "python",
-        "-m",
-        "tradingagents_portable.mcp_server"
+        "scripts/run-stock-research-mcp"
       ],
-      "cwd": ".",
       "env": {
         "PYTHONDONTWRITEBYTECODE": "1",
-        "PYTHONPATH": "src"
+        "PYTHONUNBUFFERED": "1"
       }
     },
     "tradingagents-research-data": {
-      "command": "uv",
+      "type": "stdio",
+      "command": "bash",
       "args": [
-        "run",
-        "--no-project",
-        "--with",
-        "mcp>=2.0,<3",
-        "python",
-        "-m",
-        "tradingagents_host.research_data_mcp"
+        "scripts/run-stock-research-data-mcp"
       ],
-      "cwd": ".",
       "env": {
         "PYTHONDONTWRITEBYTECODE": "1",
-        "PYTHONPATH": "src"
+        "PYTHONUNBUFFERED": "1"
       }
     }
   }

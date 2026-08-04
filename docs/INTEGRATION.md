@@ -1,13 +1,15 @@
 # Harness integration
 
-- **Purpose:** explain how Codex, MCP clients, Python applications, and other harnesses consume the same portable capability.
-- **Audience:** plugin users and host-adapter implementers.
+- **Purpose:** explain how MCP clients, Python applications, and agent harnesses consume the same portable capability.
+- **Audience:** users, host-adapter implementers, and optional plugin users.
 - **Canonical for:** adapter modes and host responsibilities.
 - **Not canonical for:** wire-field definitions or persistence internals.
 
 ## Integration principle
 
 The host owns retrieval and reasoning. StockResearchAgents owns the portable boundary: contracts, conformance, lifecycle, publication, exports, and completed projections.
+
+StockResearchAgents is not a CLI workflow. Codex skills, native-agent integrations, MCP, Python, and the CLI are inbound adapters over the same application boundary. Hosts may use their own agent topology and scheduling as long as they preserve the observable stage and terminal contracts.
 
 No adapter may move credentials, provider configuration, raw prompts, unrestricted tool arguments, or copyrighted source bodies into portable state.
 
@@ -25,22 +27,37 @@ The workflow meaning and terminal contract are stable across modes. Agent spawni
 
 Tools-only coordination is implemented, but tools-only **live research** is incomplete until separately configured provider-neutral research-data MCP adapters pass [their contract](RESEARCH_DATA_MCP.md). The default server must not register placeholder retrieval tools or imply that a semantic capability is available.
 
-## Codex plugin
-
-The repository contains:
-
-- `.codex-plugin/plugin.json` — plugin interface metadata;
-- `.agents/plugins/marketplace.json` — local marketplace entry;
-- `.mcp.json` — credential-free MCP server definition; and
-- `skills/tradingagents-portable/` — the host instructions.
-
-Install or add the repository as a local Codex plugin, then invoke `$tradingagents-portable` from a Codex task. Codex supplies model reasoning, live web/browser access, and optional subagents. The skill uses `company-analytics.v1` and returns only a completed result.
-
-The plugin requires no model or market-data API key inside portable inputs. Any authenticated source access belongs to Codex or another host connector and remains outside portable state.
-
 ## MCP
 
-Start the server:
+The stdio MCP server is the preferred harness-neutral integration surface. It exposes only portable coordination, lifecycle, validation, export, and completed-read operations; each host keeps models, agents, retrieval, credentials, and scheduling outside the package.
+
+The source checkout provides one CWD-independent launcher per MCP server:
+
+```bash
+scripts/run-stock-research-mcp
+scripts/run-stock-research-data-mcp
+```
+
+Both scripts resolve the repository before invoking `uv run`, emit no pre-MCP stdout, and do not rely on a host-defined working directory. `.mcp.json` is a standard project adapter for Claude Code and compatible clients; `opencode.json` is the OpenCode v2 project adapter. The published-package and direct-Git launch forms are documented in [Harnesses](HOSTS.md).
+
+The coordination MCP and the isolated research-data MCP stay separate. The latter registers only its receipted public data tools; it does not grant prices, indicators, Reddit, StockTwits, broker, or credential authority.
+
+## Host adapters
+
+- **Claude Code:** reads the root `.mcp.json`; approve the project server, then use the existing `tradingagents-portable` and `tradingagents-research-data` keys. `CLAUDE.md` bridges Claude's project instructions to the canonical `AGENTS.md` and neutral research skill.
+- **OpenCode:** reads the root `opencode.json`. Its local MCP definitions use the same launchers and do not implement any research logic.
+- **Hermes Agent:** uses a user-level `~/.hermes/config.yaml`; copy the source-checkout snippet from [Hermes MCP configuration](HERMES_MCP_CONFIG.yaml) and replace the absolute repository path. Hermes does not document a project-local MCP configuration, so the repository does not pretend that a checked-in file is auto-loaded there.
+- **Any other MCP client:** use its stdio configuration mechanism to run `uvx --from "tradingagents-portable==<VERSION>" stock-research-agents-mcp`, or `python -m tradingagents_portable.mcp_server` after a normal Python install. Set `STOCKRESEARCHAGENTS_PRESENTATION_MODE=path_only` for remote or headless clients.
+
+Every adapter invokes the same package and stays intentionally thin. Host-specific skill, plugin, and agent formats may improve ergonomics, but they must not fork the workflow, provider, persistence, or research business logic.
+
+## Optional Codex adapter
+
+Codex remains supported as one optional local adapter. The repository retains `.codex-plugin/plugin.json`, `.agents/plugins/marketplace.json`, `.mcp.json`, and `skills/tradingagents-portable/` for compatibility. Its displayed product name is **StockResearchAgents**; the compatibility-release skill ID is `$tradingagents-portable`. These assets call the same MCP server and do not carry model, market-data, or broker credentials.
+
+## MCP lifecycle and presentation
+
+The executable below is a convenience adapter for MCP-capable hosts; the host remains responsible for orchestration and research execution.
 
 ```bash
 uv run stock-research-agents-mcp
@@ -94,6 +111,6 @@ The portable publication service does not start UI infrastructure. An applicatio
 - Render only the completed `RunView` or exported artifacts.
 - Never bypass paywalls or move licensed bodies across the portable boundary.
 
-## Optional upstream adapter
+## Compatibility appendix: optional upstream adapter
 
 `tradingagents-portable-legacy-mcp` and the `research` CLI import an installed upstream `TradingAgentsGraph`. They are compatibility adapters, not the default portable runtime, and may require environment-owned credentials.

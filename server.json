@@ -1,0 +1,21 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.harshitagarwal2/stock-research-agents",
+  "title": "StockResearchAgents",
+  "description": "Non-executable, evidence-first company research contracts and completed-dossier tools.",
+  "repository": {
+    "url": "https://github.com/harshitagarwal2/StockResearchAgents",
+    "source": "github"
+  },
+  "version": "0.1.0",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "tradingagents-portable",
+      "version": "0.1.0",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}

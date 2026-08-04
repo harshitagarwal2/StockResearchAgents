@@ -1,0 +1,112 @@
+name: validate pre-release on TestPyPI
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Existing release-candidate tag, for example v0.2.0rc1
+        required: true
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: testpypi-${{ inputs.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: validate and build pre-release artifacts
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.package-version.outputs.value }}
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install validation tooling
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install ".[dev]" build twine
+      - id: package-version
+        name: Verify package and tag identity
+        run: |
+          version="$(python scripts/verify_release_metadata.py --tag "${{ inputs.ref }}" --package-only --print-version)"
+          echo "value=$version" >> "$GITHUB_OUTPUT"
+      - name: Ruff
+        run: |
+          ruff check .
+          ruff format --check .
+      - name: Documentation
+        run: python scripts/check_docs.py
+      - name: Tests
+        run: pytest -q
+      - name: Build distributions
+        run: python -m build
+      - name: Validate distribution metadata
+        run: twine check --strict dist/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: python-distributions-testpypi
+          path: dist/
+          if-no-files-found: error
+
+  publish-testpypi:
+    name: publish to TestPyPI
+    needs: validate
+    runs-on: ubuntu-latest
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/tradingagents-portable
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: python-distributions-testpypi
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
+          repository-url: https://test.pypi.org/legacy/
+
+  smoke-test-published-package:
+    name: clean-install smoke test
+    needs:
+      - validate
+      - publish-testpypi
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install the published TestPyPI package
+        env:
+          PACKAGE_VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          smoke_dir="$(mktemp -d)"
+          python -m venv "$smoke_dir/venv"
+          "$smoke_dir/venv/bin/python" -m pip install --upgrade pip
+          for attempt in $(seq 1 12); do
+            if "$smoke_dir/venv/bin/python" -m pip install \
+              --index-url https://test.pypi.org/simple/ \
+              --extra-index-url https://pypi.org/simple/ \
+              "tradingagents-portable==$PACKAGE_VERSION"; then
+              break
+            fi
+            if [ "$attempt" = 12 ]; then
+              exit 1
+            fi
+            sleep 10
+          done
+          STOCKRESEARCHAGENTS_STATE_DIR="$smoke_dir/state" \
+          STOCKRESEARCHAGENTS_PRESENTATION_MODE=path_only \
+          "$smoke_dir/venv/bin/stock-research-agents" fixture --events > "$smoke_dir/fixture.json"
+          test -s "$smoke_dir/fixture.json"

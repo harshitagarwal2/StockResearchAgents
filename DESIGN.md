@@ -4,10 +4,10 @@
 
 - **Status:** Active
 - **Last refreshed:** 2026-08-03
-- **Primary product surfaces:** Python package, CLI, MCP server, Codex plugin, JSON/Markdown exports, and the Research Dossier Viewer.
+- **Primary product surface:** a versioned research capability consumed by Codex, other agent harnesses, and custom applications. MCP, Python, and the CLI are inbound adapters; JSON/Markdown exports and the Research Dossier Viewer are completed-result projections.
 - **Canonical for:** product language, user journeys, information architecture, visual language, accessibility, and completed-result interaction rules.
 - **Not canonical for:** wire schemas, module ownership, persistence internals, compatibility guarantees, or test evidence.
-- **Evidence reviewed:** `README.md`, `docs/ARCHITECTURE.md`, `docs/FEATURE_PARITY.md`, `docs/VALIDATION.md`, `.codex-plugin/plugin.json`, `skills/tradingagents-portable/`, `src/tradingagents_portable/web/`, workflow manifests, tests, and the upstream TradingAgents architecture renders.
+- **Evidence reviewed:** `README.md`, `docs/ARCHITECTURE.md`, `docs/FEATURE_PARITY.md`, `docs/VALIDATION.md`, `.codex-plugin/plugin.json`, `skills/tradingagents-portable/`, `src/tradingagents_portable/web/`, workflow manifests, tests, and TradingAgents architecture renders used only as external reference material.
 
 ## Brand
 
@@ -17,19 +17,19 @@
 
 ## Product goals
 
-- **Goals:** make a completed company-research artifact understandable, auditable, portable across harnesses, and safe to inspect; let a new contributor understand the authority boundary in under five minutes.
+- **Goals:** let a research host execute one stable company-research contract without adopting a particular CLI or orchestration framework; make the completed artifact understandable, auditable, portable across harnesses, and safe to inspect; let a new contributor understand the authority boundary in under five minutes.
 - **Non-goals:** retrieve data inside the portable core, own model reasoning, provide financial advice, execute orders, expose credentials, or turn the browser into a research/runtime console.
 - **Success signals:** users can identify what the host owns, what Portable guarantees, why a conclusion was reached, which evidence is missing, and whether the displayed artifact is completed and non-executable.
 
 ## Personas and jobs
 
 - **Primary personas:** research reader, Codex user, harness integrator, contract implementer, maintainer/reviewer, and compliance or provenance auditor.
-- **User jobs:** run a safe demo; connect a host; validate a terminal dossier; receive and open its completed page without launching a company-specific UI; inspect a completed conclusion; trace a claim to evidence; export a reproducible artifact; understand a failed or incomplete run.
+- **User jobs:** connect an agent harness; execute the declared research stages with host-owned agents and tools; run a deterministic local proof; validate a terminal dossier; receive and open its completed page without launching a company-specific UI; inspect a completed conclusion; trace a claim to evidence; export a reproducible artifact; understand a failed or incomplete run.
 - **Key contexts of use:** local development, Codex tasks, generic MCP clients, CI conformance, historical replay, and read-only review after publication.
 
 ## Information architecture
 
-- **Primary navigation:** product promise → safe demo → choose-your-path routing → completed dossier → architecture/integration/reference material.
+- **Primary navigation:** product promise → host boundary → choose an integration → deterministic local proof → completed dossier → architecture/reference material.
 - **Core routes/screens:** empty viewer state, completed dossier, source/evidence appendix, lifecycle and export APIs; a future dossier comparison is a separate completed-result projection.
 - **Content hierarchy in the viewer:**
   1. Research conclusion and explicit non-executable status.
@@ -47,7 +47,7 @@
 2. **Completed means published.** Partial lifecycle state never looks like a dossier.
 3. **Plain language outside, strict identifiers inside.** Human labels clarify the product while wire IDs remain stable and versioned.
 4. **Missing is a result.** Stale, conflicting, unavailable, or entitlement-blocked evidence is visible—not silently replaced.
-5. **Projection is not authority.** CLI, MCP reads, and the browser render typed state; they do not invent research or scores.
+5. **Projection is not authority.** Harness-native views, Python/CLI/MCP reads, and the browser render typed state; they do not invent research or scores.
 6. **One viewer, explicit run identity.** Completion returns a URL pinned to the published run; later companies reuse the same application instead of generating another page or server.
 - **Tradeoffs:** auditability and compatibility take precedence over compact payloads, animated UI, or a smaller number of visible limitations.
 
@@ -56,6 +56,7 @@
 | Use | Meaning | Do not substitute |
 | --- | --- | --- |
 | StockResearchAgents | Product and capability bundle | trading app, prediction engine |
+| Research host | Codex, another agent harness, or a custom application that owns execution | portable core, CLI runtime |
 | Evidence-First Company Research | Implemented primary capability | company-research v2 in reader-facing prose |
 | Completed Research Dossier | Immutable human-facing artifact | report, result, dashboard |
 | Research Dossier Viewer | Completed-only read surface | live dashboard, operator console |

@@ -25,6 +25,8 @@ The design is driven by five invariants:
 
 External evidence enters only through a research host. The host sends typed submissions and bounded stage descriptors across the trust boundary. Portable conformance and publication decide whether a Completed Research Dossier exists; the viewer and exports read that completed artifact only.
 
+Portable conformance is independent of the optional upstream checkout. `ConformanceReport.passed` and `verified` describe StockResearchAgents' own deterministic checks; the serialized `upstream_compatibility` block separately reports whether the exact external oracle revision was checked and matched. Missing or mismatched upstream evidence therefore cannot turn a portable success into a portable failure, and portable success cannot be presented as verified upstream compatibility.
+
 ## Architectural patterns
 
 [![StockResearchAgents architecture map showing inbound adapters, application services, domain rules, and outbound adapters](../assets/architecture/portable-patterns.png)](../assets/architecture/portable-patterns.png)
@@ -182,7 +184,7 @@ The existing public `run-lifecycle.v1` tools operate the compatibility workflow.
   - recoverable staging of result/events and derived indexes without claiming a distributed transaction; and
 - completed-only publication.
 
-The public CLI creates a company run with `company-init`; MCP uses `create_company_research_run`. Shared lifecycle operations resolve the coordinator from the run record, so start, receipts, commits, pause/resume, control, events, cancellation, finalization, export, and completed reads work without duplicating a second command family.
+Inbound adapters create the same company run: the CLI exposes `company-init`, while MCP and native hosts use `create_company_research_run` or the corresponding Python coordinator. Shared lifecycle operations resolve the coordinator from the run record, so start, receipts, commits, pause/resume, control, events, cancellation, finalization, export, and completed reads work without duplicating application logic per adapter.
 
 Persistence flags describe observed execution, not requested intent. Stateless `company-import` has no lifecycle checkpoint or memory publication, so both flags are false. Durable company finalization sets checkpointing true. The public coordinator supplies a durable memory store by default. Custom coordinators either provide a store/factory, disable memory explicitly, or fail when memory is requested; they never silently downgrade the capability.
 
@@ -228,14 +230,14 @@ It does not own retrieval, provider health workers, prompts, execution, portfoli
 | Generic lifecycle/store/memory | `lifecycle.py`, `store.py`, `memory.py` |
 | Completed projection | `view.py`, `report_server.py`, packaged `web/` |
 | Automatic presentation | `presentation.py`, `viewer_daemon.py` |
-| CLI/MCP adapters | `cli.py`, `mcp_server.py` |
+| Inbound CLI/MCP adapters | `cli.py`, `mcp_server.py` |
 | Optional upstream adapter | `legacy.py`, `legacy_mcp_server.py` |
 
 ## Target runtime direction
 
 The product target is the host-native portable core, not a Codex-specific or LangGraph-specific core. Codex, generic multi-agent hosts, the one-agent sequential fallback, and tools-only MCP consumers translate their mechanisms into the same versioned stages and terminal contracts. Lifecycle, memory, export, and completed-only presentation remain common.
 
-Concrete research-data MCP implementations are a host-adapter concern. The isolated `tradingagents-research-data` MCP now registers six public metadata/fact tools: SEC filings, fundamentals, and statements; GDELT company and global news metadata plus publisher links; and World Bank macro observations. Licensed price/indicator adapters, host-OAuth Reddit, and approved StockTwits access are still absent from the default server. Provider SDKs, credentials, sessions, and entitlement enforcement stay outside the portable domain; current registration is not proof of live availability or complete company coverage. The adapter contract and proof requirements are defined in [Research-data MCP adapters](RESEARCH_DATA_MCP.md).
+Concrete research-data MCP implementations are a host-adapter concern. The isolated server launched by `stock-research-data-mcp` now registers six public metadata/fact tools: SEC filings, fundamentals, and statements; GDELT company and global news metadata plus publisher links; and World Bank macro observations. The manifest retains `tradingagents-research-data` as its compatibility key. Licensed price/indicator adapters, host-OAuth Reddit, and approved StockTwits access are still absent from the default server. Provider SDKs, credentials, sessions, and entitlement enforcement stay outside the portable domain; current registration is not proof of live availability or complete company coverage. The adapter contract and proof requirements are defined in [Research-data MCP adapters](RESEARCH_DATA_MCP.md).
 
 The optional upstream executor is transitional. It remains available and not deprecated until the gates in [Legacy executor transition](LEGACY_TRANSITION.md) pass. CI now checks the exact pin with a credential-free pure-semantic differential over the declared whitelist; complete LLM/provider behavior and live correctness remain outside that proof. Even after executor removal, frozen schemas/readers and migrated historical results remain supported.
 

@@ -24,3 +24,20 @@ def test_architecture_posters_use_checked_in_sources() -> None:
     for name in ("system-overview", "portable-patterns", "research-quality"):
         assert (ROOT / "docs" / "renders" / f"{name}.html").is_file()
         assert (ROOT / "assets" / "architecture" / f"{name}.png").is_file()
+
+
+def test_product_positioning_keeps_harness_primary_and_upstream_compatible() -> None:
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    design = (ROOT / "DESIGN.md").read_text(encoding="utf-8")
+    integration = (ROOT / "docs" / "INTEGRATION.md").read_text(encoding="utf-8")
+    ledger = (ROOT / "docs" / "FEATURE_PARITY.md").read_text(encoding="utf-8")
+
+    assert "## Harness-neutral research capability" in readme
+    assert "## TradingAgents reference and compatibility" in readme
+    assert readme.index("## Harness-neutral research capability") < readme.index(
+        "## TradingAgents reference and compatibility"
+    )
+    assert "## Relationship to TradingAgents" not in readme
+    assert "MCP, Python, and the CLI are inbound adapters" in design
+    assert "StockResearchAgents is not a CLI workflow" in integration
+    assert ledger.startswith("# Capability and proof ledger\n")
