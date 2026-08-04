@@ -26,5 +26,8 @@
     "claude_code": "claude-code/.mcp.json",
     "opencode": "opencode/opencode.json",
     "hermes_agent": "hermes/config.yaml"
+  },
+  "optional_retrieval_policies": {
+    "chrome": "chrome/chrome-retrieval-policy.v1.json"
   }
 }
