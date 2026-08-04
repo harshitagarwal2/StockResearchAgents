@@ -23,3 +23,14 @@ instructions remain in `skills/tradingagents-portable/SKILL.md`. Harnesses own
 models, agents, retrieval, credentials, entitlements, and interruption.
 StockResearchAgents owns contracts, deterministic validation, durable stage
 boundaries, atomic completed publication, and completed-only projection.
+
+These templates do not install, enable, force, or approve the optional Codex
+Chrome integration. A user may select an injected, host-controlled Chrome
+bridge for read-only interactive research on an approved public HTTPS domain,
+including a signed-in source gap or an underlying publisher page. Chrome-for-all
+routing is prohibited: typed SEC, GDELT, World Bank, and Polymarket API/MCP
+routes remain preferred. The host adapter—not Chrome—normalizes retained page
+evidence into portable receipts. If Chrome is unavailable or access is denied,
+the host records the attempt; it becomes a coverage gap only when Chrome was
+required or explicitly selected. See [Harness
+integration](../docs/INTEGRATION.md#optional-codex-adapter).

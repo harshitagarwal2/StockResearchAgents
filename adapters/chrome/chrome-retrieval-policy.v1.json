@@ -1,0 +1,280 @@
+{
+  "schema_version": "chrome-retrieval-policy.v1",
+  "adapter_kind": "host_owned_interactive_browser",
+  "status": "optional",
+  "host_control": {
+    "required_conditions": [
+      "chrome_connected",
+      "host_allowed",
+      "run_approved",
+      "domain_approved"
+    ],
+    "approval_scope": "exact_run_and_domain",
+    "approval_must_be_explicit": true,
+    "approval_must_not_carry_between_runs": true,
+    "portable_may_launch_chrome": false,
+    "portable_may_install_chrome": false,
+    "portable_may_force_chrome": false
+  },
+  "routing": {
+    "structured_routes_preferred": [
+      {
+        "provider": "sec_edgar",
+        "capabilities": [
+          "regulatory_filings",
+          "fundamentals",
+          "financial_statements"
+        ]
+      },
+      {
+        "provider": "gdelt",
+        "capabilities": [
+          "company_news",
+          "global_news"
+        ]
+      },
+      {
+        "provider": "world_bank",
+        "capabilities": [
+          "macro"
+        ]
+      },
+      {
+        "provider": "polymarket_gamma",
+        "capabilities": [
+          "prediction_markets"
+        ]
+      }
+    ],
+    "chrome_preferred_for": [
+      "interactive_open_web",
+      "authenticated_source_gaps",
+      "opening_attributable_documents_from_discovery"
+    ],
+    "chrome_must_not_replace_available_structured_routes": true
+  },
+  "navigation": {
+    "allowed_schemes": [
+      "https"
+    ],
+    "allowed_network_scope": "public_internet",
+    "available_evidence_requires_host_navigation_attestation": {
+      "canonical_final_target": "browser_reported_host_and_origin_after_all_redirects",
+      "all_contacted_and_resolved_addresses": "globally_routable_unicast",
+      "excluded_address_classes": [
+        "private",
+        "loopback",
+        "link_local",
+        "reserved",
+        "unspecified",
+        "multicast",
+        "ipv6_site_local"
+      ],
+      "canonical_raw_ip_target_must_appear_in_contacted_ip_attestation": true,
+      "redirect_receipt": {
+        "kind": "browser_canonical_host_origin_receipt",
+        "maximum_hops": 10,
+        "retained_fields": [
+          "hop_index",
+          "host",
+          "origin"
+        ],
+        "retain_path_query_or_raw_url": false,
+        "every_hop_explicitly_approved": true,
+        "every_hop_same_approved_publisher_domain": true,
+        "final_attested_host_matches_canonical_final_target": true,
+        "cross_domain_public_redirect": "denied"
+      },
+      "raw_percent_encoded_hostname_syntax_rejected": true,
+      "non_ascii_hostname_syntax_rejected": true,
+      "one_time_portable_dns_lookup_allowed": false
+    },
+    "authenticated_page_rule": "only_approved_domain_and_run_relevant_research_page",
+    "denied_targets": [
+      "file_urls",
+      "chrome_internal_urls",
+      "extension_urls",
+      "localhost",
+      "private_networks",
+      "account_pages",
+      "settings_pages",
+      "messages_pages",
+      "unrelated_authenticated_pages"
+    ]
+  },
+  "content_trust": {
+    "page_content": "untrusted",
+    "page_supplied_instructions": "ignored",
+    "prompt_injection_behavior": "stop_route_and_emit_visible_gap",
+    "page_content_may_change_policy": false,
+    "page_content_may_authorize_actions": false
+  },
+  "browser_operations": {
+    "mode": "read_only",
+    "allowed": [
+      "navigate_to_approved_url",
+      "read_rendered_page",
+      "inspect_attributable_links"
+    ],
+    "denied": [
+      "form_submission",
+      "http_post",
+      "account_change",
+      "file_download",
+      "page_script_execution",
+      "clipboard_write"
+    ]
+  },
+  "source_lanes": [
+    "regulator_and_filings",
+    "issuer_first_party",
+    "financial_history_and_market_state",
+    "independent_reporting",
+    "industry_and_peers",
+    "macro_and_policy",
+    "expectations_and_positioning",
+    "adversarial_checks"
+  ],
+  "normalization": {
+    "output_contracts": [
+      {
+        "name": "SourceBatch",
+        "version": "1.0.0"
+      },
+      {
+        "name": "SourcePortfolioReceipt",
+        "version": "1.0.0"
+      }
+    ],
+    "source_batch_required_fields": [
+      "version",
+      "capability",
+      "query",
+      "cutoff",
+      "status",
+      "items",
+      "provenance",
+      "entitlement",
+      "completeness",
+      "pagination",
+      "limitations"
+    ],
+    "source_portfolio_receipt_required_fields": [
+      "version",
+      "capability",
+      "query",
+      "status",
+      "attempts",
+      "batches",
+      "coverage_gaps",
+      "exact_duplicate_clusters",
+      "portfolio_sha256"
+    ],
+    "observation_identity_required_fields": [
+      "source_id",
+      "canonical_uri",
+      "content_sha256",
+      "content_sha256_scope",
+      "provider",
+      "provider_version",
+      "license_receipt_id"
+    ],
+    "point_in_time_required_fields": [
+      "observed_at",
+      "published_at",
+      "available_at",
+      "retrieved_at",
+      "cutoff"
+    ],
+    "entitlement_required_fields": [
+      "access",
+      "redistributable",
+      "terms_uri",
+      "license_receipt_id",
+      "limitation"
+    ],
+    "bounded_content": {
+      "maximum_extract_characters": 4000,
+      "maximum_facts_per_observation": 512,
+      "maximum_provider_routes": 64,
+      "maximum_portfolio_observations": 50000,
+      "raw_body_allowed": false,
+      "omit_extract_when_redistribution_is_false_or_unknown": true
+    },
+    "rendered_access": {
+      "implies_redistribution_permission": false,
+      "default_redistributable": "unknown",
+      "default_extract": "omitted",
+      "affirmative_redistribution_requires_terms_uri": true
+    },
+    "temporal_truth": {
+      "published_at_rule": "explicit_source_metadata_only",
+      "missing_published_at_result": "visible_gap_without_observation",
+      "historical_availability_must_not_be_inferred_from_current_render": true,
+      "past_cutoff_rule": "retain_only_when_established_available_at_is_not_after_cutoff",
+      "unestablished_past_availability_result": "visible_gap_without_observation"
+    },
+    "digest_scope": {
+      "default_allowed": [
+        "bounded_extract",
+        "normalized_source_record"
+      ],
+      "source_content_allowed_only_when_actual_source_bytes_hashed": true
+    },
+    "publisher_attribution": {
+      "provider_identity": "attributable_publisher",
+      "chrome_is_provider": false,
+      "mixed_publishers_require_separate_batches": true
+    }
+  },
+  "browser_state": {
+    "host_only": [
+      "cookies",
+      "credentials",
+      "history",
+      "session_state",
+      "raw_bodies"
+    ],
+    "portable_storage_allowed": false,
+    "portable_logging_allowed": false
+  },
+  "access_controls": {
+    "respect_paywalls": true,
+    "respect_captchas": true,
+    "respect_robots_controls": true,
+    "bypass_allowed": false
+  },
+  "failure_reporting": {
+    "visible_route_results": [
+      {
+        "path": "chrome_disconnected",
+        "attempt_status": "unavailable"
+      },
+      {
+        "path": "host_or_user_denied",
+        "attempt_status": "denied"
+      },
+      {
+        "path": "prompt_injection_detected",
+        "attempt_status": "unavailable"
+      },
+      {
+        "path": "private_url_denied",
+        "attempt_status": "denied"
+      }
+    ],
+    "coverage_gap_rule": {
+      "required_or_explicitly_user_selected_route_failure": "coverage_gap_required",
+      "optional_non_required_route_failure": "visible_attempt_without_gap_when_structured_portfolio_is_fully_covered"
+    },
+    "optional_failure_must_not_downgrade_fully_covered_structured_portfolio": true,
+    "silent_fallback_allowed": false
+  },
+  "prohibited_actions": [
+    "broker_integration",
+    "order_placement",
+    "simulated_fills",
+    "portfolio_mutation",
+    "executable_trading_action"
+  ]
+}

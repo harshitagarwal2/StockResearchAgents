@@ -13,10 +13,15 @@ from mcp import ClientSession, StdioServerParameters, stdio_client
 ROOT = Path(__file__).resolve().parents[1]
 ADAPTERS = ROOT / "adapters"
 CONTRACT_PATH = ADAPTERS / "host-adapters.v1.json"
+CHROME_POLICY_PATH = ADAPTERS / "chrome" / "chrome-retrieval-policy.v1.json"
 
 
 def _contract() -> dict[str, Any]:
     return json.loads(CONTRACT_PATH.read_text(encoding="utf-8"))
+
+
+def _chrome_policy() -> dict[str, Any]:
+    return json.loads(CHROME_POLICY_PATH.read_text(encoding="utf-8"))
 
 
 def _expected_servers(contract: dict[str, Any]) -> dict[str, dict[str, Any]]:
@@ -104,6 +109,273 @@ def test_installed_package_templates_match_one_host_adapter_contract() -> None:
 
     for server in contract["servers"].values():
         assert (ROOT / server["source_launcher"]).is_file()
+
+
+def test_optional_chrome_policy_is_host_owned_and_structured_routes_stay_preferred() -> None:
+    contract = _contract()
+    assert contract["optional_retrieval_policies"] == {"chrome": "chrome/chrome-retrieval-policy.v1.json"}
+    assert ADAPTERS / contract["optional_retrieval_policies"]["chrome"] == CHROME_POLICY_PATH
+
+    policy = _chrome_policy()
+    assert set(policy) == {
+        "schema_version",
+        "adapter_kind",
+        "status",
+        "host_control",
+        "routing",
+        "navigation",
+        "content_trust",
+        "browser_operations",
+        "source_lanes",
+        "normalization",
+        "browser_state",
+        "access_controls",
+        "failure_reporting",
+        "prohibited_actions",
+    }
+    assert policy["schema_version"] == "chrome-retrieval-policy.v1"
+    assert policy["adapter_kind"] == "host_owned_interactive_browser"
+    assert policy["status"] == "optional"
+    assert policy["host_control"] == {
+        "required_conditions": ["chrome_connected", "host_allowed", "run_approved", "domain_approved"],
+        "approval_scope": "exact_run_and_domain",
+        "approval_must_be_explicit": True,
+        "approval_must_not_carry_between_runs": True,
+        "portable_may_launch_chrome": False,
+        "portable_may_install_chrome": False,
+        "portable_may_force_chrome": False,
+    }
+    assert policy["routing"] == {
+        "structured_routes_preferred": [
+            {
+                "provider": "sec_edgar",
+                "capabilities": ["regulatory_filings", "fundamentals", "financial_statements"],
+            },
+            {"provider": "gdelt", "capabilities": ["company_news", "global_news"]},
+            {"provider": "world_bank", "capabilities": ["macro"]},
+            {"provider": "polymarket_gamma", "capabilities": ["prediction_markets"]},
+        ],
+        "chrome_preferred_for": [
+            "interactive_open_web",
+            "authenticated_source_gaps",
+            "opening_attributable_documents_from_discovery",
+        ],
+        "chrome_must_not_replace_available_structured_routes": True,
+    }
+
+
+def test_optional_chrome_policy_covers_exact_source_lanes_and_normalizes_receipts() -> None:
+    policy = _chrome_policy()
+    assert policy["source_lanes"] == [
+        "regulator_and_filings",
+        "issuer_first_party",
+        "financial_history_and_market_state",
+        "independent_reporting",
+        "industry_and_peers",
+        "macro_and_policy",
+        "expectations_and_positioning",
+        "adversarial_checks",
+    ]
+
+    normalization = policy["normalization"]
+    assert set(normalization) == {
+        "output_contracts",
+        "source_batch_required_fields",
+        "source_portfolio_receipt_required_fields",
+        "observation_identity_required_fields",
+        "point_in_time_required_fields",
+        "entitlement_required_fields",
+        "bounded_content",
+        "rendered_access",
+        "temporal_truth",
+        "digest_scope",
+        "publisher_attribution",
+    }
+    assert normalization["output_contracts"] == [
+        {"name": "SourceBatch", "version": "1.0.0"},
+        {"name": "SourcePortfolioReceipt", "version": "1.0.0"},
+    ]
+    assert set(normalization["source_batch_required_fields"]) == {
+        "version",
+        "capability",
+        "query",
+        "cutoff",
+        "status",
+        "items",
+        "provenance",
+        "entitlement",
+        "completeness",
+        "pagination",
+        "limitations",
+    }
+    assert set(normalization["source_portfolio_receipt_required_fields"]) == {
+        "version",
+        "capability",
+        "query",
+        "status",
+        "attempts",
+        "batches",
+        "coverage_gaps",
+        "exact_duplicate_clusters",
+        "portfolio_sha256",
+    }
+    assert set(normalization["observation_identity_required_fields"]) == {
+        "source_id",
+        "canonical_uri",
+        "content_sha256",
+        "content_sha256_scope",
+        "provider",
+        "provider_version",
+        "license_receipt_id",
+    }
+    assert set(normalization["point_in_time_required_fields"]) == {
+        "observed_at",
+        "published_at",
+        "available_at",
+        "retrieved_at",
+        "cutoff",
+    }
+    assert set(normalization["entitlement_required_fields"]) == {
+        "access",
+        "redistributable",
+        "terms_uri",
+        "license_receipt_id",
+        "limitation",
+    }
+    assert normalization["bounded_content"] == {
+        "maximum_extract_characters": 4000,
+        "maximum_facts_per_observation": 512,
+        "maximum_provider_routes": 64,
+        "maximum_portfolio_observations": 50000,
+        "raw_body_allowed": False,
+        "omit_extract_when_redistribution_is_false_or_unknown": True,
+    }
+    assert normalization["rendered_access"] == {
+        "implies_redistribution_permission": False,
+        "default_redistributable": "unknown",
+        "default_extract": "omitted",
+        "affirmative_redistribution_requires_terms_uri": True,
+    }
+    assert normalization["temporal_truth"] == {
+        "published_at_rule": "explicit_source_metadata_only",
+        "missing_published_at_result": "visible_gap_without_observation",
+        "historical_availability_must_not_be_inferred_from_current_render": True,
+        "past_cutoff_rule": "retain_only_when_established_available_at_is_not_after_cutoff",
+        "unestablished_past_availability_result": "visible_gap_without_observation",
+    }
+    assert normalization["digest_scope"] == {
+        "default_allowed": ["bounded_extract", "normalized_source_record"],
+        "source_content_allowed_only_when_actual_source_bytes_hashed": True,
+    }
+    assert normalization["publisher_attribution"] == {
+        "provider_identity": "attributable_publisher",
+        "chrome_is_provider": False,
+        "mixed_publishers_require_separate_batches": True,
+    }
+
+
+def test_optional_chrome_policy_allows_only_approved_read_only_public_https_retrieval() -> None:
+    policy = _chrome_policy()
+    assert policy["navigation"] == {
+        "allowed_schemes": ["https"],
+        "allowed_network_scope": "public_internet",
+        "available_evidence_requires_host_navigation_attestation": {
+            "canonical_final_target": "browser_reported_host_and_origin_after_all_redirects",
+            "all_contacted_and_resolved_addresses": "globally_routable_unicast",
+            "excluded_address_classes": [
+                "private",
+                "loopback",
+                "link_local",
+                "reserved",
+                "unspecified",
+                "multicast",
+                "ipv6_site_local",
+            ],
+            "canonical_raw_ip_target_must_appear_in_contacted_ip_attestation": True,
+            "redirect_receipt": {
+                "kind": "browser_canonical_host_origin_receipt",
+                "maximum_hops": 10,
+                "retained_fields": ["hop_index", "host", "origin"],
+                "retain_path_query_or_raw_url": False,
+                "every_hop_explicitly_approved": True,
+                "every_hop_same_approved_publisher_domain": True,
+                "final_attested_host_matches_canonical_final_target": True,
+                "cross_domain_public_redirect": "denied",
+            },
+            "raw_percent_encoded_hostname_syntax_rejected": True,
+            "non_ascii_hostname_syntax_rejected": True,
+            "one_time_portable_dns_lookup_allowed": False,
+        },
+        "authenticated_page_rule": "only_approved_domain_and_run_relevant_research_page",
+        "denied_targets": [
+            "file_urls",
+            "chrome_internal_urls",
+            "extension_urls",
+            "localhost",
+            "private_networks",
+            "account_pages",
+            "settings_pages",
+            "messages_pages",
+            "unrelated_authenticated_pages",
+        ],
+    }
+    assert policy["content_trust"] == {
+        "page_content": "untrusted",
+        "page_supplied_instructions": "ignored",
+        "prompt_injection_behavior": "stop_route_and_emit_visible_gap",
+        "page_content_may_change_policy": False,
+        "page_content_may_authorize_actions": False,
+    }
+    assert policy["browser_operations"] == {
+        "mode": "read_only",
+        "allowed": ["navigate_to_approved_url", "read_rendered_page", "inspect_attributable_links"],
+        "denied": [
+            "form_submission",
+            "http_post",
+            "account_change",
+            "file_download",
+            "page_script_execution",
+            "clipboard_write",
+        ],
+    }
+
+
+def test_optional_chrome_policy_keeps_browser_state_private_and_cannot_bypass_controls() -> None:
+    policy = _chrome_policy()
+    assert policy["browser_state"] == {
+        "host_only": ["cookies", "credentials", "history", "session_state", "raw_bodies"],
+        "portable_storage_allowed": False,
+        "portable_logging_allowed": False,
+    }
+    assert policy["access_controls"] == {
+        "respect_paywalls": True,
+        "respect_captchas": True,
+        "respect_robots_controls": True,
+        "bypass_allowed": False,
+    }
+    assert policy["failure_reporting"] == {
+        "visible_route_results": [
+            {"path": "chrome_disconnected", "attempt_status": "unavailable"},
+            {"path": "host_or_user_denied", "attempt_status": "denied"},
+            {"path": "prompt_injection_detected", "attempt_status": "unavailable"},
+            {"path": "private_url_denied", "attempt_status": "denied"},
+        ],
+        "coverage_gap_rule": {
+            "required_or_explicitly_user_selected_route_failure": "coverage_gap_required",
+            "optional_non_required_route_failure": (
+                "visible_attempt_without_gap_when_structured_portfolio_is_fully_covered"
+            ),
+        },
+        "optional_failure_must_not_downgrade_fully_covered_structured_portfolio": True,
+        "silent_fallback_allowed": False,
+    }
+    assert policy["prohibited_actions"] == [
+        "broker_integration",
+        "order_placement",
+        "simulated_fills",
+        "portfolio_mutation",
+        "executable_trading_action",
+    ]
 
 
 async def _probe_mcp(
