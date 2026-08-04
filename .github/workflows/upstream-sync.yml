@@ -1,0 +1,91 @@
+name: sync upstream TradingAgents
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "23 9 * * 1"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: upstream-tradingagents-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Resolve upstream main
+        id: upstream
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          repository="$(python3 scripts/upstream_pin.py --print-repository)"
+          tracking_ref="$(python3 scripts/upstream_pin.py --print-tracking-ref)"
+          current="$(python3 scripts/upstream_pin.py --print-revision)"
+          latest="$(gh api "repos/$repository/commits/$tracking_ref" --jq .sha)"
+          echo "repository=$repository" >> "$GITHUB_OUTPUT"
+          echo "current=$current" >> "$GITHUB_OUTPUT"
+          echo "latest=$latest" >> "$GITHUB_OUTPUT"
+          if [ "$current" = "$latest" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Update pinned revision
+        if: steps.upstream.outputs.changed == 'true'
+        run: |
+          python -m pip install uv
+          python3 scripts/upstream_pin.py --set-revision "${{ steps.upstream.outputs.latest }}"
+          uv lock
+          python3 scripts/upstream_pin.py --check
+      - name: Checkout proposed upstream contract
+        if: steps.upstream.outputs.changed == 'true'
+        run: |
+          git init "$GITHUB_WORKSPACE/../tradingAgents"
+          git -C "$GITHUB_WORKSPACE/../tradingAgents" remote add origin "https://github.com/${{ steps.upstream.outputs.repository }}.git"
+          git -C "$GITHUB_WORKSPACE/../tradingAgents" fetch --depth=1 origin "${{ steps.upstream.outputs.latest }}"
+          git -C "$GITHUB_WORKSPACE/../tradingAgents" checkout --detach FETCH_HEAD
+      - name: Install
+        if: steps.upstream.outputs.changed == 'true'
+        run: python -m pip install -e ".[dev]" build
+      - name: Validate proposed update
+        if: steps.upstream.outputs.changed == 'true'
+        run: |
+          ruff check .
+          ruff format --check .
+          node --check src/tradingagents_portable/web/app.js
+          pytest -q
+          python scripts/smoke_backend.py
+          python scripts/smoke_mcp.py
+          python -m build
+      - name: Create or update review pull request
+        if: steps.upstream.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          branch="automation/upstream-tradingagents-main"
+          title="chore: sync upstream TradingAgents"
+          body="Automated pinned update from ${{ steps.upstream.outputs.current }} to ${{ steps.upstream.outputs.latest }}. Full conformance, tests, smoke checks, formatting, and build passed before this PR was opened. This workflow never auto-merges upstream changes."
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin "$branch" || true
+          git checkout -B "$branch"
+          git add upstream.lock.json pyproject.toml uv.lock src/tradingagents_portable/conformance.py
+          git commit -m "chore: sync upstream TradingAgents to ${{ steps.upstream.outputs.latest }}"
+          git push --force-with-lease origin HEAD:"$branch"
+          existing="$(gh pr list --head "$branch" --state open --json number --jq '.[0].number // empty')"
+          if [ -n "$existing" ]; then
+            gh pr edit "$existing" --title "$title" --body "$body"
+          else
+            gh pr create --base main --head "$branch" --title "$title" --body "$body"
+          fi

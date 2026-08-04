@@ -1,0 +1,6 @@
+{
+  "repository": "TauricResearch/TradingAgents",
+  "tracking_ref": "main",
+  "revision": "a33fd4c0f134485a43553a2c23a63cb14adbd88f",
+  "update_policy": "scheduled_pull_request"
+}
