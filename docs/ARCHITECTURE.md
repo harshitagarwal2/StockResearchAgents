@@ -25,6 +25,8 @@ The design is driven by five invariants:
 
 External evidence enters only through a research host. The host sends typed submissions and bounded stage descriptors across the trust boundary. Portable conformance and publication decide whether a Completed Research Dossier exists; the viewer and exports read that completed artifact only.
 
+Portable conformance is independent of the optional upstream checkout. `ConformanceReport.passed` and `verified` describe StockResearchAgents' own deterministic checks; the serialized `upstream_compatibility` block separately reports whether the exact external oracle revision was checked and matched. Missing or mismatched upstream evidence therefore cannot turn a portable success into a portable failure, and portable success cannot be presented as verified upstream compatibility.
+
 ## Architectural patterns
 
 [![StockResearchAgents architecture map showing inbound adapters, application services, domain rules, and outbound adapters](../assets/architecture/portable-patterns.png)](../assets/architecture/portable-patterns.png)
@@ -182,7 +184,7 @@ The existing public `run-lifecycle.v1` tools operate the compatibility workflow.
   - recoverable staging of result/events and derived indexes without claiming a distributed transaction; and
 - completed-only publication.
 
-The public CLI creates a company run with `company-init`; MCP uses `create_company_research_run`. Shared lifecycle operations resolve the coordinator from the run record, so start, receipts, commits, pause/resume, control, events, cancellation, finalization, export, and completed reads work without duplicating a second command family.
+Inbound adapters create the same company run: the CLI exposes `company-init`, while MCP and native hosts use `create_company_research_run` or the corresponding Python coordinator. Shared lifecycle operations resolve the coordinator from the run record, so start, receipts, commits, pause/resume, control, events, cancellation, finalization, export, and completed reads work without duplicating application logic per adapter.
 
 Persistence flags describe observed execution, not requested intent. Stateless `company-import` has no lifecycle checkpoint or memory publication, so both flags are false. Durable company finalization sets checkpointing true. The public coordinator supplies a durable memory store by default. Custom coordinators either provide a store/factory, disable memory explicitly, or fail when memory is requested; they never silently downgrade the capability.
 
@@ -228,7 +230,7 @@ It does not own retrieval, provider health workers, prompts, execution, portfoli
 | Generic lifecycle/store/memory | `lifecycle.py`, `store.py`, `memory.py` |
 | Completed projection | `view.py`, `report_server.py`, packaged `web/` |
 | Automatic presentation | `presentation.py`, `viewer_daemon.py` |
-| CLI/MCP adapters | `cli.py`, `mcp_server.py` |
+| Inbound CLI/MCP adapters | `cli.py`, `mcp_server.py` |
 | Optional upstream adapter | `legacy.py`, `legacy_mcp_server.py` |
 
 ## Target runtime direction

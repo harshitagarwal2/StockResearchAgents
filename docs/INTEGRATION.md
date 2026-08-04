@@ -1,13 +1,15 @@
 # Harness integration
 
-- **Purpose:** explain how Codex, MCP clients, Python applications, and other harnesses consume the same portable capability.
-- **Audience:** plugin users and host-adapter implementers.
+- **Purpose:** explain how MCP clients, Python applications, and agent harnesses consume the same portable capability.
+- **Audience:** users, host-adapter implementers, and optional plugin users.
 - **Canonical for:** adapter modes and host responsibilities.
 - **Not canonical for:** wire-field definitions or persistence internals.
 
 ## Integration principle
 
 The host owns retrieval and reasoning. StockResearchAgents owns the portable boundary: contracts, conformance, lifecycle, publication, exports, and completed projections.
+
+StockResearchAgents is not a CLI workflow. Codex skills, native-agent integrations, MCP, Python, and the CLI are inbound adapters over the same application boundary. Hosts may use their own agent topology and scheduling as long as they preserve the observable stage and terminal contracts.
 
 No adapter may move credentials, provider configuration, raw prompts, unrestricted tool arguments, or copyrighted source bodies into portable state.
 
@@ -94,6 +96,6 @@ The portable publication service does not start UI infrastructure. An applicatio
 - Render only the completed `RunView` or exported artifacts.
 - Never bypass paywalls or move licensed bodies across the portable boundary.
 
-## Optional upstream adapter
+## Compatibility appendix: optional upstream adapter
 
 `tradingagents-portable-legacy-mcp` and the `research` CLI import an installed upstream `TradingAgentsGraph`. They are compatibility adapters, not the default portable runtime, and may require environment-owned credentials.

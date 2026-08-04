@@ -3,7 +3,7 @@
 - **Purpose:** define when the optional upstream executor may leave the public product surface.
 - **Audience:** maintainers, release owners, adapter authors, and reviewers.
 - **Canonical for:** removal scope, blocking gates, deprecation policy, and retained compatibility readers.
-- **Not canonical for:** current feature proof; see [Feature parity](FEATURE_PARITY.md) and [Validation](VALIDATION.md).
+- **Not canonical for:** current feature proof; see [Capability and proof ledger](FEATURE_PARITY.md) and [Validation](VALIDATION.md).
 
 ## Current decision
 

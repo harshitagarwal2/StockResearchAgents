@@ -1,4 +1,4 @@
-# TradingAgents feature parity ledger
+# Capability and proof ledger
 
 - **Purpose:** separate implemented portable behavior from host-dependent execution and unverified integrations.
 - **Audience:** maintainers, reviewers, and release owners.
@@ -7,12 +7,12 @@
 
 | Capability | Status | Evidence and boundary |
 | --- | --- | --- |
-| `financial-research.v1` | Preserved | Existing manifest, host plan/import, durable lifecycle, fixture, and result contracts remain available. |
-| `host-submission.v2` | Preserved and frozen | Company research uses a parallel schema rather than widening v2. |
-| `company-research.v2` | Implemented contract | Fifteen ordered stages declare dependencies, allowed capabilities, output refs, and sequential fallback. The host executes them. |
-| `host-submission.v3` | Implemented contract | Strict request plus completed `research_dossier.v3`, schema version `2026-08-03.v3`. |
 | `company-analytics.v1` | Implemented primary contract | Twenty-six stages compose the unchanged v3 dossier with fundamentals, models, consensus, positioning, events, experiments, research-lab records, and Research Quality. Every stage includes a versioned role, objective, completion criteria, dependencies, capabilities, and output refs; exact prompt wording remains host-owned. |
 | `host-submission.v4` | Implemented wrapper | Strict unchanged v3 submission plus typed analytics, run card, hypothesis ledger, iterations, quality receipt, and forecasts. |
+| `company-research.v2` | Implemented foundation contract | Fifteen ordered stages declare dependencies, allowed capabilities, output refs, and sequential fallback. The host executes them. |
+| `host-submission.v3` | Implemented and frozen contract | Strict request plus completed `research_dossier.v3`, schema version `2026-08-03.v3`. |
+| `financial-research.v1` | Preserved compatibility contract | Existing manifest, host plan/import, durable lifecycle, fixture, and result contracts remain available. |
+| `host-submission.v2` | Preserved and frozen | Company research uses a parallel schema rather than widening v2. |
 | Self-contained v4 schema | Supported | Prepare returns bundled typed analytics definitions. Python contracts enforce cross-field semantics, including global forecast namespace rules. |
 | Profile negotiation | Supported | Discovery advertises compatibility v1/v2, company-research v2/v3, and company-analytics v1/v4. Compatibility discovery does not mean the legacy executor is a permanent product dependency. |
 | Instrument identity | Supported | Typed equity, fund, or crypto identity with bounded ASCII market symbols; deterministic submissions cover ORCL, META, QQQ, and ACME. |
@@ -32,16 +32,16 @@
 | Evaluation receipts | Supported | Checks retain evaluator provenance, rubric, status, timestamps, references, and limitations. This is not a claim of external evaluator certification. |
 | Sanitized portfolio context | Optional and non-executable | Private account/customer identity and executable fields are rejected. |
 | Completeness semantics | Supported | Complete coverage needs sources; every non-complete state needs a limitation. Entitlement gaps stay explicit. |
-| Company CLI/MCP plan/import | Supported | `company-plan`/`company-import` and `prepare_company_research`/`import_company_research` validate and atomically publish complete v3 submissions. |
+| Company adapter plan/import | Supported | CLI names `company-plan`/`company-import` and MCP/Python operations `prepare_company_research`/`import_company_research` invoke the same application boundary and atomically publish complete v3 submissions. |
 | Company durable lifecycle | Supported | `company-init`/`create_company_research_run` creates the 15-stage run; shared lifecycle tools provide checkpoints, resume, cancellation, events, safe receipts, cutoff-safe memory, and recoverable publication. |
-| Analytics CLI/MCP plan/import | Supported | `analytics-plan`/`analytics-import` and `prepare_company_analytics`/`import_company_analytics` validate and atomically publish one complete v4 bundle. |
+| Analytics adapter plan/import | Supported | CLI names `analytics-plan`/`analytics-import` and MCP/Python operations `prepare_company_analytics`/`import_company_analytics` invoke the same application boundary and atomically publish one complete v4 bundle. |
 | Analytics durable lifecycle | Supported | `analytics-init`/`create_company_analytics_run` creates the 26-stage run; commits advance one first-incomplete stage at a time, with checkpoints, resume, cancellation, strict v4 finalization, durable report-ID rebinding, hidden quality-index publication, and crash recovery. |
 | Execution modes | Compatible sequential locally ready; full/tools-only adapter-dependent | The sequential runner is implemented and locally verified. Full native-agent execution requires a host adapter; tools-only coordination/import is implemented but live research remains partial. |
 | Host parallelism | Mode-specific | Stateless full-mode host adapters may execute dependency-ready work in parallel. Durable runs preserve manifest-order commits even when retrieval or reasoning is concurrent. |
 | Deterministic company analytics | Supported contracts and calculators | Ratio, DCF/reverse-DCF/comparables, consensus, positioning, catalyst, and experiment records preserve point-in-time inputs and reproducible receipts. Investment usefulness remains host- and evidence-dependent. |
 | Research packs and hypothesis ledger | Supported | Eight versioned pack definitions, immutable run cards, stage receipts, research iterations, and append-only hypotheses are available in the v4 sidecars. |
 | Persistence capability truthfulness | Supported | Direct import reports checkpoint and decision memory disabled. Public durable runs use the default memory store; custom coordinators must configure memory, disable it explicitly, or fail rather than silently downgrade. |
-| Existing durable lifecycle | Supported | `run-lifecycle.v1` CLI/MCP tools retain SQLite/WAL checkpoints, optimistic revisions, stage resume, cooperative cancellation, and atomic publication for the compatibility workflow. |
+| Compatibility durable lifecycle | Supported | `run-lifecycle.v1` adapters retain SQLite/WAL checkpoints, optimistic revisions, stage resume, cooperative cancellation, and atomic publication for the compatibility workflow. |
 | Decision memory | Supported | Published decisions are bounded to five same-symbol and three cross-symbol recalls; exact-cutoff filtering excludes later decisions, outcomes, and embedded availability. |
 | Research Dossier Viewer | Supported | The completed projection renders all v3 dossier sections and contains no research, lifecycle, provider, credential, or broker controls. Completed CLI/MCP adapters automatically return a run-specific link and reuse one loopback daemon per durable state directory; headless mode returns a path-only receipt. `report`/`launch_research_report` remain explicit diagnostics/retry names, and dashboard-named surfaces remain aliases. |
 | Research Quality | Implemented | Immutable receipt/forecast registration, append-only outcome corrections, deterministic scorecards, CLI/MCP operations, durable local storage, and completed-view projection are supported. No forecast-accuracy claim is implied. |

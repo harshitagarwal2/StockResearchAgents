@@ -23,7 +23,6 @@ from .errors import CapabilitySetupError
 from .export import export_run_bundle
 from .fixture import run_fixture
 from .host_native import prepare_host_run, submit_host_run
-from .legacy import LegacyTradingAgentsAdapter
 from .lifecycle import HOST_RUN_COORDINATOR, is_lifecycle_run_id
 from .report_server import create_report_server, present_completed_run
 from .semantics import build_completed_run_semantics
@@ -31,14 +30,23 @@ from .store import RUN_STORE, RunStore
 from .view import build_run_view
 
 
+def LegacyTradingAgentsAdapter(legacy_path: str | None = None):  # noqa: N802
+    """Construct the optional upstream adapter without loading it for normal CLI use."""
+
+    from .legacy import LegacyTradingAgentsAdapter as Adapter
+
+    return Adapter(legacy_path)
+
+
 def _add_research_command(commands: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
     research = commands.add_parser(
         "research",
-        help="Research any upstream-supported market symbol through TradingAgentsGraph",
+        help="Optional compatibility adapter for an installed TradingAgentsGraph",
         description=(
-            "Run the complete upstream TradingAgentsGraph non-interactively. SUBJECT follows the upstream CLI's "
-            "Yahoo-style symbol format (for example AAPL, 0700.HK, ^GSPC, EURUSD=X, GC=F, or BTC-USD). "
-            "Provider credentials are read only from the environment."
+            "Optionally delegate a symbol to an installed upstream TradingAgentsGraph. This is a compatibility "
+            "path, not the portable research runtime. SUBJECT follows the upstream CLI's Yahoo-style symbol "
+            "format (for example AAPL, 0700.HK, ^GSPC, EURUSD=X, GC=F, or BTC-USD). Provider credentials are "
+            "read only from the environment."
         ),
     )
     research.add_argument("subject", help="Company/instrument market symbol")
@@ -294,7 +302,6 @@ def _parser() -> argparse.ArgumentParser:
     fixture.add_argument("--risk-rounds", type=int, default=1)
     fixture.add_argument("--events", action="store_true", help="Include rich events in JSON output")
 
-    _add_research_command(commands)
     _add_host_commands(commands)
 
     for command, help_text in (
@@ -306,6 +313,7 @@ def _parser() -> argparse.ArgumentParser:
         viewer.add_argument("--port", default=8765, type=int)
         viewer.add_argument("--fixture", action="store_true", help="Seed the default ORCL fixture before serving")
         viewer.add_argument("--date", default="2026-07-03", dest="as_of_date")
+    _add_research_command(commands)
     return parser
 
 

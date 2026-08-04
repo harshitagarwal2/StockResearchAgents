@@ -29,7 +29,7 @@
 
 ## Review and release
 
-1. [Feature parity](FEATURE_PARITY.md) — implemented, host-dependent, and unverified behavior.
+1. [Capability and proof ledger](FEATURE_PARITY.md) — implemented, host-dependent, and unverified behavior.
 2. [Validation](VALIDATION.md) — executable proof and known gaps.
 3. [Legacy transition](LEGACY_TRANSITION.md) — removal gates, deprecation policy, and retained readers.
 4. [Contributing](../CONTRIBUTING.md) — safe change workflow and review expectations.

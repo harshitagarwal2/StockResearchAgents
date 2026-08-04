@@ -85,6 +85,7 @@
 - [ ] The line-item parity ledger covers every whitelisted observable and the pure-semantic probe passes, but fresh release commit/date/sign-off evidence is still absent.
 - [ ] Concrete provider-neutral research-data MCP adapters are registered and conformant for every required category. Six public categories pass locally, but licensed prices/indicators and lawful social-provider coverage remain open.
 - [x] CI checks out the exact upstream pin and runs a credential-free pure-semantic comparison of scoped observable contracts. This is not an LLM/provider graph dual-run.
+- [x] Portable conformance reports portable pass/verification independently and records missing, matching, or mismatched upstream identity under a separate compatibility status.
 - [ ] A representative live and failure symbol matrix has recorded, reproducible evidence.
 - [x] Python, CLI, MCP, export/reload, dashboard, and RunView return the same canonical completed-run semantic projection and digest; the projection content-addresses every terminal artifact, evidence item, report section, and complete terminal research payload.
 - [x] Complete retained historical-schema `2026-08-02` result/event goldens exercise strict migration plus copy-on-write store/export/memory receipts. These fixtures are not provenance-backed public-release artifacts.

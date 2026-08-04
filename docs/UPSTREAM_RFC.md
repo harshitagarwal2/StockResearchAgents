@@ -2,6 +2,8 @@
 
 Status: proposal for upstream discussion
 
+This document records external collaboration context. It is not the StockResearchAgents product roadmap, architecture source of truth, or evidence that the portable core depends on upstream acceptance. Current product direction is owned by [Design](../DESIGN.md), [Architecture](ARCHITECTURE.md), and [Compatibility](COMPATIBILITY.md).
+
 Upstream: [TauricResearch/TradingAgents](https://github.com/TauricResearch/TradingAgents)
 
 Prototype: [harshitagarwal2/StockResearchAgents](https://github.com/harshitagarwal2/StockResearchAgents)

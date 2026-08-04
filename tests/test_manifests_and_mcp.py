@@ -234,6 +234,25 @@ def test_mutating_mcp_tools_do_not_invite_automatic_idempotent_retries() -> None
     assert all(tool.annotations.idempotent_hint is False for tool in mutating)
 
 
+def test_mcp_conformance_keeps_upstream_identity_separate() -> None:
+    pytest.importorskip("mcp")
+    from tradingagents_portable.contracts import RunRequest
+    from tradingagents_portable.fixture import run_fixture
+    from tradingagents_portable.mcp_server import get_conformance_report
+
+    result, _events = run_fixture(RunRequest())
+    payload = get_conformance_report(result.run_id)
+
+    assert payload["ok"] is True
+    assert payload["conformance"]["portable_conformance"] == {"passed": True, "verified": True}
+    assert payload["conformance"]["overall_status"] == "portable_conformant_upstream_unverified"
+    assert payload["conformance"]["upstream_compatibility"] == {
+        "passed": False,
+        "verified": False,
+        "status": "skipped",
+    }
+
+
 def test_opt_in_legacy_mcp_adds_only_the_explicit_legacy_tool() -> None:
     pytest.importorskip("mcp")
     safe_server = importlib.import_module("tradingagents_portable.mcp_server")
@@ -250,6 +269,29 @@ import importlib
 import json
 import sys
 importlib.import_module('tradingagents_portable.mcp_server')
+loaded = sorted(
+    name for name in sys.modules
+    if name == 'tradingagents_portable.legacy' or name == 'tradingagents' or name.startswith('tradingagents.')
+)
+print(json.dumps(loaded))
+"""
+    completed = subprocess.run(  # noqa: S603 - fixed interpreter and test-owned script
+        [sys.executable, "-c", script],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    assert json.loads(completed.stdout) == []
+
+
+def test_default_cli_import_does_not_load_legacy_or_upstream_modules() -> None:
+    script = """
+import importlib
+import json
+import sys
+importlib.import_module('tradingagents_portable.cli')
 loaded = sorted(
     name for name in sys.modules
     if name == 'tradingagents_portable.legacy' or name == 'tradingagents' or name.startswith('tradingagents.')

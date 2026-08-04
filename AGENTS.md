@@ -1,6 +1,6 @@
 # StockResearchAgents — repository guidance
 
-This repository is the independent incubation environment for the harness-neutral StockResearchAgents capability. It must validate independently before any upstream proposal or integration.
+This repository is the independent implementation environment for the harness-neutral StockResearchAgents capability. It must validate on its own. Any upstream proposal or compatibility integration is optional and does not define the product architecture.
 
 ## Boundaries
 

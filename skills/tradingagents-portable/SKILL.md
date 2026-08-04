@@ -34,7 +34,7 @@ Keep these authorities separate:
     one complete v4 payload and does not need lifecycle checkpoints.
 12. After a forecast resolves, append a typed observation with `record_research_outcome`; inspect reproducible records with `get_research_quality`. Corrections must supersede earlier observations rather than overwrite history.
 
-CLI equivalents are `analytics-plan`, `analytics-init`, shared `host-*` / `run-*` lifecycle commands, `analytics-import`, `quality-outcome`, and `quality-show`.
+CLI adapter equivalents are `analytics-plan`, `analytics-init`, shared `host-*` / `run-*` lifecycle commands, `analytics-import`, `quality-outcome`, and `quality-show`.
 
 ## Retrieve current and historical evidence
 

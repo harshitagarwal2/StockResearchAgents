@@ -17,7 +17,8 @@ from .research_contracts import CompanyResearchRequest
 from .workflow import expand_workflow, load_company_research_manifest
 
 PINNED_UPSTREAM_REVISION = "a33fd4c0f134485a43553a2c23a63cb14adbd88f"
-CONFORMANCE_SCHEMA_VERSION = "1.0.0"
+CONFORMANCE_SCHEMA_VERSION = "1.1.0"
+OPTIONAL_PORTABLE_CHECKS = frozenset({"stage_completion_receipts"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -52,12 +53,60 @@ class ConformanceReport:
     schema_version: str = CONFORMANCE_SCHEMA_VERSION
 
     @property
+    def portable_checks(self) -> tuple[ConformanceCheck, ...]:
+        return tuple(check for check in self.checks if check.name != "pinned_upstream_identity")
+
+    @property
+    def upstream_identity_check(self) -> ConformanceCheck:
+        return next(check for check in self.checks if check.name == "pinned_upstream_identity")
+
+    @property
+    def portable_passed(self) -> bool:
+        return self.portable_verified and all(check.passed for check in self.portable_checks if check.verified)
+
+    @property
+    def portable_verified(self) -> bool:
+        return all(check.verified or check.name in OPTIONAL_PORTABLE_CHECKS for check in self.portable_checks)
+
+    @property
     def passed(self) -> bool:
-        return all(check.verified and check.passed for check in self.checks)
+        """Backward-compatible alias for portable conformance, not upstream compatibility."""
+
+        return self.portable_passed
 
     @property
     def verified(self) -> bool:
-        return all(check.verified for check in self.checks)
+        """Backward-compatible alias for portable verification coverage."""
+
+        return self.portable_verified
+
+    @property
+    def upstream_compatible(self) -> bool:
+        return self.upstream_identity_check.passed
+
+    @property
+    def upstream_compatibility_verified(self) -> bool:
+        return self.upstream_identity_check.verified
+
+    @property
+    def overall_status(
+        self,
+    ) -> Literal[
+        "portable_unverified",
+        "portable_nonconformant",
+        "portable_conformant_upstream_unverified",
+        "portable_conformant_upstream_incompatible",
+        "portable_conformant_upstream_verified",
+    ]:
+        if not self.portable_verified:
+            return "portable_unverified"
+        if not self.portable_passed:
+            return "portable_nonconformant"
+        if not self.upstream_compatibility_verified:
+            return "portable_conformant_upstream_unverified"
+        if not self.upstream_compatible:
+            return "portable_conformant_upstream_incompatible"
+        return "portable_conformant_upstream_verified"
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -65,6 +114,16 @@ class ConformanceReport:
             "run_id": self.run_id,
             "passed": self.passed,
             "verified": self.verified,
+            "overall_status": self.overall_status,
+            "portable_conformance": {
+                "passed": self.portable_passed,
+                "verified": self.portable_verified,
+            },
+            "upstream_compatibility": {
+                "passed": self.upstream_compatible,
+                "verified": self.upstream_compatibility_verified,
+                "status": self.upstream_identity_check.status,
+            },
             "upstream_revision": self.upstream_revision,
             "pinned_upstream_revision": self.pinned_upstream_revision,
             "checks": [check.to_dict() for check in self.checks],

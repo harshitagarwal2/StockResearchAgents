@@ -17,7 +17,7 @@ host mechanisms -> inbound adapters -> application services -> domain
                                         v                 |
                                   outbound ports -> adapters
 
-completed publication -> projection -> CLI/MCP/browser readers
+completed publication -> projection -> harness-native/Python/MCP/CLI/browser readers
 ```
 
 ## Layers
@@ -26,7 +26,7 @@ completed publication -> projection -> CLI/MCP/browser readers
 | --- | --- | --- |
 | Domain | Strict contracts, value objects, policies, deterministic calculators, conformance | Network clients, model clients, persistence, UI |
 | Application | Prepare/import use cases, profile-driven lifecycle, publication orchestration, quality outcome commands | Concrete provider selection or browser sessions |
-| Inbound adapters | CLI, coordination MCP, Python, Codex skill, optional legacy LangGraph entry point | Business-rule duplication |
+| Inbound adapters | Codex and other harness adapters, Python, coordination MCP, CLI, optional legacy LangGraph entry point | Business-rule duplication |
 | Outbound ports | `SourcePort.fetch(capability, typed_query)` plus focused `LifecycleRepository`, `ResultPublicationPort`, `DecisionMemoryPort`, and `QualityIndexPort` interfaces | Vendor-specific payload or storage semantics |
 | Outbound adapters | Host web/browser/provider bridges, fixture/replay/router source adapters, SQLite/filesystem | New domain truth |
 | Read model | Completed `RunView`, exports, loopback viewer | Retrieval, calculation, lifecycle control, credentials |
@@ -38,7 +38,7 @@ completed publication -> projection -> CLI/MCP/browser readers
 - **Open/closed:** add a workflow profile through a provider/descriptor and versioned schema; do not add conditionals to frozen v2/v3 models.
 - **Liskov substitution:** fixture, replay, and router adapters implement the same `fetch(capability, typed_query)` contract and return normalized observations or explicit failures. No adapter silently changes semantics.
 - **Interface segregation:** retrieval, publication, result storage, quality outcomes, and projections use focused interfaces; a host does not implement a universal service object.
-- **Dependency inversion:** application services depend on contracts and ports. MCP, CLI, LangGraph, Codex, storage, and provider details depend on the application boundary.
+- **Dependency inversion:** application services depend on contracts and ports. Codex and other harnesses, Python, MCP, CLI, LangGraph, storage, and provider details depend on the application boundary.
 
 ## Extension recipes
 
