@@ -520,6 +520,30 @@ def _validate_stage_output(stage: Mapping[str, Any], output: Mapping[str, Any]) 
     return candidate
 
 
+def _validate_debate_response_link(
+    record: Mapping[str, Any], stage: Mapping[str, Any], output: Mapping[str, Any]
+) -> None:
+    """Require lifecycle debate outputs to name their actual immediate input."""
+    kind = StageKind(stage["kind"])
+    if kind not in {StageKind.RESEARCH_DEBATE, StageKind.RISK_DEBATE}:
+        return
+
+    debate_key = "research_debate" if kind is StageKind.RESEARCH_DEBATE else "risk_debate"
+    prior_turns = record["submission"][debate_key]
+    expected_response = prior_turns[-1]["speaker"] if prior_turns else None
+    if expected_response is None and kind is StageKind.RISK_DEBATE:
+        expected_response = "Trader"
+
+    declared_response = output.get("responds_to")
+    if declared_response == expected_response:
+        return
+    if expected_response is None:
+        raise ValueError(
+            f"stage {stage['id']} is the opening research turn and must not respond to an unstated opponent"
+        )
+    raise ValueError(f"stage {stage['id']} must respond to the immediately preceding {expected_response} position")
+
+
 def _apply_stage_output(record: dict[str, Any], stage: Mapping[str, Any], output: Mapping[str, Any]) -> None:
     submission = record["submission"]
     kind = StageKind(stage["kind"])
@@ -917,6 +941,7 @@ class HostRunCoordinator:
         current = self._get(run_id)
         stage = _stage_by_id(current, stage_id)
         safe_output = _validate_stage_output(stage, output)
+        _validate_debate_response_link(current, stage, safe_output)
         output_digest = hashlib.sha256(
             json.dumps(safe_output, sort_keys=True, separators=(",", ":")).encode("utf-8")
         ).hexdigest()

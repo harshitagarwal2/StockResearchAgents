@@ -882,6 +882,8 @@ class CompanyResearchCoordinator:
                 if artifact.kind
                 not in {
                     "report_group",
+                    "report_provenance",
+                    "decision_consistency.v1",
                     "complete_report",
                     "structured_result_descriptor",
                     "structured_events_descriptor",

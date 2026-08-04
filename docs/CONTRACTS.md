@@ -89,6 +89,13 @@ The v3 and analytics profiles use profile-driven coordinators: v3 covers its 15 
 
 Successful finalization atomically publishes the canonical `RunResult`, its events, reports, and embedded authoritative artifacts. Other indexes are hidden until their publish step and recoverable from canonical completed artifacts; no cross-store distributed transaction is claimed. `RunView` is a completed read model. The browser and report aliases render it without interpreting or recalculating dossier content.
 
+Every completed compatibility report also carries two derived, non-authoritative audit sidecars:
+
+- `report.provenance` lists the evidence retained by each analyst, its supplied source-date and retrieval-time ranges, and source references. It explicitly says that it is **not** a full host tool-call ledger or a claim about every retrieval attempt.
+- `analysis.decision_consistency` compares only canonical structured research, trader, portfolio, and processed-signal fields. A divergence is marked `review_required`, not rewritten or rejected: a later risk/portfolio stage may legitimately change the analytical stance. The receipt never parses free-form model prose or grants execution authority.
+
+The compatibility debate importer likewise preserves a single ordered response chain. The opening research turn may not claim to rebut an unstated opponent; the opening risk turn explicitly responds to the trader proposal, and later turns identify the immediately preceding speaker. This prevents a host from presenting a fabricated debate lineage as completed evidence.
+
 ## Contract evolution
 
 Frozen contracts are semantically frozen, including optional fields. New semantics use parallel profiles and artifact kinds. See [Compatibility](COMPATIBILITY.md).

@@ -120,6 +120,7 @@ def test_ui_renders_the_intelligence_projection_with_safe_dom_helpers() -> None:
     javascript = (WEB_ROOT / "app.js").read_text(encoding="utf-8")
 
     assert "renderDecisionTrace" in javascript
+    assert "analysis.decision_consistency" in javascript
     assert "renderIntelligence" in javascript
     assert "renderSourceAnalysis" in javascript
     assert "view.intelligence" in javascript

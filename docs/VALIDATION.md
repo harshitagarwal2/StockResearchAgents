@@ -26,6 +26,7 @@
 - [x] Non-redistributable sources are metadata/reference only and reject all extracts, including bounded extracts; recursive safety checks reject raw-source fields.
 - [x] `SourcePort.fetch(capability, typed_query)` conformance covers fixture, replay, and router adapters; typed queries reject explicit credentials and credential-bearing signed URLs before dispatch.
 - [x] `SourceBatch` v1 validates exact query/capability pairing, cutoff, typed status, provenance, entitlement, completeness, pagination, limitations, and deterministic normalized observations. `SourceObservation.content_sha256_scope` distinguishes source bytes, exact bounded extracts, and normalized source records while preserving the safe normalized-record adapter default.
+- [x] Completed compatibility reports emit an explicit retained-evidence provenance sidecar and a structured decision-consistency receipt. The receipt flags legitimate cross-stage rating/action divergence for review without interpreting free-form prose or adding execution authority.
 - [x] The isolated `tradingagents-research-data` default server registers exactly six conformance-receipted public tools: three SEC, two GDELT metadata/link, and one World Bank macro tool. The coordination MCP registers none of them.
 - [x] SEC company-fact observations have provider-order-independent IDs and a hard item cap that reports omitted matches as partial coverage; GDELT observations have canonical-URI deduplication, provider-order-independent IDs, explicit seen-time semantics, and partial coverage at the result cap.
 - [x] Prices and indicators remain unregistered without a licensed host `SourcePort`; Reddit remains unregistered without host OAuth; StockTwits is denied and unregistered.
@@ -47,6 +48,7 @@
 - [x] The conformance engine recomputes bounded deterministic formulas, requires all declared metrics/constants, validates formula shape against the typed operation, applies rounding and absolute tolerance, and rejects tampered calculation, valuation, and sensitivity outputs.
 - [x] Peer records require inclusion rationale and normalization methodology.
 - [x] Debate turns require claim links; rebuttals must target an earlier turn in the same debate; concessions and unresolved items must be unique and disjoint.
+- [x] Compatibility imports reject a research opener that responds to an unstated opponent and require every later debate turn to identify the immediately preceding position; the opening risk turn is explicitly anchored to the trader proposal.
 - [x] Supersession links reject missing, self-referential, and cyclic targets.
 - [x] Portfolio fields require an explicit non-execution boundary and reject private account/customer identity.
 - [x] Credential-shaped keys are rejected recursively.

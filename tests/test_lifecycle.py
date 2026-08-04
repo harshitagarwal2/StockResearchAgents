@@ -154,6 +154,14 @@ def _complete(coordinator: HostRunCoordinator, run_id: str, revision: int, *, ra
             "safe_summary": f"Started {stage['role']}.",
         }
         output = _rating_output(stage, rating)
+        kind = StageKind(stage["kind"])
+        if kind in {StageKind.RESEARCH_DEBATE, StageKind.RISK_DEBATE}:
+            context_key = "research_debate_so_far" if kind is StageKind.RESEARCH_DEBATE else "risk_debate_so_far"
+            prior_turns = next_stage["context"][context_key]
+            if prior_turns:
+                output["responds_to"] = prior_turns[-1]["speaker"]
+            elif kind is StageKind.RISK_DEBATE:
+                output["responds_to"] = "Trader"
         output_digest = hashlib.sha256(
             json.dumps(output, sort_keys=True, separators=(",", ":")).encode("utf-8")
         ).hexdigest()
@@ -381,6 +389,41 @@ def test_stage_commit_validates_nested_schema_and_does_not_fabricate_execution(t
     assert events[-1].data["host_completion_attested"] is False
     assert events[-1].data["execution_observed"] is False
     assert events[-1].data["execution_receipt_ids"] == []
+
+
+def test_lifecycle_requires_ordered_debate_response_links(tmp_path: Path) -> None:
+    coordinator = _coordinator(tmp_path)
+    control = coordinator.create(_request(), decision_memory_enabled=False)
+    revision = coordinator.start(control["run_id"], control["revision"])["control"]["revision"]
+
+    while True:
+        next_stage = coordinator.next_stage(control["run_id"])
+        stage = next_stage["stage"]
+        assert stage is not None
+        if StageKind(stage["kind"]) is StageKind.RESEARCH_DEBATE:
+            break
+        committed = coordinator.commit_stage(control["run_id"], stage["id"], _output(stage), revision)
+        revision = committed["control"]["revision"]
+
+    with pytest.raises(ValueError, match="opening research turn"):
+        coordinator.commit_stage(
+            control["run_id"],
+            stage["id"],
+            {**_output(stage), "responds_to": "Bear Researcher"},
+            revision,
+        )
+
+    committed = coordinator.commit_stage(control["run_id"], stage["id"], _output(stage), revision)
+    next_stage = coordinator.next_stage(control["run_id"])
+    response_stage = next_stage["stage"]
+    assert response_stage is not None
+    with pytest.raises(ValueError, match="immediately preceding Bull Researcher"):
+        coordinator.commit_stage(
+            control["run_id"],
+            response_stage["id"],
+            _output(response_stage),
+            committed["control"]["revision"],
+        )
 
 
 def test_tool_receipts_are_stage_scoped_and_receipt_batches_are_bounded(tmp_path: Path) -> None:

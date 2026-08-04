@@ -8,6 +8,7 @@ the same report without requiring filesystem writes.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Any
 
 from .contracts import Artifact, RunResult
@@ -47,6 +48,190 @@ def _group_artifact(*, ordinal: int, slug: str, title: str, parts: tuple[_Report
             "storage": "in_memory",
         },
     )
+
+
+def _source_window(values: tuple[str, ...], *, timestamps: bool = False) -> dict[str, object]:
+    """Describe retained timestamps without implying a host query window."""
+    ordered = tuple(sorted(set(values)))
+    if timestamps:
+        try:
+            parsed = tuple((datetime.fromisoformat(value.replace("Z", "+00:00")), value) for value in ordered)
+            if any(timestamp.tzinfo is None for timestamp, _value in parsed):
+                raise ValueError("timestamps must include an offset")
+        except ValueError:
+            pass
+        else:
+            ordered = tuple(value for _timestamp, value in sorted(parsed, key=lambda item: item[0].astimezone(UTC)))
+    return {
+        "count": len(ordered),
+        "earliest": ordered[0] if ordered else None,
+        "latest": ordered[-1] if ordered else None,
+    }
+
+
+def _report_provenance(result: RunResult) -> dict[str, object]:
+    """Produce a safe report-side index of evidence each analyst retained.
+
+    A completed portable result does not attest to every retrieval attempt or
+    host tool argument.  This receipt deliberately reports only retained
+    evidence and its supplied provenance so an export cannot masquerade as a
+    complete query log.
+    """
+    evidence_by_id = {item.id: item for item in result.evidence}
+    analysts: list[dict[str, object]] = []
+    for report in result.analyst_reports:
+        retained = tuple(
+            evidence_by_id[evidence_id] for evidence_id in report.evidence_ids if evidence_id in evidence_by_id
+        )
+        missing_evidence_ids = tuple(
+            evidence_id for evidence_id in report.evidence_ids if evidence_id not in evidence_by_id
+        )
+        source_dates = tuple(item.provenance.source_date for item in retained if item.provenance.source_date)
+        retrieved_at = tuple(item.provenance.retrieved_at for item in retained if item.provenance.retrieved_at)
+        analysts.append(
+            {
+                "analyst": report.analyst,
+                "retained_evidence_count": len(retained),
+                "missing_evidence_ids": list(missing_evidence_ids),
+                "retained_source_date_range": _source_window(source_dates),
+                "retained_retrieval_time_range": _source_window(retrieved_at, timestamps=True),
+                "evidence": [
+                    {
+                        "id": item.id,
+                        "title": item.title,
+                        "category": item.category,
+                        "provider": item.provenance.provider or None,
+                        "source_uri": item.provenance.source_uri,
+                        "source_date": item.provenance.source_date,
+                        "retrieved_at": item.provenance.retrieved_at or None,
+                        "limitations": list(item.limitations),
+                    }
+                    for item in retained
+                ],
+            }
+        )
+    return {
+        "schema_version": "report-provenance.v1",
+        "basis": "retained_evidence_only",
+        "host_tool_call_ledger_available": False,
+        "analysts": analysts,
+    }
+
+
+def _report_provenance_markdown(provenance: dict[str, object]) -> str:
+    """Render audit metadata separately from analyst prose and source bodies."""
+    sections = [
+        "## Retained evidence provenance",
+        "",
+        (
+            "This section records only evidence retained in the completed result. It is not a complete host "
+            "tool-call log or a claim that every source query used the displayed date range."
+        ),
+    ]
+    analysts = provenance["analysts"]
+    if not isinstance(analysts, list):
+        return "\n".join(sections)
+    for analyst in analysts:
+        if not isinstance(analyst, dict):
+            continue
+        source_window = analyst.get("retained_source_date_range")
+        retrieval_window = analyst.get("retained_retrieval_time_range")
+        source_start = source_window.get("earliest") if isinstance(source_window, dict) else None
+        source_end = source_window.get("latest") if isinstance(source_window, dict) else None
+        retrieval_start = retrieval_window.get("earliest") if isinstance(retrieval_window, dict) else None
+        retrieval_end = retrieval_window.get("latest") if isinstance(retrieval_window, dict) else None
+        sections.extend(
+            (
+                "",
+                f"### {str(analyst.get('analyst', 'Analyst')).title()} analyst",
+                f"- Retained evidence: {analyst.get('retained_evidence_count', 0)} record(s)",
+                f"- Retained source-date range: {source_start or 'not declared'} to {source_end or 'not declared'}",
+                (
+                    "- Retained retrieval-time range: "
+                    f"{retrieval_start or 'not declared'} to {retrieval_end or 'not declared'}"
+                ),
+            )
+        )
+        evidence = analyst.get("evidence")
+        missing_evidence_ids = analyst.get("missing_evidence_ids")
+        if isinstance(missing_evidence_ids, list):
+            sections.extend(f"- Missing retained evidence reference: {item}" for item in missing_evidence_ids)
+        if not isinstance(evidence, list):
+            continue
+        for item in evidence:
+            if not isinstance(item, dict):
+                continue
+            source = item.get("source_uri") or "source URI not retained"
+            sections.append(
+                "- "
+                f"[{item.get('id', 'evidence')}] {item.get('title', 'Untitled source')} — "
+                f"provider: {item.get('provider') or 'not declared'}; "
+                f"source date: {item.get('source_date') or 'not declared'}; "
+                f"retrieved: {item.get('retrieved_at') or 'not declared'}; "
+                f"source: {source}"
+            )
+    return "\n".join(sections)
+
+
+def _decision_consistency(result: RunResult) -> dict[str, object]:
+    """Compare canonical structured decisions without interpreting model prose.
+
+    A portfolio/risk stage may legitimately override an earlier research or
+    trader stance.  Divergence therefore requests review; it is never treated
+    as an executable instruction or silently normalized away.
+    """
+    action_by_rating = {
+        "buy": "buy",
+        "overweight": "buy",
+        "hold": "hold",
+        "underweight": "sell",
+        "sell": "sell",
+        "unknown": "unknown",
+    }
+    research_rating = result.research_decision.recommendation
+    trader_action = result.trader_decision.action
+    portfolio_rating = result.portfolio_decision.rating
+    expected_trader_action = action_by_rating[portfolio_rating]
+    review_reasons: list[str] = []
+    if research_rating != portfolio_rating:
+        review_reasons.append("The portfolio rating differs from the research-manager rating.")
+    if trader_action != expected_trader_action:
+        review_reasons.append("The trader action differs from the portfolio rating's directional mapping.")
+    if result.processed_signal != portfolio_rating.upper():
+        review_reasons.append("The processed signal differs from the canonical portfolio rating.")
+    return {
+        "schema_version": "decision-consistency.v1",
+        "basis": "structured_fields_only",
+        "research_rating": research_rating,
+        "trader_action": trader_action,
+        "portfolio_rating": portfolio_rating,
+        "expected_trader_action_from_portfolio_rating": expected_trader_action,
+        "processed_signal": result.processed_signal,
+        "review_required": bool(review_reasons),
+        "review_reasons": review_reasons,
+        "non_executable": True,
+    }
+
+
+def _decision_consistency_markdown(receipt: dict[str, object]) -> str:
+    status = "review required" if receipt["review_required"] else "consistent"
+    reasons = receipt["review_reasons"]
+    lines = [
+        "## Decision consistency",
+        "",
+        f"- Structured consistency status: {status}",
+        f"- Research rating: {receipt['research_rating']}",
+        f"- Trader action: {receipt['trader_action']}",
+        f"- Portfolio rating: {receipt['portfolio_rating']}",
+        f"- Expected trader action for portfolio rating: {receipt['expected_trader_action_from_portfolio_rating']}",
+        (
+            "- This is a non-executable analytical consistency receipt; it does not interpret free-form prose "
+            "or authorize an order."
+        ),
+    ]
+    if isinstance(reasons, list):
+        lines.extend(f"- Review: {reason}" for reason in reasons)
+    return "\n".join(lines)
 
 
 def build_report_artifacts(result: RunResult) -> tuple[Artifact, ...]:
@@ -115,6 +300,22 @@ def build_report_artifacts(result: RunResult) -> tuple[Artifact, ...]:
         for group in report_groups
         if isinstance(group.content, dict) and group.content.get("markdown")
     ]
+    provenance = _report_provenance(result)
+    consistency = _decision_consistency(result)
+    provenance_artifact = Artifact(
+        id="report.provenance",
+        kind="report_provenance",
+        title="Retained evidence provenance",
+        media_type="application/vnd.tradingagents.report-provenance+json",
+        content={**provenance, "markdown": _report_provenance_markdown(provenance)},
+    )
+    consistency_artifact = Artifact(
+        id="analysis.decision_consistency",
+        kind="decision_consistency.v1",
+        title="Decision consistency receipt",
+        media_type="application/vnd.tradingagents.decision-consistency+json",
+        content=consistency,
+    )
     complete = Artifact(
         id="report.complete",
         kind="complete_report",
@@ -125,6 +326,8 @@ def build_report_artifacts(result: RunResult) -> tuple[Artifact, ...]:
                 f"# Trading Analysis Report: {result.request.symbol}",
                 f"Analysis date: {result.request.as_of_date}",
                 *consolidated_sections,
+                _report_provenance_markdown(provenance),
+                _decision_consistency_markdown(consistency),
             )
         ),
     )
@@ -156,7 +359,7 @@ def build_report_artifacts(result: RunResult) -> tuple[Artifact, ...]:
             "disk_write_declared": durable_storage,
         },
     )
-    return (*report_groups, complete, result_descriptor, events_descriptor)
+    return (*report_groups, provenance_artifact, consistency_artifact, complete, result_descriptor, events_descriptor)
 
 
 def report_groups(artifacts: tuple[Artifact, ...]) -> list[dict[str, Any]]:

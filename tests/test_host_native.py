@@ -97,11 +97,25 @@ def _payload() -> dict[str, object]:
         "risk_debate": [
             {
                 "round": 1,
-                "speaker": speaker,
-                "position": f"{speaker} view.",
+                "speaker": "Aggressive Analyst",
+                "position": "Aggressive Analyst view.",
+                "responds_to": "Trader",
                 "evidence_ids": ["ev-fundamentals"],
-            }
-            for speaker in ("Aggressive Analyst", "Conservative Analyst", "Neutral Analyst")
+            },
+            {
+                "round": 1,
+                "speaker": "Conservative Analyst",
+                "position": "Conservative Analyst view.",
+                "responds_to": "Aggressive Analyst",
+                "evidence_ids": ["ev-fundamentals"],
+            },
+            {
+                "round": 1,
+                "speaker": "Neutral Analyst",
+                "position": "Neutral Analyst view.",
+                "responds_to": "Conservative Analyst",
+                "evidence_ids": ["ev-fundamentals"],
+            },
         ],
         "risk_decision": {
             "risk_level": "high",
@@ -416,6 +430,35 @@ def test_host_import_requires_report_and_debate_provenance() -> None:
     debate_payload["research_debate"][0]["evidence_ids"] = []  # type: ignore[index]
     with pytest.raises(ValueError, match="must reference at least one"):
         submit_host_run(debate_payload, store=RunStore())
+
+
+@pytest.mark.parametrize(
+    ("mutation", "message"),
+    [
+        (
+            lambda payload: payload["research_debate"][0].update({"responds_to": "Bear Researcher"}),
+            "opening turn and must not respond to an unstated opponent",
+        ),
+        (
+            lambda payload: payload["research_debate"][1].update({"responds_to": "Research Manager"}),
+            "must respond to the immediately preceding Bull Researcher position",
+        ),
+        (
+            lambda payload: payload["risk_debate"][0].pop("responds_to"),
+            "must respond to the immediately preceding Trader position",
+        ),
+        (
+            lambda payload: payload["risk_debate"][2].update({"responds_to": "Aggressive Analyst"}),
+            "must respond to the immediately preceding Conservative Analyst position",
+        ),
+    ],
+)
+def test_host_import_requires_an_ordered_non_fabricated_debate_chain(mutation: object, message: str) -> None:
+    payload = _payload()
+    mutation(payload)  # type: ignore[operator]
+
+    with pytest.raises(ValueError, match=message):
+        submit_host_run(payload, store=RunStore())
 
 
 def test_host_cli_plan_and_import_round_trip(tmp_path: Path) -> None:
