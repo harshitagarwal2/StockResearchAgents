@@ -104,6 +104,8 @@ These are individual-forecast scorecards, not cohort statistics. The current sco
 - Scored outcomes must have both `available_at` and `resolved_at` at or after the forecast's `resolve_after` boundary.
 - Any future training or calibration observations must be available before the forecast being tested.
 - Future cohort evaluation must explicitly address issuer, horizon, and overlapping-window leakage.
+- A historical retrieval cutoff alone does not prove a causal backtest: a contemporary model may encode information that post-dates the simulated decision. Unless the host provides an independently supportable model knowledge-cutoff declaration, label the result a **historically grounded simulation**, not a temporally pure or causal backtest.
+- A host claiming temporal purity must retain the model identifier/version and declared knowledge cutoff, plus retrieval, embedding/reranking, memory, and outcome-data cutoff receipts. The portable core records no provider credentials, prompts, or model weights and cannot independently verify those host-owned claims.
 - Licensed source bodies are not copied into evaluation datasets.
 - Any future benchmark manifest must be content-addressed and retain policy/model/source versions.
 
