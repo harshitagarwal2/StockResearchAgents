@@ -1,0 +1,42 @@
+{
+  "schema_version": "synthetic-ohlcv-conformance.v1",
+  "provenance": "Original synthetic fixture authored for tradingagents-portable; no external data.",
+  "accepted_cases": [
+    {
+      "case_id": "unsorted_decimal_strings_are_normalized",
+      "rows": [
+        {"timestamp": "2026-01-03T00:00:00Z", "open": "102.00", "high": "104", "low": "101.5", "close": "103.25", "volume": "900"},
+        {"timestamp": "2026-01-02T00:00:00+00:00", "open": "100", "high": "103", "low": "99", "close": "102", "volume": "1000"}
+      ],
+      "expected": [
+        {"timestamp": "2026-01-02T00:00:00+00:00", "open": "100", "high": "103", "low": "99", "close": "102", "volume": "1000"},
+        {"timestamp": "2026-01-03T00:00:00+00:00", "open": "102", "high": "104", "low": "101.5", "close": "103.25", "volume": "900"}
+      ]
+    }
+  ],
+  "rejected_cases": [
+    {
+      "case_id": "negative_volume_is_rejected",
+      "error": "volume must be non-negative",
+      "rows": [
+        {"timestamp": "2026-01-02T00:00:00Z", "open": "100", "high": "103", "low": "99", "close": "102", "volume": "-1"}
+      ]
+    },
+    {
+      "case_id": "crossed_price_range_is_rejected",
+      "error": "high must cover open and close",
+      "rows": [
+        {"timestamp": "2026-01-02T00:00:00Z", "open": "100", "high": "101", "low": "99", "close": "102", "volume": "1"}
+      ]
+    },
+    {
+      "case_id": "duplicate_timestamp_is_rejected",
+      "error": "timestamps must be unique",
+      "rows": [
+        {"timestamp": "2026-01-02T00:00:00Z", "open": "100", "high": "103", "low": "99", "close": "102", "volume": "1"},
+        {"timestamp": "2026-01-02T00:00:00+00:00", "open": "102", "high": "104", "low": "101", "close": "103", "volume": "2"}
+      ]
+    }
+  ]
+}
+

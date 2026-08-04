@@ -24,6 +24,7 @@ from typing import Any
 from urllib.parse import urlsplit
 from uuid import uuid4
 
+from .application_ports import DecisionMemoryPort, HostRunRepository, LifecycleRepository
 from .contracts import (
     CapabilityMetadata,
     EventKind,
@@ -34,10 +35,10 @@ from .contracts import (
     StageKind,
     reject_secret_shaped_keys,
 )
-from .host_native import prepare_host_run, submit_host_run
+from .host_native import build_host_run, prepare_host_run
 from .memory import DecisionMemoryStore
 from .reporting import build_report_artifacts
-from .store import RUN_STORE, RunStore
+from .store import RUN_STORE
 from .workflow import (
     expand_workflow,
     load_host_submission_schema,
@@ -111,7 +112,7 @@ def _utc_now() -> str:
 
 
 def _default_state_dir() -> Path:
-    configured = os.environ.get("TRADINGAGENTS_PORTABLE_STATE_DIR")
+    configured = os.environ.get("STOCKRESEARCHAGENTS_STATE_DIR") or os.environ.get("TRADINGAGENTS_PORTABLE_STATE_DIR")
     if configured:
         return Path(configured).expanduser()
     xdg_state_home = os.environ.get("XDG_STATE_HOME")
@@ -565,28 +566,31 @@ def _apply_stage_output(record: dict[str, Any], stage: Mapping[str, Any], output
         submission["warnings"].extend(deepcopy(warnings))
 
 
+LIFECYCLE_STORE = LifecycleStore(_state_dir_factory=_default_state_dir)
+
+
 class HostRunCoordinator:
     """Coordinator that keeps execution host-owned and lifecycle semantics portable."""
 
     def __init__(
         self,
-        lifecycle_store: LifecycleStore | None = None,
-        result_store: RunStore = RUN_STORE,
+        lifecycle_store: LifecycleRepository,
+        result_store: HostRunRepository,
         *,
-        memory_store: DecisionMemoryStore | None = None,
-        memory_store_factory: Callable[[], DecisionMemoryStore] | None = None,
+        memory_store: DecisionMemoryPort | None = None,
+        memory_store_factory: Callable[[], DecisionMemoryPort] | None = None,
     ) -> None:
-        self.lifecycle_store = lifecycle_store or LifecycleStore()
+        self.lifecycle_store = lifecycle_store
         self.result_store = result_store
         self.memory_store = memory_store
         self._memory_store_factory = memory_store_factory
 
-    def _memory(self) -> DecisionMemoryStore | None:
+    def _memory(self) -> DecisionMemoryPort | None:
         if self.memory_store is None and self._memory_store_factory is not None:
             self.memory_store = self._memory_store_factory()
         return self.memory_store
 
-    def decision_memory(self) -> DecisionMemoryStore:
+    def decision_memory(self) -> DecisionMemoryPort:
         """Return the configured memory adapter, creating the durable default lazily."""
         memory = self._memory()
         if memory is None:
@@ -610,7 +614,10 @@ class HostRunCoordinator:
         if memory_context is None and decision_memory_enabled:
             memory = self._memory()
             if memory is not None:
-                memory_recall = memory.recall(request.symbol).to_dict()
+                memory_recall = memory.recall(
+                    request.symbol,
+                    cutoff_at=f"{request.as_of_date}T23:59:59.999999+00:00",
+                ).to_dict()
                 memory_context = memory_recall
         run_id = "host-" + uuid4().hex[:12]
         now = _utc_now()
@@ -954,11 +961,11 @@ class HostRunCoordinator:
             execution_receipt_ids = [
                 str(receipt["receipt_id"]) for receipt in (*matching_starts[-1:], *matching_completions[-1:])
             ]
-            execution_observed = bool(matching_starts and matching_completions)
+            host_completion_attested = bool(matching_starts and matching_completions)
             _emit(
                 record,
                 kind=EventKind.STAGE,
-                status="completed",
+                status="committed",
                 message=f"{stage['role']} stage output committed at a durable boundary.",
                 stage_id=stage_id,
                 data={
@@ -966,8 +973,11 @@ class HostRunCoordinator:
                     "kind": stage["kind"],
                     "attempt": committed_attempt,
                     "output_digest": output_digest,
+                    "envelope_observed": True,
                     "output_observed": True,
-                    "execution_observed": execution_observed,
+                    "output_content_verified": True,
+                    "host_completion_attested": host_completion_attested,
+                    "execution_observed": False,
                     "execution_receipt_ids": execution_receipt_ids,
                     "checkpoint_ordinal": len(record["completed_stage_ids"]),
                 },
@@ -1094,10 +1104,8 @@ class HostRunCoordinator:
         return self.control(run_id)
 
     def _build_final_result(self, record: Mapping[str, Any]) -> RunResult:
-        temporary_store = RunStore()
-        imported, _import_events = submit_host_run(
+        imported, _import_events = build_host_run(
             record["submission"],
-            store=temporary_store,
             run_id_override=str(record["run_id"]),
         )
         completed_at = record.get("finalization_completed_at")
@@ -1289,15 +1297,13 @@ class HostRunCoordinator:
         return tuple(deepcopy(record["receipts"]))
 
 
-LIFECYCLE_STORE = LifecycleStore(_state_dir_factory=_default_state_dir)
-
-
-def _default_memory_store() -> DecisionMemoryStore:
+def default_decision_memory_store() -> DecisionMemoryStore:
+    """Return the shared durable memory store used by public lifecycle adapters."""
     return DecisionMemoryStore(_default_state_dir() / "decision-memory.sqlite3")
 
 
 HOST_RUN_COORDINATOR = HostRunCoordinator(
     LIFECYCLE_STORE,
     RUN_STORE,
-    memory_store_factory=_default_memory_store,
+    memory_store_factory=default_decision_memory_store,
 )

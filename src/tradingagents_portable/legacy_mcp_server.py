@@ -13,7 +13,7 @@ from typing import Any
 from .contracts import RunRequest, reject_secret_shaped_keys, sanitize_legacy_config
 from .errors import CapabilitySetupError
 from .legacy import LegacyTradingAgentsAdapter
-from .mcp_server import _annotations, create_server
+from .mcp_server import _annotations, _completed_publication_response, create_server
 
 
 def _reject_secret_shaped_keys(value: object, path: tuple[str, ...] = ()) -> None:
@@ -116,7 +116,7 @@ def run_legacy(
             output_language=resolved_output_language,
         )
         result, events = adapter.run(request)
-        return {"ok": True, "result": result.to_dict(), "events": [event.to_dict() for event in events]}
+        return _completed_publication_response(result, events, store=adapter.store)
     except CapabilitySetupError as exc:
         return exc.to_dict()
 

@@ -1,25 +1,25 @@
 {
   "name": "tradingagents-portable",
-  "version": "0.1.0+codex.20260803082529",
-  "description": "Run durable TradingAgents research with any host harness and inspect the completed read-only dossier.",
+  "version": "0.1.0+codex.20260804093215",
+  "description": "Run StockResearchAgents through any host and inspect the completed, auditable company dossier.",
   "author": {
-    "name": "TradingAgents Portable contributors"
+    "name": "StockResearchAgents contributors"
   },
   "skills": "./skills/",
   "interface": {
-    "displayName": "TradingAgents Portable",
-    "shortDescription": "Durable host-run research and final dossier.",
-    "longDescription": "A credential-free, harness-neutral research capability with the complete TradingAgents topology, live safe receipts, stage checkpoints and resume, cooperative cancellation, decision memory, report export, conformance checks, and a completed-result-only dossier.",
-    "developerName": "TradingAgents Portable contributors",
+    "displayName": "StockResearchAgents",
+    "shortDescription": "Evidence-first research and completed dossier.",
+    "longDescription": "A credential-free, harness-neutral company and security research capability. The research host owns reasoning, retrieval, entitlements, tools, authentication, and agent execution. StockResearchAgents owns exact-cutoff contracts, deterministic conformance, durable stage boundaries, atomic publication, portable exports, and the completed-only Research Dossier Viewer.",
+    "developerName": "StockResearchAgents contributors",
     "category": "Developer Tools",
     "capabilities": [
       "Interactive",
       "Read"
     ],
     "defaultPrompt": [
-      "Research ORCL through the durable host lifecycle with this Codex task; do not request API keys.",
-      "Research any supported instrument with this host's agents and tools, checkpointing every completed stage.",
-      "Resume or cancel a durable run, export its reports, or inspect its completed merged dossier."
+      "Prepare evidence-first company research for a supported instrument, use a truthful live, fixture, or historical-replay mode, and show only the completed dossier.",
+      "Research a company as of an exact cutoff with host-owned sources, explicit entitlement gaps, reproducible calculations, and no API keys in portable payloads.",
+      "Inspect a Completed Research Dossier with sources, claims, filings, peers, valuation, events, risks, monitoring, memory, and conformance receipts."
     ],
     "brandColor": "#2563EB"
   },

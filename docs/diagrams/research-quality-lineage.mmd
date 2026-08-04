@@ -1,0 +1,53 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Avenir Next, Segoe UI, sans-serif","primaryColor":"#eef3ff","primaryTextColor":"#071c26","primaryBorderColor":"#2257ff","lineColor":"#516a75","secondaryColor":"#e5f7f5","tertiaryColor":"#fff4df","background":"#f5f8f9","clusterBkg":"#ffffff","clusterBorder":"#96aab2"},"flowchart":{"curve":"basis","htmlLabels":true}}}%%
+flowchart LR
+  accTitle: Research Quality information lineage
+  accDescr: Canonical RunResult artifacts contain issued forecasts and the quality receipt. A recoverable index is derived from them. Later outcomes are append-only and scorecards never mutate the completed result.
+
+  subgraph I["Immutable at completed publication"]
+    R["Research Request<br/><small>identity · cutoff · plan</small>"]
+    P["Research Policy<br/><small>version · digest · rules</small>"]
+    W["Workflow + run manifest<br/><small>versions · safe digests</small>"]
+    F["Issued forecasts<br/><small>global quality_run_id namespace</small>"]
+    D[["Completed Research Dossier"]]
+    Q[["Research Quality Receipt"]]
+    R --> D
+    P --> Q
+    W --> Q
+    F --> Q
+  end
+
+  A[["Authoritative RunResult.artifacts"]]
+  D --> A
+  Q --> A
+  F --> A
+
+  IDX["Recoverable quality index<br/><small>hidden stage · publish · reconstruct</small>"]
+  A --> IDX
+
+  subgraph O["Append-only later observations"]
+    OBS["Outcome observation"]
+    CORR["Superseding correction"]
+    OBS -. superseded by .-> CORR
+  end
+
+  subgraph E["Derived reproducibly"]
+    ACTIVE["Active observation view"]
+    SCORE["Typed evaluator<br/><small>binary · numeric · interval · return</small>"]
+    CARD[["Scorecard<br/><small>cohort · sample count · limitations</small>"]]
+    ACTIVE --> SCORE --> CARD
+  end
+
+  F --> SCORE
+  F -. resolved by later evidence .-> OBS
+  OBS --> ACTIVE
+  CORR --> ACTIVE
+  P -. evaluation rules .-> SCORE
+  CARD -. does not mutate .-> D
+  IDX --> ACTIVE
+
+  classDef immutable fill:#eef3ff,stroke:#2257ff,color:#071c26,stroke-width:2px;
+  classDef append fill:#fff4df,stroke:#ad6500,color:#071c26,stroke-width:2px;
+  classDef derived fill:#e5f7f5,stroke:#00746e,color:#071c26,stroke-width:2px;
+  class R,P,W,F,D,Q immutable;
+  class OBS,CORR append;
+  class ACTIVE,SCORE,CARD derived;

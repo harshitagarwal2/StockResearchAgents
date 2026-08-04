@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field, fields, is_dataclass
 from datetime import date
 from enum import StrEnum
 from typing import Any, Literal, Never
 from urllib.parse import urlsplit
+
+from .instruments import normalize_instrument_symbol
 
 SCHEMA_VERSION = "2026-08-03"
 PROTOTYPE_NOTICE = (
@@ -39,6 +42,17 @@ SECRET_KEY_MARKERS = (
     "privatekey",
 )
 SECRET_KEY_WORDS = frozenset({"bearer", "cookie", "secret", "token"})
+_PUBLIC_IDENTIFIER_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:/+-]{0,127}\Z")
+_CREDENTIAL_VALUE_PATTERNS = (
+    re.compile(
+        r"(?i)^(?:bearer\s+|sk-(?:proj-|svcacct-)?|sk_|pk-|rk-|gh[pousr]_|github_pat_|glpat-|"
+        r"xox[baprs]-|AIza|AKIA|ASIA|ya29\.|eyJ[a-zA-Z0-9_-]{8,}\.)"
+    ),
+    re.compile(r"(?i)(?:^|[?&;,\s])(?:api[_-]?key|access[_-]?token|auth(?:orization)?|password|secret)\s*[:=]"),
+)
+_MODEL_OR_PROVIDER_FIELDS = frozenset({"llm_provider", "deep_think_llm", "quick_think_llm"})
+_EFFORT_FIELDS = frozenset({"anthropic_effort", "google_thinking_level", "openai_reasoning_effort"})
+_EFFORT_VALUES = frozenset({"none", "minimal", "low", "medium", "high", "xhigh", "max"})
 
 
 class FrozenConfig(dict[str, Any]):
@@ -100,6 +114,14 @@ def sanitize_legacy_config(config: Mapping[str, object] | None) -> dict[str, obj
             raise ValueError(f"legacy config value for {key} must be a scalar")
         if isinstance(value, str) and (not value.strip() or len(value) > 512 or "\n" in value or "\r" in value):
             raise ValueError(f"legacy config value for {key} must be a short, non-empty single-line string")
+        if isinstance(value, str) and any(pattern.search(value.strip()) for pattern in _CREDENTIAL_VALUE_PATTERNS):
+            raise ValueError(f"legacy config value for {key} resembles credential material")
+        if key in _MODEL_OR_PROVIDER_FIELDS and (
+            not isinstance(value, str) or _PUBLIC_IDENTIFIER_PATTERN.fullmatch(value.strip()) is None
+        ):
+            raise ValueError(f"legacy config value for {key} must be a public provider or model identifier")
+        if key in _EFFORT_FIELDS and (not isinstance(value, str) or value.strip().lower() not in _EFFORT_VALUES):
+            raise ValueError(f"legacy config value for {key} must be a supported public effort level")
     backend_url = sanitized.get("backend_url")
     if isinstance(backend_url, str):
         parsed = urlsplit(backend_url)
@@ -121,8 +143,8 @@ def sanitize_legacy_config(config: Mapping[str, object] | None) -> dict[str, obj
     ):
         raise ValueError("temperature must be a number between 0 and 2")
     report_output_path = sanitized.get("report_output_path")
-    if report_output_path is not None and not isinstance(report_output_path, str):
-        raise ValueError("report_output_path must be a path string")
+    if report_output_path is not None and (not isinstance(report_output_path, str) or "\x00" in report_output_path):
+        raise ValueError("report_output_path must be a path string without NUL bytes")
     return sanitized
 
 
@@ -149,6 +171,7 @@ class EventKind(WireEnum):
 
 class StageKind(WireEnum):
     ANALYST = "analyst"
+    WORKFLOW = "workflow_stage"
     RESEARCH_DEBATE = "research_debate"
     RESEARCH_MANAGER = "research_manager"
     TRADER = "trader"
@@ -169,7 +192,30 @@ class Contract:
     schema_version: str = field(default=SCHEMA_VERSION, init=False)
 
     def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
+        return {
+            item.name: _wire_value(getattr(self, item.name))
+            for item in fields(self)
+            if not item.metadata.get("ephemeral", False)
+        }
+
+
+def _wire_value(value: object) -> Any:
+    """Project contracts without persisting host-owned ephemeral fields."""
+    if is_dataclass(value) and not isinstance(value, type):
+        return {
+            item.name: _wire_value(getattr(value, item.name))
+            for item in fields(value)
+            if not item.metadata.get("ephemeral", False)
+        }
+    if isinstance(value, WireEnum):
+        return value.value
+    if isinstance(value, tuple):
+        return tuple(_wire_value(item) for item in value)
+    if isinstance(value, list):
+        return [_wire_value(item) for item in value]
+    if isinstance(value, Mapping):
+        return {str(key): _wire_value(item) for key, item in value.items()}
+    return value
 
 
 @dataclass(frozen=True, slots=True)
@@ -183,10 +229,12 @@ class RunRequest(Contract):
     output_language: str = "English"
     executor: Literal["fixture", "host_native", "legacy"] = "fixture"
     checkpoint_enabled: bool = False
-    legacy_config: dict[str, Any] = field(default_factory=dict)
+    # Runtime-only bridge settings for the deprecated executor. Values are
+    # deliberately excluded from every portable wire/persistence projection.
+    legacy_config: dict[str, Any] = field(default_factory=dict, repr=False, metadata={"ephemeral": True})
 
     def __post_init__(self) -> None:
-        symbol = self.symbol.strip().upper()
+        symbol = normalize_instrument_symbol(self.symbol)
         if not symbol or len(symbol) > 32 or not all(c.isalnum() or c in "._-^=" for c in symbol):
             raise ValueError("symbol must be a non-empty market identifier")
         object.__setattr__(self, "symbol", symbol)

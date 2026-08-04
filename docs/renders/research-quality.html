@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=1800, initial-scale=1">
+    <title>StockResearchAgents Research Quality design</title>
+    <link rel="stylesheet" href="render.css">
+  </head>
+  <body>
+    <main class="canvas" aria-label="Research Quality accountability design">
+      <header class="poster-head">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">RQ</div>
+          <div>
+            <p class="eyebrow">Implemented accountability sidecar</p>
+            <h1>From research opinion to measurable accountability</h1>
+            <p class="subtitle">Forecasts are fixed at publication. Outcomes arrive later. Evaluation is reproducible and never rewrites the completed dossier.</p>
+          </div>
+        </div>
+        <span class="badge">research-quality.v1 · implemented</span>
+      </header>
+
+      <section class="quality-layout">
+        <article class="quality-band immutable">
+          <div><h2>Immutable at publication</h2><p class="band-copy">The exact question, rules, evidence cutoff, issued forecasts, and completed artifact are fixed together.</p></div>
+          <div class="quality-nodes quality-nodes-five">
+            <div class="quality-node"><b>Research Request</b><small>identity · cutoff · objectives</small></div>
+            <div class="quality-node"><b>Policy & run manifest</b><small>versions · rules · safe digests</small></div>
+            <div class="quality-node"><b>Issued forecasts</b><small>target · horizon · resolution rule</small></div>
+            <div class="quality-node document-node"><b>Completed Research Dossier</b><small>published research artifact</small></div>
+            <div class="quality-node receipt-node"><b>Research Quality Receipt</b><small>policy · provenance · rule results</small></div>
+          </div>
+        </article>
+
+        <div class="timeline" aria-label="Research quality timeline">
+          <div class="timeline-step">evidence cutoff</div>
+          <div class="timeline-step">forecast issued</div>
+          <div class="timeline-step">dossier published</div>
+          <div class="timeline-step">outcome available</div>
+          <div class="timeline-step">evaluation derived</div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1.25fr;gap:22px;">
+          <article class="quality-band append" style="grid-template-columns:190px 1fr;">
+            <div><h2>Append-only later</h2><p class="band-copy">Observed outcomes may be corrected only by supersession.</p></div>
+            <div class="quality-nodes" style="grid-template-columns:1fr 1fr;">
+              <div class="quality-node append"><b>Outcome observation</b><small>available_at · evidence · resolver</small></div>
+              <div class="quality-node append"><b>Superseding correction</b><small>history remains visible</small></div>
+            </div>
+          </article>
+          <article class="quality-band derived" style="grid-template-columns:190px 1fr;">
+            <div><h2>Derived reproducibly</h2><p class="band-copy">Each forecast kind uses compatible metrics and explicit sample gates.</p></div>
+            <div class="quality-nodes" style="grid-template-columns:repeat(3,1fr);">
+              <div class="quality-node derived"><b>Active observation view</b><small>latest valid supersession chain</small></div>
+              <div class="quality-node derived"><b>Typed evaluator</b><small>binary · numeric · interval · return</small></div>
+              <div class="quality-node derived document-node"><b>Scorecard</b><small>cohort · sample count · limits</small></div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <div class="immutability-note">Future outcomes improve accountability; they never mutate what the original research knew or claimed.</div>
+    </main>
+  </body>
+</html>

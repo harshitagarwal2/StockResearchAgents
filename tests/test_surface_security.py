@@ -6,13 +6,14 @@ import json
 import pytest
 
 from tradingagents_portable.capabilities import feature_matrix
-from tradingagents_portable.contracts import RunRequest, reject_secret_shaped_keys
+from tradingagents_portable.contracts import RunRequest, RunResult, reject_secret_shaped_keys
 from tradingagents_portable.legacy_mcp_server import (
     _reject_secret_shaped_keys,
     _request,
     _safe_legacy_config,
     run_legacy,
 )
+from tradingagents_portable.serialization import serialize_run_result
 
 
 @pytest.mark.parametrize(
@@ -112,6 +113,34 @@ def test_crypto_default_and_explicit_analysts_exclude_fundamentals() -> None:
 def test_python_run_request_enforces_config_boundary(config: dict[str, object]) -> None:
     with pytest.raises(ValueError):
         RunRequest(executor="legacy", legacy_config=config)
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "sk-proj-example-secret",
+        "Bearer opaque-value",
+        "api_key=opaque-value",
+        "github_pat_example",
+    ],
+)
+def test_legacy_config_rejects_credential_shaped_values_under_public_keys(value: str) -> None:
+    with pytest.raises(ValueError, match="credential material"):
+        RunRequest(executor="legacy", legacy_config={"llm_provider": value})
+
+
+def test_legacy_runtime_config_is_ephemeral_across_every_portable_projection() -> None:
+    request = RunRequest(
+        executor="legacy",
+        legacy_config={"llm_provider": "openai", "deep_think_llm": "gpt-test"},
+    )
+    result = RunResult(run_id="ephemeral-config", request=request)
+
+    assert request.legacy_config["llm_provider"] == "openai"
+    assert "legacy_config" not in request.to_dict()
+    assert "legacy_config" not in result.to_dict()["request"]
+    assert "legacy_config" not in json.loads(serialize_run_result(result))["request"]
+    assert "gpt-test" not in repr(request)
 
 
 def test_validated_python_config_cannot_be_mutated_after_construction() -> None:

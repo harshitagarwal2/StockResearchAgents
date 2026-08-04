@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 
 from .contracts import CapabilityFeature, FeatureCapabilityMatrix, SupportLevel
+from .workflow import transition_contract_catalog, workflow_profile_catalog
 
 
 def legacy_available(legacy_path: str | None = None) -> bool:
@@ -18,6 +19,7 @@ def legacy_available(legacy_path: str | None = None) -> bool:
 
 def feature_matrix(legacy_path: str | None = None, *, include_legacy: bool = True) -> FeatureCapabilityMatrix:
     available = legacy_available(legacy_path) if include_legacy else False
+    transition_contracts = transition_contract_catalog()
     return FeatureCapabilityMatrix(
         features=(
             CapabilityFeature(
@@ -61,9 +63,20 @@ def feature_matrix(legacy_path: str | None = None, *, include_legacy: bool = Tru
                 ),
             ),
             CapabilityFeature(
-                "mcp_stdio", SupportLevel.SUPPORTED, "Discovery, runs, events, results, and dashboard tools."
+                "mcp_stdio", SupportLevel.SUPPORTED, "Discovery, runs, events, results, and dossier-viewer tools."
             ),
-            CapabilityFeature("loopback_dashboard", SupportLevel.SUPPORTED, "Binds only to 127.0.0.1 or ::1."),
+            CapabilityFeature(
+                "loopback_dashboard",
+                SupportLevel.SUPPORTED,
+                "One generic Research Dossier Viewer is reused per durable state directory and binds only to "
+                "127.0.0.1 or ::1; completed operations return a run-specific presentation receipt.",
+            ),
+            CapabilityFeature(
+                "automatic_completed_presentation",
+                SupportLevel.SUPPORTED,
+                "CLI and MCP completion adapters return a ready loopback URL when possible, with path-only and "
+                "structured unavailable fallbacks that never roll back research publication.",
+            ),
             CapabilityFeature(
                 "checkpoint_resume",
                 SupportLevel.SUPPORTED,
@@ -83,6 +96,25 @@ def feature_matrix(legacy_path: str | None = None, *, include_legacy: bool = Tru
                 "and publishes the final dossier.",
             ),
             CapabilityFeature(
+                "evidence_first_company_research_v3",
+                SupportLevel.SUPPORTED,
+                "A parallel versioned profile validates point-in-time sources, claims, calculations, filings, "
+                "transcripts, peers, factors, valuation, risks, monitoring, evaluation, and completed dossiers.",
+            ),
+            CapabilityFeature(
+                "workflow_profile_negotiation",
+                SupportLevel.SUPPORTED,
+                "Discovery advertises frozen legacy v1/v2, company-research v2/v3, and the parallel "
+                "company-analytics v1 extension.",
+            ),
+            CapabilityFeature(
+                "company_analytics_v1",
+                SupportLevel.SUPPORTED,
+                "A parallel outer profile adds source-policy receipts, point-in-time fundamentals, ratios, DCF, "
+                "reverse DCF, comparables, consensus, positioning, catalysts, experiments, hypotheses, forecasts, "
+                "and research-quality receipts without widening research_dossier.v3.",
+            ),
+            CapabilityFeature(
                 "native_dynamic_tool_routing",
                 SupportLevel.SUPPORTED,
                 "The manifest declares allowed capabilities per stage and the lifecycle validates live tool "
@@ -100,10 +132,11 @@ def feature_matrix(legacy_path: str | None = None, *, include_legacy: bool = Tru
                 "Atomic JSON result/event storage plus SQLite/WAL lifecycle state survive process restarts.",
             ),
             CapabilityFeature(
-                "upstream_cli_interaction_parity",
-                SupportLevel.SUPPORTED,
-                "Portable CLI commands cover interactive setup, stages, receipts, status, resume, cancellation, "
-                "memory, export, and final dashboard publication without copying terminal pixels.",
+                "portable_cli_interaction_coverage",
+                SupportLevel.PARTIAL,
+                "Local tests cover portable CLI setup, stages, receipts, status, resume, cancellation, memory, "
+                "export, and final dashboard publication. Upstream interaction parity remains externally gated "
+                "and is not claimed by this local coverage.",
             ),
             CapabilityFeature(
                 "run_cancellation",
@@ -128,6 +161,18 @@ def feature_matrix(legacy_path: str | None = None, *, include_legacy: bool = Tru
                 SupportLevel.SUPPORTED,
                 "When an upstream checkout is supplied, its Git identity is compared with the pinned revision; "
                 "this does not derive or prove upstream model behavior.",
+            ),
+            CapabilityFeature(
+                "research_data_adapter_contracts",
+                SupportLevel.PARTIAL,
+                "The isolated research-data MCP implements SourceBatch v1 and six default public tools; licensed "
+                "market data and lawful social providers remain optional host-conformance surfaces.",
+            ),
+            CapabilityFeature(
+                "legacy_executor_transition",
+                SupportLevel.OPTIONAL,
+                "The pinned legacy oracle remains retained and executor removal is blocked until every published "
+                "hard gate is verified and passed.",
             ),
             CapabilityFeature(
                 "broker_order_execution",
@@ -171,12 +216,77 @@ def feature_matrix(legacy_path: str | None = None, *, include_legacy: bool = Tru
                 "decision_memory": "durable_publication_gated_bounded_recall_and_outcomes",
                 "report_export": "atomic_first_publish_and_journaled_recoverable_overwrite",
             },
+            "company_research_v2": {
+                "implementation": "durable_fifteen_stage_evidence_first_coordinator",
+                "verification": "locally_verified_with_multi_symbol_complete_dossiers",
+                "ready": True,
+                "portable_boundary_credentials_required": False,
+                "host_tool_auth": "host_owned_unknown",
+                "execution_owner": "host_harness",
+                "event_delivery": "live_cursor_receipts",
+                "checkpoint": "durable_portable_stage_boundaries",
+                "cancellation": "cooperative_request_and_host_acknowledgement",
+                "decision_memory": "optional_when_a_host_configures_a_portable_memory_store",
+                "publication": "strict_conformance_gated_completed_dossier_only",
+            },
+            "company_analytics_v1": {
+                "implementation": "durable_twenty_six_stage_outer_profile_plus_completed_sidecars",
+                "verification": "locally_verified_with_checkpoint_resume_and_crash_recoverable_publication",
+                "ready": True,
+                "portable_boundary_credentials_required": False,
+                "execution_owner": "host_harness",
+                "capability_modes": ["full", "compatible", "tools_only"],
+                "capability_mode_readiness": {
+                    "full": "adapter_required",
+                    "compatible": "locally_ready",
+                    "tools_only": "partial_adapter_required",
+                },
+                "event_delivery": "live_cursor_receipts",
+                "checkpoint": "durable_portable_stage_boundaries",
+                "cancellation": "cooperative_request_and_host_acknowledgement",
+                "decision_memory": "optional_publication_gated_recall_and_outcomes",
+                "publication": "single_atomic_completed_result",
+                "presentation": "automatic_shared_completed_only_viewer_with_path_only_fallback",
+                "live_provider_coverage": "host_owned_and_not_implied",
+            },
+            "research_data_adapters": {
+                "implementation": "isolated_sourcebatch_v1_mcp_with_six_default_public_tools",
+                "verification": "locally_verified_public_adapter_and_registration_contracts",
+                "ready": False,
+                "ready_for_default_public_tools": True,
+                "ready_for_full_live_company_research": False,
+                "tools_only_live_company_research": "partial",
+                "surface_exposed": True,
+                "server": "tradingagents-research-data",
+                "coordination_mcp_exposed": False,
+                "default_capabilities": [
+                    "regulatory_filings",
+                    "fundamentals",
+                    "financial_statements",
+                    "company_news",
+                    "global_news",
+                    "macro",
+                ],
+                "host_gated_capabilities": ["prices", "indicators", "reddit"],
+                "denied_unregistered_capabilities": ["stocktwits"],
+                "auth_owner": "host",
+                "provider_selection_owner": "host",
+                "contract": transition_contracts["research_data_tools"],
+            },
+            "legacy_transition": {
+                "implementation": "authoritative_transition_metadata",
+                "verification": "all_removal_gates_unverified",
+                "ready_for_removal": False,
+                "current_phase": transition_contracts["legacy_transition"]["current_phase"],
+                "contract": transition_contracts["legacy_transition"],
+            },
         },
     )
 
 
 def discovery(legacy_path: str | None = None, *, include_legacy: bool = True) -> dict[str, object]:
     matrix = feature_matrix(legacy_path, include_legacy=include_legacy)
+    transition_contracts = transition_contract_catalog()
     tools = [
         "discover_capability",
         "get_feature_matrix",
@@ -184,6 +294,14 @@ def discovery(legacy_path: str | None = None, *, include_legacy: bool = True) ->
         "run_fixture",
         "prepare_host_run",
         "import_host_run",
+        "prepare_company_research",
+        "import_company_research",
+        "prepare_company_analytics",
+        "import_company_analytics",
+        "record_research_outcome",
+        "get_research_quality",
+        "create_company_research_run",
+        "create_company_analytics_run",
         "create_host_run",
         "start_host_run",
         "append_run_receipts",
@@ -202,7 +320,10 @@ def discovery(legacy_path: str | None = None, *, include_legacy: bool = True) ->
         "get_run",
         "get_run_events",
         "get_run_result",
+        "get_run_semantics",
         "get_run_view",
+        "launch_research_report",
+        "get_research_report_summary",
         "launch_local_dashboard",
         "get_dashboard_report",
     ]
@@ -219,6 +340,8 @@ def discovery(legacy_path: str | None = None, *, include_legacy: bool = True) ->
             "legacy": legacy_available(legacy_path) if include_legacy else False,
         },
         "executor_states": matrix.runtime_readiness,
+        "workflow_profiles": workflow_profile_catalog(),
+        "transition_contracts": transition_contracts,
         "tools": tuple(tools),
         "safety_notice": matrix.safety_notice,
     }

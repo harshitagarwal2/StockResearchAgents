@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=1800, initial-scale=1">
+    <title>StockResearchAgents system overview</title>
+    <link rel="stylesheet" href="render.css">
+  </head>
+  <body>
+    <main class="canvas" aria-label="StockResearchAgents system overview">
+      <header class="poster-head">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">SRA</div>
+          <div>
+            <p class="eyebrow">StockResearchAgents</p>
+            <h1>Evidence-first research, portable by design</h1>
+            <p class="subtitle">The host retrieves and reasons. The portable core validates, preserves, and publishes one completed research artifact.</p>
+          </div>
+        </div>
+        <div class="safety"><span class="safety-dot" aria-hidden="true"></span>No credentials, broker controls, or partial research enter the completed viewer.</div>
+      </header>
+
+      <section class="system-grid">
+        <article class="zone">
+          <div class="zone-head">
+            <div><h2>Host-owned research</h2><p class="zone-kicker">Retrieval, reasoning, tools, entitlements</p></div>
+            <span class="badge host">outside portable core</span>
+          </div>
+          <div class="source-list">
+            <div class="source-card"><span class="source-icon">10-K</span><div><b>Official evidence</b><small>filings · IR · earnings materials</small></div></div>
+            <div class="source-card"><span class="source-icon">PX</span><div><b>Market evidence</b><small>prices · factors · peer observations</small></div></div>
+            <div class="source-card"><span class="source-icon">TXT</span><div><b>Company narrative</b><small>transcripts · guidance · product context</small></div></div>
+            <div class="source-card"><span class="source-icon">NEWS</span><div><b>External context</b><small>news · regulatory · macro · industry</small></div></div>
+          </div>
+          <p class="host-note"><b>Trust boundary:</b> credentials, prompts, source bodies, and native agent scheduling remain with the host.</p>
+        </article>
+
+        <div class="connector" aria-hidden="true"><span>typed evidence</span></div>
+
+        <article class="zone core-zone">
+          <div class="zone-head">
+            <div><h2>Company Analytics</h2><p class="zone-kicker">A 26-stage contract that works with native agents or a sequential fallback</p></div>
+            <span class="badge core">company-research.v2</span>
+          </div>
+          <div class="stage-map">
+            <div class="stage"><span class="stage-num">01</span><b>Plan</b><small>objectives · coverage · cutoff · stop rules</small></div>
+            <div class="stage"><span class="stage-num">02–03</span><b>Gather evidence</b><small>official and market lanes</small></div>
+            <div class="stage"><span class="stage-num">04–05</span><b>Analyze</b><small>financial and company context</small></div>
+            <div class="stage audit"><span class="stage-num">06–07</span><b>Audit & verify</b><small>grounding · units · calculations</small></div>
+            <div class="stage debate"><span class="stage-num">08</span><b>Bull case</b><small>claims · evidence · assumptions</small></div>
+            <div class="stage debate"><span class="stage-num">09</span><b>Bear case</b><small>counterclaims · rebuttal · concessions</small></div>
+            <div class="stage"><span class="stage-num">10–11</span><b>Valuation & risk</b><small>scenarios · sensitivity · downside</small></div>
+            <div class="stage publish"><span class="stage-num">12–15</span><b>Delta → publish</b><small>monitor · evaluate · completed dossier</small></div>
+          </div>
+          <div class="stage-flow"><span>opaque stage envelopes</span><span>optimistic revisions</span><span>sequential fallback</span><span>atomic completion</span></div>
+          <div class="gate"><span class="gate-mark" aria-hidden="true"></span>Publication gate checks references, time, calculations, entitlements, coverage, and non-executable safety.</div>
+        </article>
+
+        <div class="connector" aria-hidden="true"><span>accepted only</span></div>
+
+        <article class="zone">
+          <div class="zone-head">
+            <div><h2>Completed outputs</h2><p class="zone-kicker">Immutable artifact and read-only projections</p></div>
+            <span class="badge done">completed only</span>
+          </div>
+          <div class="output-stack">
+            <div class="document"><h3>Completed Research Dossier</h3><p>Sources, claims, calculations, debate, valuation, risks, monitoring, limitations, and provenance.</p></div>
+            <div class="output-card viewer"><b>Research Dossier Viewer</b><small>read-only · loopback · no research logic</small></div>
+            <div class="output-card export"><b>Portable exports</b><small>typed JSON · Markdown · MCP RunView</small></div>
+            <div class="no-path">There is no path from partial stage state to the viewer—and no path from the viewer to an order.</div>
+          </div>
+        </article>
+      </section>
+
+      <section class="system-quality">
+        <div><h3>Research Quality</h3><p>Immutable forecasts · append-only outcomes · reproducible scoring</p></div>
+        <div class="quality-rail"><span>policy + run manifest</span><span>issued forecasts</span><span>later outcomes</span><span>reproducible scorecards</span></div>
+      </section>
+    </main>
+  </body>
+</html>

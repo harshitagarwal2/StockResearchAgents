@@ -9,15 +9,25 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
+from .company_analytics import (
+    get_company_research_quality,
+    prepare_company_analytics,
+    record_company_forecast_outcome,
+    submit_company_analytics,
+)
+from .company_lifecycle import COMPANY_ANALYTICS_COORDINATOR, COMPANY_RESEARCH_COORDINATOR
+from .company_research import prepare_company_research, select_run_coordinator, submit_company_research
 from .conformance import conformance_digest, evaluate_conformance
 from .contracts import RunRequest
-from .dashboard import create_dashboard_server
 from .errors import CapabilitySetupError
 from .export import export_run_bundle
 from .fixture import run_fixture
 from .host_native import prepare_host_run, submit_host_run
 from .legacy import LegacyTradingAgentsAdapter
 from .lifecycle import HOST_RUN_COORDINATOR, is_lifecycle_run_id
+from .report_server import create_report_server, present_completed_run
+from .semantics import build_completed_run_semantics
+from .store import RUN_STORE, RunStore
 from .view import build_run_view
 
 
@@ -66,9 +76,11 @@ def _add_research_command(commands: argparse._SubParsersAction[argparse.Argument
     research.add_argument("--report-output", help="Write the upstream markdown report tree to this path")
     research.add_argument("--output", help="Write the complete normalized JSON result to this file instead of stdout")
     research.add_argument(
+        "--report",
         "--dashboard",
+        dest="dashboard",
         action="store_true",
-        help="After completion, serve the stored final result on a read-only loopback dashboard",
+        help="After completion, serve the stored result in the read-only Research Dossier Viewer",
     )
     research.add_argument("--host", default="127.0.0.1", help=argparse.SUPPRESS)
     research.add_argument("--port", default=8765, type=int)
@@ -100,12 +112,90 @@ def _add_host_commands(commands: argparse._SubParsersAction[argparse.ArgumentPar
     host_import.add_argument("--input", required=True, help="Complete host-native JSON submission")
     host_import.add_argument("--output", help="Write the complete normalized JSON response")
     host_import.add_argument(
+        "--report",
         "--dashboard",
+        dest="dashboard",
         action="store_true",
-        help="After successful import, serve only the completed dossier on loopback",
+        help="After successful import, serve the completed dossier in the loopback-only viewer",
     )
     host_import.add_argument("--host", default="127.0.0.1", help=argparse.SUPPRESS)
     host_import.add_argument("--port", default=8765, type=int)
+
+    company_plan = commands.add_parser(
+        "company-plan",
+        help="Validate a company-research v3 request and emit its harness-neutral v2 workflow",
+    )
+    company_plan.add_argument("--input", required=True, help="CompanyResearchRequest JSON")
+    company_plan.add_argument("--output")
+
+    company_import = commands.add_parser(
+        "company-import",
+        help="Validate and publish a completed point-in-time company-research v3 dossier",
+    )
+    company_import.add_argument("--input", required=True, help="Complete host-submission.v3 JSON")
+    company_import.add_argument("--output")
+    company_import.add_argument("--report", "--dashboard", dest="dashboard", action="store_true")
+    company_import.add_argument("--host", default="127.0.0.1", help=argparse.SUPPRESS)
+    company_import.add_argument("--port", default=8765, type=int)
+
+    analytics_plan = commands.add_parser(
+        "analytics-plan",
+        help="Validate a company request and emit the complete company-analytics v1 workflow",
+    )
+    analytics_plan.add_argument("--input", required=True, help="CompanyResearchRequest JSON")
+    analytics_plan.add_argument("--pack", default="initiating-coverage.v1", help="Versioned research pack ID")
+    analytics_plan.add_argument(
+        "--execution-mode",
+        choices=("full", "compatible", "tools_only"),
+        default="compatible",
+    )
+    analytics_plan.add_argument("--output")
+
+    analytics_import = commands.add_parser(
+        "analytics-import",
+        help="Validate and atomically publish a completed host-submission.v4 analytics bundle",
+    )
+    analytics_import.add_argument("--input", required=True, help="Complete host-submission.v4 JSON")
+    analytics_import.add_argument("--output")
+    analytics_import.add_argument("--report", "--dashboard", dest="dashboard", action="store_true")
+    analytics_import.add_argument("--host", default="127.0.0.1", help=argparse.SUPPRESS)
+    analytics_import.add_argument("--port", default=8765, type=int)
+
+    analytics_init = commands.add_parser(
+        "analytics-init",
+        help="Create a durable 26-stage company-analytics run for the calling harness",
+    )
+    analytics_init.add_argument("--input", required=True, help="CompanyResearchRequest JSON")
+    analytics_init.add_argument("--pack", default="initiating-coverage.v1", help="Versioned research pack ID")
+    analytics_init.add_argument(
+        "--execution-mode",
+        choices=("full", "compatible", "tools_only"),
+        default="compatible",
+    )
+    analytics_init.add_argument("--no-decision-memory", dest="decision_memory_enabled", action="store_false")
+    analytics_init.add_argument("--output")
+
+    quality_outcome = commands.add_parser(
+        "quality-outcome",
+        help="Append a resolved forecast outcome or correction and persist its scorecard",
+    )
+    quality_outcome.add_argument("--input", required=True, help="OutcomeObservation JSON")
+    quality_outcome.add_argument("--output")
+
+    quality_show = commands.add_parser(
+        "quality-show",
+        help="Show forecasts, append-only outcomes, and deterministic scorecards for a completed run",
+    )
+    quality_show.add_argument("run_id")
+    quality_show.add_argument("--output")
+
+    company_init = commands.add_parser(
+        "company-init",
+        help="Create a durable 15-stage company-research run for the calling harness",
+    )
+    company_init.add_argument("--input", required=True, help="CompanyResearchRequest JSON")
+    company_init.add_argument("--no-decision-memory", dest="decision_memory_enabled", action="store_false")
+    company_init.add_argument("--output")
 
     host_init = commands.add_parser(
         "host-init",
@@ -170,11 +260,18 @@ def _add_host_commands(commands: argparse._SubParsersAction[argparse.ArgumentPar
     conformance.add_argument("run_id")
     conformance.add_argument("--upstream-path")
     conformance.add_argument("--output")
+    semantics = commands.add_parser(
+        "run-semantics",
+        help="Emit the canonical transport-neutral semantics of a completed run",
+    )
+    semantics.add_argument("run_id")
+    semantics.add_argument("--output")
 
     memory_query = commands.add_parser("memory-query", help="Recall bounded same/cross-symbol decision memory")
     memory_query.add_argument("symbol")
     memory_query.add_argument("--same-symbol-limit", type=int, default=5)
     memory_query.add_argument("--cross-symbol-limit", type=int, default=3)
+    memory_query.add_argument("--cutoff-at", help="Exact timezone-aware historical availability cutoff")
     memory_query.add_argument("--output")
     memory_outcome = commands.add_parser("memory-outcome", help="Append a host-observed outcome and reflection")
     target = memory_outcome.add_mutually_exclusive_group(required=True)
@@ -186,7 +283,7 @@ def _add_host_commands(commands: argparse._SubParsersAction[argparse.ArgumentPar
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="tradingagents-portable",
+        prog="stock-research-agents",
         description="Harness-neutral research capability; never an order executor.",
     )
     commands = parser.add_subparsers(dest="command", required=True)
@@ -200,11 +297,15 @@ def _parser() -> argparse.ArgumentParser:
     _add_research_command(commands)
     _add_host_commands(commands)
 
-    dashboard = commands.add_parser("dashboard", help="Serve the packaged dossier and JSON APIs on loopback")
-    dashboard.add_argument("--host", default="127.0.0.1")
-    dashboard.add_argument("--port", default=8765, type=int)
-    dashboard.add_argument("--fixture", action="store_true", help="Seed the default ORCL fixture before serving")
-    dashboard.add_argument("--date", default="2026-07-03", dest="as_of_date")
+    for command, help_text in (
+        ("report", "Serve the completed Research Dossier Viewer on loopback"),
+        ("dashboard", "Compatibility alias for the completed Research Dossier Viewer"),
+    ):
+        viewer = commands.add_parser(command, help=help_text)
+        viewer.add_argument("--host", default="127.0.0.1")
+        viewer.add_argument("--port", default=8765, type=int)
+        viewer.add_argument("--fixture", action="store_true", help="Seed the default ORCL fixture before serving")
+        viewer.add_argument("--date", default="2026-07-03", dest="as_of_date")
     return parser
 
 
@@ -219,12 +320,38 @@ def _emit(payload: dict[str, object], output: str | None = None) -> None:
     print(f"Complete normalized result: {path.resolve()}")
 
 
+def _completed_publication_payload(
+    result: Any,
+    events: tuple[Any, ...],
+    *,
+    store: RunStore | None = None,
+    coordinator: Any = None,
+    foreground_report: bool = False,
+) -> dict[str, object]:
+    """Return one generic completed result plus its presentation receipt."""
+    publication_store = RUN_STORE if store is None else store
+    presentation = present_completed_run(
+        result.run_id,
+        publication_store,
+        coordinator=coordinator,
+        mode="path_only" if foreground_report else None,
+    )
+    return {
+        "ok": True,
+        "result": result.to_dict(),
+        "view": build_run_view(result, events).to_dict(),
+        "events": [event.to_dict() for event in events],
+        "presentation": presentation,
+        "dashboard_path": presentation["path"],
+    }
+
+
 def _serve_dashboard(host: str, port: int, run_id: str | None = None) -> None:
-    server = create_dashboard_server(host, port)
+    server = create_report_server(host, port)
     bound_host = str(server.server_address[0])
     bound_port = int(server.server_address[1])
     suffix = f"?run={run_id}" if run_id else ""
-    print(f"TradingAgents Portable dashboard: http://{bound_host}:{bound_port}/{suffix}")
+    print(f"StockResearchAgents Research Dossier Viewer: http://{bound_host}:{bound_port}/{suffix}")
     print("Final research projection only; not financial advice. Press Ctrl-C to stop.")
     try:
         server.serve_forever()
@@ -326,12 +453,12 @@ def _research(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
         )
         return 1
 
-    payload = {
-        "ok": True,
-        "result": result.to_dict(),
-        "view": build_run_view(result, events).to_dict(),
-        "events": [event.to_dict() for event in events],
-    }
+    payload = _completed_publication_payload(
+        result,
+        events,
+        store=getattr(adapter, "store", RUN_STORE),
+        foreground_report=args.dashboard,
+    )
     _emit(payload, args.output)
     if args.dashboard:
         _serve_dashboard(args.host, args.port, result.run_id)
@@ -400,16 +527,159 @@ def _host_import(args: argparse.Namespace) -> int:
             args.output,
         )
         return 2
-    response = {
-        "ok": True,
-        "result": result.to_dict(),
-        "view": build_run_view(result, events).to_dict(),
-        "events": [event.to_dict() for event in events],
-    }
+    response = _completed_publication_payload(result, events, foreground_report=args.dashboard)
     _emit(response, args.output)
     if args.dashboard:
         _serve_dashboard(args.host, args.port, result.run_id)
     return 0
+
+
+def _company_plan(args: argparse.Namespace) -> int:
+    try:
+        payload = _read_json(args.input)
+        if not isinstance(payload, dict):
+            raise ValueError("company research request root must be a JSON object")
+        response = prepare_company_research(payload)
+    except (OSError, json.JSONDecodeError, TypeError, ValueError) as exc:
+        _emit(
+            {
+                "ok": False,
+                "guidance": {
+                    "code": "invalid_company_research_request",
+                    "message": str(exc),
+                    "steps": [
+                        "Use the CompanyResearchRequest v3 contract with an exact timezone-aware cutoff.",
+                        "Keep providers, credentials, raw source bodies, and execution fields outside the payload.",
+                    ],
+                    "retryable": True,
+                },
+            },
+            args.output,
+        )
+        return 2
+    _emit(response, args.output)
+    return 0
+
+
+def _company_import(args: argparse.Namespace) -> int:
+    try:
+        payload = _read_json(args.input)
+        if not isinstance(payload, dict):
+            raise ValueError("company research submission root must be a JSON object")
+        result, events = submit_company_research(payload)
+    except (OSError, json.JSONDecodeError, TypeError, ValueError) as exc:
+        _emit(
+            {
+                "ok": False,
+                "guidance": {
+                    "code": "invalid_company_research_submission",
+                    "message": str(exc),
+                    "steps": [
+                        "Generate and follow the company-plan workflow.",
+                        "Resolve every claim, calculation, temporal provenance, coverage, and evaluation reference.",
+                        "Publish only the bounded completed dossier; do not include credentials or raw source content.",
+                    ],
+                    "retryable": True,
+                },
+            },
+            args.output,
+        )
+        return 2
+    response = _completed_publication_payload(result, events, foreground_report=args.dashboard)
+    _emit(response, args.output)
+    if args.dashboard:
+        _serve_dashboard(args.host, args.port, result.run_id)
+    return 0
+
+
+def _analytics_plan(args: argparse.Namespace) -> int:
+    try:
+        payload = _read_json(args.input)
+        if not isinstance(payload, dict):
+            raise ValueError("company analytics request root must be a JSON object")
+        response = prepare_company_analytics(
+            payload,
+            research_pack_id=args.pack,
+            execution_mode=args.execution_mode,
+        )
+    except (OSError, json.JSONDecodeError, TypeError, ValueError) as exc:
+        _emit(
+            {
+                "ok": False,
+                "guidance": {
+                    "code": "invalid_company_analytics_request",
+                    "message": str(exc),
+                    "steps": [
+                        "Use the frozen CompanyResearchRequest v3 contract and select a catalogued research pack.",
+                        "Keep web sessions, provider credentials, raw documents, and experiment code in the host.",
+                    ],
+                    "retryable": True,
+                },
+            },
+            args.output,
+        )
+        return 2
+    _emit(response, args.output)
+    return 0
+
+
+def _analytics_import(args: argparse.Namespace) -> int:
+    try:
+        payload = _read_json(args.input)
+        if not isinstance(payload, dict):
+            raise ValueError("company analytics submission root must be a JSON object")
+        result, events = submit_company_analytics(payload)
+    except (OSError, json.JSONDecodeError, TypeError, ValueError) as exc:
+        _emit(
+            {
+                "ok": False,
+                "guidance": {
+                    "code": "invalid_company_analytics_submission",
+                    "message": str(exc),
+                    "steps": [
+                        "Generate and follow analytics-plan with the same research pack.",
+                        "Submit the unchanged v3 dossier plus completed analytics, run-card, hypothesis, "
+                        "and quality sidecars.",
+                        "Do not include credentials, raw source bodies, generated executable code, or order fields.",
+                    ],
+                    "retryable": True,
+                },
+            },
+            args.output,
+        )
+        return 2
+    response = _completed_publication_payload(result, events, foreground_report=args.dashboard)
+    _emit(response, args.output)
+    if args.dashboard:
+        _serve_dashboard(args.host, args.port, result.run_id)
+    return 0
+
+
+def _quality_command(args: argparse.Namespace) -> int:
+    try:
+        if args.command == "quality-outcome":
+            response = record_company_forecast_outcome(_read_json(args.input))
+        else:
+            response = get_company_research_quality(args.run_id)
+        _emit(response, args.output)
+        return 0
+    except (KeyError, OSError, json.JSONDecodeError, TypeError, ValueError) as exc:
+        _emit(
+            {
+                "ok": False,
+                "guidance": {
+                    "code": "research_quality_operation_failed",
+                    "message": str(exc),
+                    "steps": [
+                        "Import the completed analytics publication before recording outcomes.",
+                        "Corrections must append and supersede exactly the current active observation.",
+                    ],
+                    "retryable": True,
+                },
+            },
+            args.output,
+        )
+        return 2
 
 
 def _read_json(path: str) -> Any:
@@ -475,30 +745,99 @@ def _host_init(args: argparse.Namespace) -> int:
         return 2
 
 
+def _company_init(args: argparse.Namespace) -> int:
+    try:
+        payload = _read_json(args.input)
+        if not isinstance(payload, dict):
+            raise ValueError("company research request must be a JSON object")
+        control = COMPANY_RESEARCH_COORDINATOR.create(
+            payload,
+            decision_memory_enabled=args.decision_memory_enabled,
+        )
+        _emit({"ok": True, "control": control}, args.output)
+        return 0
+    except (OSError, json.JSONDecodeError, TypeError, ValueError) as exc:
+        _emit(
+            {
+                "ok": False,
+                "guidance": {
+                    "code": "invalid_company_lifecycle_request",
+                    "message": str(exc),
+                    "steps": ["Validate the request with company-plan; no provider API key is accepted."],
+                    "retryable": True,
+                },
+            },
+            args.output,
+        )
+        return 2
+
+
+def _analytics_init(args: argparse.Namespace) -> int:
+    try:
+        payload = _read_json(args.input)
+        if not isinstance(payload, dict):
+            raise ValueError("company analytics request must be a JSON object")
+        control = COMPANY_ANALYTICS_COORDINATOR.create(
+            payload,
+            research_pack_id=args.pack,
+            decision_memory_enabled=args.decision_memory_enabled,
+            execution_mode=args.execution_mode,
+        )
+        _emit({"ok": True, "control": control}, args.output)
+        return 0
+    except (OSError, json.JSONDecodeError, TypeError, ValueError) as exc:
+        _emit(
+            {
+                "ok": False,
+                "guidance": {
+                    "code": "invalid_company_analytics_lifecycle_request",
+                    "message": str(exc),
+                    "steps": ["Validate the request and pack with analytics-plan; no provider API key is accepted."],
+                    "retryable": True,
+                },
+            },
+            args.output,
+        )
+        return 2
+
+
+def _coordinator_for_run(run_id: str) -> Any:
+    return select_run_coordinator(
+        run_id,
+        COMPANY_RESEARCH_COORDINATOR,
+        HOST_RUN_COORDINATOR,
+        (COMPANY_ANALYTICS_COORDINATOR,),
+    )
+
+
 def _publication_control(run_id: str) -> dict[str, object] | None:
     if not is_lifecycle_run_id(run_id):
         return None
     try:
-        return HOST_RUN_COORDINATOR.control(run_id)
+        return _coordinator_for_run(run_id).control(run_id)
     except KeyError:
         return None
 
 
 def _lifecycle_command(args: argparse.Namespace) -> int:
     try:
+        run_id = getattr(args, "run_id", None)
+        coordinator = (
+            _coordinator_for_run(run_id) if run_id and args.command != "run-semantics" else HOST_RUN_COORDINATOR
+        )
         if args.command == "host-start":
-            response = HOST_RUN_COORDINATOR.start(args.run_id, args.revision)
+            response = coordinator.start(args.run_id, args.revision)
         elif args.command == "host-receipts":
             payload = _read_json(args.input)
             receipts = payload.get("receipts") if isinstance(payload, dict) else payload
             if not isinstance(receipts, list):
                 raise ValueError("receipt input must be an array or an object containing a receipts array")
-            response = HOST_RUN_COORDINATOR.append_receipts(args.run_id, receipts, args.revision)
+            response = coordinator.append_receipts(args.run_id, receipts, args.revision)
         elif args.command == "host-stage-commit":
             payload = _read_json(args.input)
             if not isinstance(payload, dict):
                 raise ValueError("stage output input must be a JSON object")
-            response = HOST_RUN_COORDINATOR.commit_stage(
+            response = coordinator.commit_stage(
                 args.run_id,
                 args.stage_id,
                 payload,
@@ -506,22 +845,21 @@ def _lifecycle_command(args: argparse.Namespace) -> int:
                 attempt=args.attempt,
             )
         elif args.command == "host-pause":
-            response = {"ok": True, "control": HOST_RUN_COORDINATOR.pause(args.run_id, args.revision, args.reason)}
+            response = {"ok": True, "control": coordinator.pause(args.run_id, args.revision, args.reason)}
         elif args.command == "host-resume":
-            response = HOST_RUN_COORDINATOR.resume(args.run_id, args.revision)
+            response = coordinator.resume(args.run_id, args.revision)
         elif args.command == "host-finalize":
-            result, events = HOST_RUN_COORDINATOR.finalize(args.run_id, args.revision)
-            response = {
-                "ok": True,
-                "result": result.to_dict(),
-                "events": [event.to_dict() for event in events],
-                "view": build_run_view(result, events).to_dict(),
-                "dashboard_path": f"/?run={result.run_id}",
-            }
+            result, events = coordinator.finalize(args.run_id, args.revision)
+            response = _completed_publication_payload(
+                result,
+                events,
+                store=getattr(coordinator, "result_store", RUN_STORE),
+                coordinator=coordinator,
+            )
         elif args.command == "run-control":
-            response = {"ok": True, "control": HOST_RUN_COORDINATOR.control(args.run_id)}
+            response = {"ok": True, "control": coordinator.control(args.run_id)}
         elif args.command == "run-events":
-            response = HOST_RUN_COORDINATOR.poll_events(
+            response = coordinator.poll_events(
                 args.run_id,
                 after_sequence=args.after_sequence,
                 limit=args.limit,
@@ -529,12 +867,12 @@ def _lifecycle_command(args: argparse.Namespace) -> int:
         elif args.command == "run-cancel":
             response = {
                 "ok": True,
-                "control": HOST_RUN_COORDINATOR.request_cancel(args.run_id, args.revision, args.reason),
+                "control": coordinator.request_cancel(args.run_id, args.revision, args.reason),
             }
         elif args.command == "run-cancel-ack":
             response = {
                 "ok": True,
-                "control": HOST_RUN_COORDINATOR.acknowledge_cancel(
+                "control": coordinator.acknowledge_cancel(
                     args.run_id,
                     args.revision,
                     args.host_receipt_id,
@@ -552,7 +890,7 @@ def _lifecycle_command(args: argparse.Namespace) -> int:
                 raise ValueError(f"completed run not found: {args.run_id}")
             if is_lifecycle_run_id(args.run_id):
                 try:
-                    lifecycle_log = HOST_RUN_COORDINATOR.lifecycle_log(args.run_id)
+                    lifecycle_log = coordinator.lifecycle_log(args.run_id)
                 except KeyError:
                     lifecycle_log = ()
             else:
@@ -585,11 +923,23 @@ def _lifecycle_command(args: argparse.Namespace) -> int:
                 "conformance": report.to_dict(),
                 "digest": conformance_digest(report),
             }
+        elif args.command == "run-semantics":
+            publication_control = _publication_control(args.run_id)
+            if publication_control is not None and (
+                publication_control["status"] != "completed" or publication_control["publication_pending"]
+            ):
+                raise ValueError(f"run publication is not complete: {args.run_id}")
+            semantics_result = HOST_RUN_COORDINATOR.result_store.get_result(args.run_id)
+            semantics_events = HOST_RUN_COORDINATOR.result_store.get_events(args.run_id)
+            if semantics_result is None or semantics_events is None:
+                raise ValueError(f"completed run not found: {args.run_id}")
+            response = build_completed_run_semantics(semantics_result, semantics_events).to_dict()
         elif args.command == "memory-query":
             recall = HOST_RUN_COORDINATOR.decision_memory().recall(
                 args.symbol,
                 same_symbol_limit=args.same_symbol_limit,
                 cross_symbol_limit=args.cross_symbol_limit,
+                cutoff_at=args.cutoff_at,
             )
             response = {"ok": True, "recall": recall.to_dict()}
         elif args.command == "memory-outcome":
@@ -635,9 +985,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             risk_rounds=args.risk_rounds,
         )
         result, events = run_fixture(request)
-        payload: dict[str, object] = {"ok": True, "result": result.to_dict()}
-        if args.events:
-            payload["events"] = [event.to_dict() for event in events]
+        payload = _completed_publication_payload(result, events)
+        if not args.events:
+            payload.pop("events")
         _emit(payload)
         return 0
 
@@ -649,6 +999,27 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.command == "host-import":
         return _host_import(args)
+
+    if args.command == "company-plan":
+        return _company_plan(args)
+
+    if args.command == "company-import":
+        return _company_import(args)
+
+    if args.command == "analytics-plan":
+        return _analytics_plan(args)
+
+    if args.command == "analytics-import":
+        return _analytics_import(args)
+
+    if args.command in {"quality-outcome", "quality-show"}:
+        return _quality_command(args)
+
+    if args.command == "company-init":
+        return _company_init(args)
+
+    if args.command == "analytics-init":
+        return _analytics_init(args)
 
     if args.command == "host-init":
         return _host_init(args)
@@ -666,13 +1037,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         "run-cancel-ack",
         "run-export",
         "run-conformance",
+        "run-semantics",
         "memory-query",
         "memory-outcome",
     }
     if args.command in lifecycle_commands:
         return _lifecycle_command(args)
 
-    if args.command == "dashboard" and args.fixture:
+    if args.command in {"report", "dashboard"} and args.fixture:
         run_fixture(RunRequest(as_of_date=args.as_of_date))
     _serve_dashboard(args.host, args.port)
     return 0

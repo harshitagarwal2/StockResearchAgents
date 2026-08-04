@@ -5,6 +5,8 @@
 __pycache__/
 *.py[cod]
 .runs/
+.omx/
 dist/
 build/
+.upstream/
 *.egg-info/

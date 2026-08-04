@@ -17,6 +17,80 @@ from tradingagents_portable.lifecycle import HostRunCoordinator, LifecycleStore
 from tradingagents_portable.memory import DecisionMemoryStore
 from tradingagents_portable.store import RunStore
 
+_NON_STRUCTURAL_CHECKS = {"pinned_upstream_identity", "stage_completion_receipts"}
+
+
+def _is_sha256(value: object) -> bool:
+    return isinstance(value, str) and len(value) == 64 and all(character in "0123456789abcdef" for character in value)
+
+
+def _lifecycle_smoke_validation(
+    result: Any,
+    events: tuple[Any, ...],
+    conformance: Any,
+    *,
+    upstream_required: bool,
+) -> dict[str, object]:
+    checks = {check.name: check for check in conformance.checks}
+    structural_checks = [check for check in conformance.checks if check.name not in _NON_STRUCTURAL_CHECKS]
+    structural_ok = bool(structural_checks) and all(check.verified and check.passed for check in structural_checks)
+    identity = checks["pinned_upstream_identity"]
+    identity_ok = not upstream_required or (identity.verified and identity.passed)
+    expected_stage_ids = tuple(stage.id for stage in result.topology.stages)
+    commits = tuple(event for event in events if event.kind.value == "stage" and event.status == "committed")
+    receipts = {
+        event.data.get("receipt_id"): event
+        for event in events
+        if event.kind.value == "stage" and isinstance(event.data.get("receipt_id"), str)
+    }
+    boundaries_ok = tuple(event.stage_id for event in commits) == expected_stage_ids
+    for ordinal, event in enumerate(commits, start=1):
+        data = event.data
+        receipt_ids = data.get("execution_receipt_ids")
+        attempt = data.get("attempt")
+        digest = data.get("output_digest")
+        if not (
+            data.get("checkpoint_ordinal") == ordinal
+            and isinstance(attempt, int)
+            and attempt > 0
+            and _is_sha256(digest)
+            and data.get("envelope_observed") is True
+            and data.get("output_observed") is True
+            and data.get("output_content_verified") is True
+            and data.get("host_completion_attested") is True
+            and data.get("execution_observed") is False
+            and isinstance(receipt_ids, list)
+            and len(receipt_ids) == 2
+        ):
+            boundaries_ok = False
+            break
+        start = receipts.get(receipt_ids[0])
+        completion = receipts.get(receipt_ids[1])
+        if not (
+            start is not None
+            and completion is not None
+            and start.stage_id == event.stage_id
+            and completion.stage_id == event.stage_id
+            and start.data.get("kind") == "stage_started"
+            and completion.data.get("kind") == "stage_completed"
+            and start.data.get("attempt") == attempt
+            and completion.data.get("attempt") == attempt
+            and completion.data.get("output_digest") == digest
+        ):
+            boundaries_ok = False
+            break
+    passed = structural_ok and identity_ok and boundaries_ok
+    return {
+        "passed": passed,
+        "structural_checks_passed": structural_ok,
+        "upstream_identity_required": upstream_required,
+        "upstream_identity_passed": identity_ok,
+        "attested_commit_boundaries_passed": boundaries_ok,
+        "committed_boundaries": len(commits),
+        "expected_boundaries": len(expected_stage_ids),
+        "execution_observed": False,
+    }
+
 
 def _request(payload: dict[str, Any]) -> RunRequest:
     request = payload["request"]
@@ -120,7 +194,14 @@ def replay(path: Path, state_root: Path, upstream_path: Path | None) -> dict[str
     )
     restarted_store = RunStore(state_dir)
     assert restarted_store.get_result(run_id) is not None
-    assert conformance.passed
+    validation = _lifecycle_smoke_validation(
+        result,
+        events,
+        conformance,
+        upstream_required=upstream_path is not None,
+    )
+    if not validation["passed"]:
+        raise RuntimeError(f"lifecycle smoke validation failed: {json.dumps(validation, sort_keys=True)}")
     return {
         "symbol": symbol,
         "run_id": run_id,
@@ -129,7 +210,9 @@ def replay(path: Path, state_root: Path, upstream_path: Path | None) -> dict[str
         "events": len(events),
         "memory_entries": len(memory.recall(symbol).same_symbol),
         "exported_files": len(export.files),
-        "conformance": conformance.passed,
+        "lifecycle_smoke_passed": True,
+        "lifecycle_validation": validation,
+        "conformance": conformance.to_dict(),
         "restart_rehydrated": True,
     }
 

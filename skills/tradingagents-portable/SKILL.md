@@ -1,75 +1,87 @@
 ---
 name: tradingagents-portable
-description: Research any supported financial instrument through the durable credential-free lifecycle, publish safe receipts and stage checkpoints, finalize the result, and inspect it as a read-only dossier. The atomic import and optional legacy adapter remain available for backward compatibility.
+description: Run StockResearchAgents as evidence-first, point-in-time company research through the harness-neutral company-analytics.v1 workflow, including adaptive multi-source web retrieval, deterministic analytics, forecasts, outcome scoring, and a completed-only report. Use for company or security research in Codex or another MCP-capable harness without placing model/provider API keys, browser credentials, raw licensed content, or broker authority inside the portable core.
 ---
 
-# TradingAgents Portable
+# StockResearchAgents
 
-Use this plugin's durable host-native lifecycle by default. The current Codex task supplies reasoning, subagents, concrete research tools, and hard interruption; TradingAgents Portable supplies topology, stage-boundary persistence, safe receipts, typed validation, decision/report persistence, export, and the final UI. The server must not request or accept an API key. The browser UI and inline view are finalized-result readers, not workflow executors.
+Use `company-analytics.v1` as the primary profile. Treat StockResearchAgents as a contract, analytics, publication, and read-model capability—not as the model or data provider.
 
-## Internal Codex task run (preferred)
+Keep these authorities separate:
 
-1. Call `create_host_run` with the symbol, cutoff date, analyst set, round counts, output language, and decision-memory preference; use returned memory context when enabled. Then call `start_host_run` with the latest `revision`.
-2. Follow the returned stage instructions, context projection, allowed capability IDs, source priority, point-in-time cutoff, evidence windows, research-intelligence conventions, and no-key fallback behavior.
-3. Execute that stage with this Codex task's own reasoning, subagents, and available research tools. Write in `request.output_language`. Do not create an external LLM client and do not ask for provider credentials.
-4. Emit only safe `append_run_receipts`: stable IDs, kind, stage/attempt, capability ID, safe summary, timing, SHA-256 digests, and evidence IDs. For truthful execution observation, emit `stage_started`, then `stage_completed` for the same stage/attempt with the SHA-256 digest of the exact stage output that will be committed. Never include raw prompts, raw tool arguments/results, transcripts, API keys, tokens, cookies, authorization values, or other credentials.
-5. Call `commit_host_stage` with the complete typed stage output and latest revision. Repeat the returned next stage until none remains. Preserve source URLs, source dates, retrieval times, limitations, and evidence IDs. Put optional detailed intelligence inside `EvidenceItem.values`: explicit `source_quality`; structured `metrics`; and structured `articles`, `catalysts`, `risks`, `conflicts`, `unknowns`, and `monitoring_conditions`. Preserve existing scalar values beside these structures so older consumers remain useful.
-6. Preserve the three distinct decisions: Research Manager uses five-tier `recommendation`; Trader uses Buy/Hold/Sell `action` plus analytical reasoning and optional entry/stop/sizing; Portfolio Manager uses five-tier `rating` plus summary, thesis, optional target, and horizon. None carries execution authority.
-7. Use `pause_host_run`/`resume_host_run` when needed. Resume restarts the first incomplete stage; interrupted in-flight work is replayed. Poll `poll_run_events` after its monotonic cursor for portable live progress. Push delivery and token-level continuation are harness-specific.
-8. For cancellation, call `request_run_cancellation`, actually stop host-owned work, then call `acknowledge_run_cancellation` with a safe host receipt ID. The portable server does not hard-stop agents or tools.
-9. Call `finalize_host_run` only after every stage is committed. Finalization validates the frozen `host-submission.v2` dossier, recoverably stages cross-store writes, atomically publishes the canonical result/event bundle, and exposes decision memory only after lifecycle completion. If control or polling returns `finalizing` with `publication_pending=true`, retry with the latest revision after the boundary failure; completed-result and dashboard surfaces remain hidden until publication succeeds. Only then may you call `get_run_view`, `export_completed_run`, or `launch_local_dashboard`.
+- Let the active harness own web/browser/provider retrieval, model reasoning, native agents, authentication, entitlements, and hard interruption.
+- Let Portable own the 26-stage workflow contract, strict point-in-time and terminal validation, deterministic calculations, research-quality records, atomic completed publication, and completed-only projection. The host attests intermediate completion criteria; Portable records opaque nonterminal envelopes as committed, not independently verified content.
+- Never put an API key, token, cookie, authorization value, provider configuration, raw source body, unrestricted tool argument, or broker/order instruction into a portable call.
 
-If the user omits configuration, use the request date as the research cutoff; if omitted, use today's local date and record the latest completed market session separately. Default to all compatible analysts, one Bull/Bear round, and one Aggressive/Conservative/Neutral risk round. Never include information published after the cutoff.
+## Run company analytics
 
-Always resolve the newest cutoff-valid evidence before relying on an older record, then apply the manifest's adaptive-history policy. Ordinary stock research should normally include up to five years of daily market history, five fiscal years, eight comparable quarters, latest trailing-twelve-month figures, an intensive 90-day news review, and at least a 12-month material-event chronology. Extend toward ten years, listing inception, or the date of a still-relevant acquisition, financing, leadership, regulatory, or business-model change when that history is necessary to explain the current company or span a meaningful cycle. Check amendments, restatements, corrections, follow-up reporting, and superseding guidance. Stop only when no newer source exists by the cutoff, the current business model and a meaningful comparison cycle are covered, and older evidence no longer changes a trend, assumption, catalyst, risk, conflict, unknown, valuation range, or rating-change condition. Do not pad the report with repetitive history.
+1. Resolve the exact instrument identity. Do not guess an exchange, share class, fund, or crypto asset from an ambiguous symbol.
+2. Set `requested_at` and `cutoff_at` to exact timezone-aware instants. Use the current instant as the cutoff for a current-research request unless the user asks for a historical replay.
+3. Declare a truthful `research_mode`: `live` only after live retrieval; `fixture` for synthetic test data; `historical_replay` for retained as-of evidence.
+4. Call `discover_capability`, then `prepare_company_analytics` with a schema-valid company request, execution mode, and the most suitable research pack. Default to `initiating-coverage.v1` for a full company picture and `compatible` when the harness lacks native subagents. Execute the returned `stage-instructions.v1` roles, objectives, completion criteria, dependencies, capabilities, and output refs; exact prompt wording remains host-owned. The returned v4 schema is self-contained and includes typed analytics records; use the strict Python contracts as authoritative for cross-field semantics.
+5. Execute dependency-ready stages in parallel only for a stateless host plan. In a durable full-mode run, commit exactly the current first-incomplete stage, accept the returned next stage, and preserve that order even if host tools gathered supporting evidence concurrently. Do not omit stages merely because the harness lacks subagents.
+6. Execute the source-portfolio plan below with host-owned web, browser, connector, or research-data tools. GDELT and search results are discovery evidence only: open the underlying issuer, regulator, exchange, macro authority, or attributable publisher page before treating a claim as verified. Normalize only bounded evidence, locators, hashes, timestamps, and permitted extracts into the terminal contracts. Preserve SourceBatch/observation identity, digest scope, dossier document ID, analytics source/license receipt, and entitlement translation in the versioned source-lineage crosswalk.
+7. Produce deterministic analytics for fundamentals, ratios, valuation, consensus, positioning, catalysts, and declared experiments. Preserve input IDs, units, periods, rounding, assumptions, implementation digests, and point-in-time dataset receipts.
+8. Issue falsifiable hypotheses and explicit forecasts only when their target, horizon, resolution rule, evidence, and cutoff are defined. Namespace every `forecast_id` globally with the exact `<quality_run_id>.` prefix. Never reinterpret confidence, rating strength, or risk severity as a forecast probability.
+9. Assemble one complete `host-submission.v4` wrapper containing the unchanged v3 request/dossier plus analytics, source-lineage crosswalk, run card, hypothesis ledger, research iterations, quality receipt, and forecast set. The run card must bind the shipped workflow digest, selected execution mode, and exact ordered 26-stage receipt set.
+10. Prefer `create_company_analytics_run` for a durable run. Use the shared start, receipt, stage-commit, pause/resume, cancellation, event, and finalize controls with the latest optimistic revision across all 26 stages. Resume from the first incomplete stage; replay interrupted in-flight host work. Treat nonterminal stage events as durable commitments, not proof that Portable read host-owned content. The final stage must contain the complete v4 payload and pass strict v4 plus coordinator-commitment validation. Treat completed `RunResult.artifacts` as the atomically published authoritative sidecars. The quality outcome index is recoverable derived state, not part of a distributed transaction.
+11. After a successful `finalize_host_run` or `import_company_analytics`, inspect its `presentation` receipt. When
+    `status` is `ready`, return or open its run-specific `url`; in Codex App, show that local URL as the completed end
+    product. When `status` is `path_only`, render `get_run_view` inline. When `status` is `unavailable`, keep the
+    completed research result and retry presentation with `launch_research_report`; `launch_local_dashboard` remains a
+    compatibility alias. Never launch one page per company, never open a browser before completion, and never present
+    private partial-stage material as a completed result. Use `import_company_analytics` only when the host already has
+    one complete v4 payload and does not need lifecycle checkpoints.
+12. After a forecast resolves, append a typed observation with `record_research_outcome`; inspect reproducible records with `get_research_quality`. Corrections must supersede earlier observations rather than overwrite history.
 
-For news research, use the host's own web and research tools to widen coverage without adding API keys at the portable boundary. Start with official investor-relations and regulatory sources, use broad search or aggregators only to discover candidates, then open the underlying primary source or attributable reputable reporting before retaining a claim. Deduplicate repeated coverage by canonical URL and materially identical event, preserve publication time and canonical link, and label claim type, verification status, source quality, stance, and why the item matters. A search snippet, aggregator headline, or publisher name alone is not evidence and must not be assigned an inferred quality score.
+CLI equivalents are `analytics-plan`, `analytics-init`, shared `host-*` / `run-*` lifecycle commands, `analytics-import`, `quality-outcome`, and `quality-show`.
 
-For fundamentals, prefer filings and official results and retain several comparable periods when available. Preserve units, fiscal period, reporting basis, and whether each figure is company-reported, calculated, estimated, or an analytical assumption. Reconcile capex to free cash flow and surface segment trends, concentration, dilution, commitments, valuation dependencies, conflicting figures, and missing decision-critical facts. Never guess an unavailable metric.
+## Retrieve current and historical evidence
 
-The final synthesis must be differentiated without pretending to have exclusive data: separate consensus facts from variant interpretation; make assumptions and counter-evidence visible; connect catalysts and risks to evidence and horizons; preserve conflicts and unknowns; and state concrete upgrade, downgrade, stop, or thesis-invalidation conditions. The completed dossier renders this as an evidence-integrity chain and decision ledgers.
+Start with the newest evidence actually available at `cutoff_at`. Confirm later amendments, corrections, official results, guidance, and the latest completed market session before relying on older material.
 
-The mutable `run-lifecycle.v1` control protocol is separate from frozen terminal `host-submission.v2`. Cursor events are portable observations of sanitized host receipts and committed lifecycle transitions, not raw token streaming. The final UI exposes neither lifecycle controls nor receipt submission.
+Keep the two MCP surfaces distinct. The coordination server registers no research-data tools. The separate `tradingagents-research-data` server registers six SourceBatch v1 public tools by default: SEC regulatory filings, fundamentals, and financial statements; GDELT company and global news metadata plus publisher links; and World Bank macro observations. Treat World Bank values as current-vintage only because its API cannot reconstruct historical revision lineage. Prices and indicators require a licensed host `SourcePort`; Reddit requires host-owned OAuth; neither is registered by default. StockTwits is denied and unregistered. Use lawful host sources for those gaps, and never silently substitute fixture or replay data for live retrieval.
 
-Harnesses without native subagents use the packaged sequential fallback and the same stage/output schema. The portable layer supplies private SQLite/WAL lifecycle checkpoints, atomic canonical result/event bundles, bounded publication-gated memory recall, later outcome/reflection append, atomic first export, and crash-recoverable verified overwrite. Agent spawning, concrete tools, hard interruption, exact model text, token continuation, and optional push delivery remain host-specific.
+Build a decision-relevant source portfolio before synthesis. For a normal full-company run, attempt every applicable lane and record a coverage receipt even when a lane is unavailable:
 
-## Backward-compatible atomic import
+1. **Regulator and filings:** the latest annual and quarterly filing, subsequent current reports, material exhibits, amendments, proxy, and relevant ownership or registration filings. For a non-US issuer, use its primary regulator or exchange equivalent.
+2. **Issuer first-party:** the latest earnings release, investor presentation, prepared remarks or webcast materials, guidance, capital-allocation statements, product or legal announcements, and the issuer's IR archive. Treat the issuer as authoritative about what it said, not as independent validation of the claim.
+3. **Financial history and market state:** point-in-time statements, at least five fiscal years and eight comparable quarters when available, the latest completed market session, liquidity/volatility, valuation history, and explicitly versioned technical calculations. If the host lacks an entitled market source, mark the lane unavailable instead of estimating prices.
+4. **Independent reporting:** open attributable reporting from multiple independent publishers. Target at least three publisher domains and more when the company is controversial, event-driven, internationally exposed, or thinly covered. Do not count syndicated duplicates as independent corroboration.
+5. **Industry and peers:** primary evidence from material competitors, customers, suppliers, industry bodies, regulators, or standards organizations. Use at least two justified peers when peers are decision-relevant.
+6. **Macro and policy:** official central-bank, statistics-agency, trade, labor, commodity, or multilateral data that directly affects the thesis. Prefer released observations and vintages over commentary.
+7. **Expectations and positioning:** entitled consensus estimates, rating changes, short interest, institutional ownership, options or fund-flow data, and lawful social evidence only when available. Keep expectations separate from reported facts and label sampling or entitlement bias.
+8. **Adversarial checks:** search for restatements, auditor changes, enforcement, litigation, security incidents, executive departures, financing stress, customer concentration, accounting disagreements, and credible counter-theses.
 
-If the caller already has one complete `host-submission.v2` payload, `prepare_host_run` plus `import_host_run` remains supported. It validates and atomically publishes the completed dossier but provides no partial checkpoints or cursor receipts. Prefer the durable lifecycle for new Codex tasks.
+The targets above are coverage goals, not permission to invent evidence or evade access controls. A run may complete with fewer sources only when it names the failed attempts, entitlement or availability gaps, source concentration, and decision impact. Do not count multiple URLs from the same filing, issuer site, wire story, or syndicated article as source diversity. Preserve exact duplicates, near-duplicate clusters, and conflicting values in lineage rather than silently discarding disagreement.
 
-## Credential-free proof
+Apply an adaptive lookback:
 
-1. Call `discover_capability` and `get_feature_matrix` when runtime readiness matters; the default server exposes 27 credential-free tools.
-2. Call `prepare_fixture` to inspect the exact expanded topology.
-3. Call `run_fixture` for a credential-free, deterministic ORCL run dated `2026-07-03`.
-4. Inspect the response directly or retrieve the complete merged dossier with `get_run_view`; use `get_run_events`, `get_run_result`, and `get_dashboard_report` for narrower completed-run projections.
-5. Call `launch_local_dashboard` only after finalization or fixture completion and only when a browser-oriented view is useful. It binds to loopback and exposes no execution controls.
+- Cover structural history and at least one meaningful business cycle when available.
+- Shorten the window for a young issuer or event-focused pack.
+- Extend it when older evidence changes trend, cyclicality, restatement lineage, capital allocation, valuation range, catalyst, risk, conflict, or monitoring conclusions.
+- Stop when older evidence no longer changes decision-relevant coverage; do not add repetitive history for volume.
 
-The fixture covers all configured analysts, exactly `2 × debate_rounds` Bull/Bear turns, Research Manager, Trader, exactly `3 × risk_rounds` Aggressive/Conservative/Neutral turns, and Portfolio Manager.
+For every retained source, distinguish `published_at`, `available_at`, `retrieved_at`, and `cutoff_at`. Distinguish a metric's information vintage (`as_of_at`) from its economic period (`period_end`). Never treat retrieval time alone as proof of freshness.
 
-## Standalone legacy compatibility (outside this plugin)
+Open the underlying primary source or attributable reporting; never treat a search snippet, GDELT observation time, aggregator headline, or generated summary as a publication timestamp or verified evidence. Mark missing, stale, conflicting, unavailable, unverified, or entitlement-blocked evidence explicitly. Complete means declared decision-relevant coverage, not an exhaustive web guarantee.
 
-The credential-free Codex plugin does not register `run_legacy` and does not import the legacy adapter. For explicit backward compatibility outside Codex, the standalone `research` CLI and opt-in `tradingagents-portable-legacy-mcp` executable can delegate Yahoo-style symbols such as `AAPL`, `0700.HK`, `^GSPC`, `EURUSD=X`, `GC=F`, and `BTC-USD` to `TradingAgentsGraph`. Those surfaces are not the current-task execution path and may require environment-owned provider credentials.
+## Respect licensing and safety
 
-- Provider credentials are environment-only. Never put an API key, token, password, cookie, authorization value, or other credential in a tool argument, run request, event, result, report, or dashboard field.
-- `openai_codex` is accepted when the configured upstream checkout contains PR #1195. Let upstream read its Codex auth file directly (optionally via `TRADINGAGENTS_CODEX_AUTH_PATH`); never copy OAuth contents into a tool argument or result. Treat this unmerged, undocumented provider as runtime-unverified.
-- Use only the typed `run_legacy` settings for `asset_type`, provider/model names, backend URL, output language, temperature, retry count, and provider reasoning effort. Arbitrary configuration objects are intentionally not exposed.
-- Omitted debate/risk settings and `checkpoint_enabled` honor the upstream environment overlay; the upstream checkpoint default is false. Enable checkpointing only for an intentional runtime test because creation and resume have not been verified here. Ordinary upstream decision/report persistence does not imply checkpointing.
-- Expect upstream's normal data-provider, report, and decision-log side effects during an explicit legacy run.
-- If standalone setup is incomplete, return typed setup guidance instead of guessing configuration.
+Use only sources the host is entitled to access and process. Do not bypass paywalls, CAPTCHAs, robots controls, authentication, or publisher restrictions. Seeking Alpha and other licensed services may be referenced only through lawful host access and redistribution rights. When redistribution is prohibited, retain only permitted metadata, a locator/hash, and a limitation—never copied article or transcript bodies.
 
-After standalone legacy execution completes, use its normalized output or explicit compatibility-server projections for the merged dossier. Its events are post-run projections, not a live stream.
+Keep facts, guidance, estimates, assumptions, inferences, theses, counterclaims, and counterevidence distinct. Ground every decision-relevant claim, preserve calculation lineage, explain peer selection, expose disagreement, and make limitations visible.
 
-## Capability truthfulness
+Return prototype research, not personalized financial advice. The capability must never place, simulate, approve, size for execution, submit, modify, or cancel an order.
 
-- `fixture` is implemented and verified locally.
-- Arbitrary-symbol CLI/MCP delegation and completed-state mapping are covered by fake-graph tests. A credentialed live provider run has not been verified.
-- The optional standalone `legacy` events are reconstructed after completion. Importability does not verify provider credentials, data access, checkpoint behavior, or successful live execution.
-- Live legacy stage streaming is unavailable until upstream provides an observer seam.
-- Durable host-native lifecycle is locally verified: private SQLite/WAL checkpointing, linked safe cursor receipts, stage-boundary resume, cooperative request/ack cancellation, publication-gated bounded memory, canonical atomic result/event bundles, and crash-recoverable export replacement.
-- The host owns reasoning, agent spawning, concrete tool calls, authentication, and hard interruption. An interrupted stage is replayed; exact model text and token-level continuation are not portable invariants.
-- Legacy upstream checkpoint/resume and live provider execution remain runtime-unverified; importability and pinned credential-free conformance do not prove them.
+## Preserve compatibility
 
-## Safety boundary
+Use `company-research.v2` and `host-submission.v3` only when a consumer needs the frozen 15-stage dossier profile. Its durable `company-init` / `create_company_research_run` lifecycle remains valid for those 15 stages.
 
-Every output is prototype research, not personalized financial advice. The capability has no broker connection and must never place, simulate, approve, size, submit, modify, or cancel an order. Treat fixture values as synthetic integration-test data, never as facts about Oracle or current markets.
+Use `financial-research.v1` and `host-submission.v2` only for compatibility. The optional upstream LangGraph adapter may reproduce upstream runtime mechanics when installed and credentialed, but it is not the portable execution core. It remains available and is not yet deprecated; do not claim it can be removed until the machine-readable transition gates, saved-result migrations, scoped upstream semantic oracle, live/failure matrix, and published deprecation release are all verified.
+
+For legacy compatibility, preserve the upstream `checkpoint_enabled` setting and upstream decision/report persistence as adapter-owned behavior; neither proves portable analytics resume. Continue to honor the legacy adaptive-history policy: ordinary coverage may target five fiscal years and eight comparable quarters before expanding or stopping by decision relevance.
+
+Use `run_fixture` only as a credential-free synthetic compatibility proof. Treat every fixture value as test data, never as live or current company research.
+
+Target complete observable feature and information parity across harnesses; do not require exact generated text or runtime-mechanism parity. The typed contracts are implemented, but behavioral parity and legacy-removal proof remain incomplete. Codex subagents, another harness's agents, LangGraph nodes, or one sequential host agent may implement the same declared stages. Token scheduling, checkpoints inside an LLM response, provider clients, and agent-spawn APIs remain adapter-specific.

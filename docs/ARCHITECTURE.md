@@ -1,147 +1,253 @@
-# TradingAgents Portable architecture
+# StockResearchAgents architecture
 
-## Purpose
+- **Purpose:** define implementation boundaries, components, state transitions, persistence, and completed presentation.
+- **Audience:** host integrators, maintainers, and reviewers.
+- **Canonical for:** system structure and module ownership.
+- **Not canonical for:** product language, wire-field definitions, version status, or proof.
 
-This repository is an incubation environment for running TradingAgents-compatible research through a durable portable CLI/MCP boundary and presenting the finalized output as a read-only dossier.
+## Architectural drivers
 
-The portable layer owns workflow contracts, validation, and projection, not model inference. The active host harness can execute the complete workflow with its own internal agents; optional legacy execution remains owned by upstream `TradingAgentsGraph`.
+StockResearchAgents separates host-owned research execution from portable contracts, validation, persistence, and final projection. Its primary `company-analytics.v1` profile composes the frozen evidence-first dossier with deterministic analytics, research-lab records, forecasts, and evaluation without embedding a model client or provider.
 
-## Boundary
+The design is driven by five invariants:
 
-TradingAgents Portable owns:
+1. Any capable harness can execute the same workflow semantics.
+2. Credentials, provider clients, exact prompt wording, source terms, and intermediate criterion attestations remain host-owned; portable stage roles, objectives, and completion-criteria declarations remain versioned workflow semantics, while Portable verifies the terminal bundle and coordinator commitments.
+3. Strict point-in-time contracts and deterministic conformance are portable.
+4. Partial lifecycle state never becomes a completed research artifact.
+5. No portable surface gains broker, order, approval, or execution authority.
 
-- versioned run, workflow, event, evidence, decision, artifact, and dashboard contracts;
-- the deterministic ORCL demonstration fixture;
-- harness-neutral MCP tools and a Codex plugin/skill bundle;
-- a separate `run-lifecycle.v1` stage-control protocol and frozen `host-submission.v2` terminal dossier, neither of which accepts model credentials;
-- private SQLite/WAL lifecycle checkpoints, optimistic revisions, atomic canonical result/event bundles, safe cursor-readable receipts, cooperative cancellation, and stage-boundary resume;
-- publication-gated SQLite decision memory: up to five same-symbol and three cross-symbol published records plus append-only later outcomes/reflections;
-- an upstream-compatible report export with atomic first publication, journaled crash-recoverable overwrite, structured result/events, optional sanitized lifecycle JSONL, and SHA-256 digests;
-- versioned per-stage context/tool/output contracts, capability negotiation, interactive portable CLI commands, and a reference sequential executor;
-- additive research-intelligence conventions inside `EvidenceItem.values`, preserving the frozen `host-submission.v2` schema;
-- the completed-run dossier projection, normalized intelligence view, inline MCP view, and loopback browser UI;
-- conformance tests and the feature-parity ledger.
+## System at a glance
 
-The main TradingAgents repository remains the source of truth for:
+![Technical system context showing the host boundary, portable contracts, publication gate, completed dossier, viewer, and exports](../assets/architecture/system-context.svg)
 
-- production prompts and agent behavior;
-- provider clients and credential precedence;
-- data-vendor implementations;
-- LangGraph execution and the legacy runtime's own checkpoints, reports, and decision memory.
+[![SOLID ports-and-adapters view of Company Analytics](../assets/architecture/solid-ports-adapters.svg)](../assets/architecture/solid-ports-adapters.svg)
 
-The portable manifest records the upstream workflow's observable roles, tool capabilities, routing, context, and structured decision semantics. Verified and incomplete rows are tracked separately in [FEATURE_PARITY.md](FEATURE_PARITY.md). The thin upstream adapter still imports and calls the original implementation; no provider client, model loop, or LangGraph node implementation is forked.
+External evidence enters only through a research host. The host sends typed submissions and bounded stage descriptors across the trust boundary. Portable conformance and publication decide whether a Completed Research Dossier exists; the viewer and exports read that completed artifact only.
 
-The installable `upstream` extra pins the official base commit used for conformance. A compatible checkout supplied through `TRADINGAGENTS_LEGACY_PATH` takes precedence, so an alternate branch such as PR #1195 can add a provider without changing the portable contracts. The Codex plugin does not register or import this path. Credentials and Codex OAuth state remain owned by an explicitly launched standalone compatibility process and are never serialized into portable contracts.
+## Architectural patterns
 
-## Runtime shape
+[![StockResearchAgents architecture map showing inbound adapters, application services, domain rules, and outbound adapters](../assets/architecture/portable-patterns.png)](../assets/architecture/portable-patterns.png)
 
-```mermaid
-flowchart LR
-    H["Codex or another host harness"] --> L["run-lifecycle.v1"]
-    L --> N["Host-owned agents and tools"]
-    L --> S["Reference sequential fallback"]
-    L --> R["Safe receipts and stage commits"]
-    R --> Q["SQLite/WAL checkpoint"]
-    Q --> L
-    H --> F["Deterministic ORCL fixture"]
-    H --> A["Thin upstream adapter"]
-    A --> G["TradingAgentsGraph"]
-    N --> D["Frozen host-submission.v2"]
-    S --> D
-    D --> I["Recoverable staged finalize or atomic import"]
-    F --> C["Completed portable result"]
-    G --> C
-    I --> C
-    C --> M["Bounded decision memory"]
-    C --> X["Atomic report export"]
-    C --> V["Merged read-only dossier"]
-    V --> E["Inline MCP view"]
-    V --> B["Loopback browser UI"]
-    V --> T["JSON and Markdown artifacts"]
+[Open the full-resolution architecture pattern map.](../assets/architecture/portable-patterns.png)
+
+| Pattern | Concrete use | Why it exists |
+| --- | --- | --- |
+| Ports and adapters | CLI, MCP, Python, Codex, host submissions, optional upstream adapter | Keeps harness and transport APIs replaceable |
+| Anti-corruption layer | Strict host-submission parsing and upstream `TradingAgentsGraph` adapter | Prevents external runtime semantics from leaking into the domain |
+| State machine | Lifecycle statuses, optimistic revisions, pause/resume, cancellation, finalization | Makes legal transitions and recovery boundaries explicit |
+| Specification pattern | Temporal, numerical, referential, completeness, entitlement, and safety checks | Keeps conformance deterministic and composable |
+| Repository pattern | SQLite/WAL lifecycle, decision memory, atomic result store | Separates durable storage from domain rules |
+| Projection pattern | `RunView`, exports, Research Dossier Viewer | Prevents presentation from becoming an authority |
+| Content-addressed value objects | Dossier/result digests and safe stage descriptors | Makes identity, idempotency, and integrity explicit |
+| Parallel contract versioning | v1/v2 compatibility beside v2/v3 company research | Adds semantics without mutating frozen readers |
+
+Patterns are used only where they protect a real boundary. The codebase deliberately avoids a dependency-injection framework, generic command bus, continuously running projector, or repository abstraction for every dataclass.
+
+## Authority boundary
+
+The host harness owns:
+
+- exact model prompts, reasoning, native agent scheduling, and exact generated text;
+- concrete filing, market, news, transcript, and other retrieval;
+- provider credentials, tool authentication, entitlements, and source terms;
+- exact-cutoff retrieval decisions and adaptive-history expansion; and
+- hard interruption of in-flight work.
+
+The portable core owns:
+
+- versioned wire contracts and workflow manifests;
+- recursive credential, raw-content, and execution-field rejection;
+- temporal, referential, numerical, debate, portfolio, and completeness validation;
+- bounded stage envelopes and safe execution receipts;
+- SQLite/WAL lifecycle state, optimistic revisions, atomic result/event publication, and report export;
+- publication-gated, exact-cutoff-safe decision memory; and
+- completed-result `RunView`, MCP reads, and loopback browser projection.
+
+No browser or portable workflow component owns research logic.
+
+## Version map
+
+```text
+financial-research.v1  -> host-submission.v2 -> existing RunResult
+        |                       |
+        +-> run-lifecycle.v1 ---+
+
+company-research.v2   -> host-submission.v3 -> research_dossier.v3
+        |
+        +-> CompanyResearchCoordinator (Python lifecycle implementation)
+
+company-analytics.v1  -> host-submission.v4 -> unchanged v3 + typed sidecars
+        |
+        +-> CompanyAnalyticsCoordinator + Research Quality outcome journal
 ```
 
-No UI projection owns workflow logic. The browser dossier exists only after finalization; setup, lifecycle control, cursor polling, cancellation, and resume stay on CLI/MCP surfaces.
+`company-research.v2` is a parallel extension. It does not mutate the frozen `financial-research.v1` or `host-submission.v2` contracts. Discovery returns both profiles and their compatibility relationship.
 
-## Durable lifecycle and terminal dossier
+`company-analytics.v1` is a parallel outer profile. It embeds an unchanged v3 submission and adds analytics, run-card, hypothesis, iteration, quality, and forecast sidecars. This is additive contract composition, not a mutation of the v3 dossier.
 
-`run-lifecycle.v1` is the mutable control plane. It records create/start state, safe host receipts, committed stage outputs, pause/resume state, cooperative cancellation request/acknowledgement, revisions, and cursor events. Its durable implementation uses SQLite in WAL mode. Each mutating request supplies the latest revision, preventing stale writers from silently overwriting state.
+[Compatibility](COMPATIBILITY.md) is canonical for version status and migration rules.
 
-`host-submission.v2` is the frozen terminal data plane. Finalization assembles committed outputs into this schema, validates completeness and safety, stages result/events and unpublished memory, commits lifecycle completion, then exposes one canonical atomic bundle. Retries recover every cross-store boundary without duplicate memory. The older stateless `prepare_host_run` plus `submit_host_run` path remains a backward-compatible atomic-bundle import for callers that already hold a complete v2 payload; it does not provide partial checkpoints.
+## Company-research execution
 
-The host owns reasoning, agent spawning, concrete tools, tool authentication, and hard interruption. Portable resume starts at the first incomplete stage boundary and replays an interrupted in-flight stage. It does not promise continuation of a model's exact token stream or identical model text.
+`prepare_company_research` validates a `CompanyResearchRequest` and returns the ordered manifest, routing semantics, portable boundary, sequential fallback, and frozen v3 terminal schema. The host then executes these stages:
 
-Hosts may append sanitized stage/tool receipts containing identifiers, safe summaries, timing, SHA-256 input/output digests, and evidence IDs. Execution is marked observed only when a matching `stage_started` plus `stage_completed` pair identifies the same stage/attempt and the completion digest matches the committed output. Raw prompts, tool arguments, transcripts, and credentials are outside the protocol. Receipt batches, retained receipt counts, evidence IDs, and total lifecycle record size are bounded. Consumers poll events after a monotonic cursor; push delivery is optional and harness-specific.
+| Ordinal | Stage | Main contract responsibility |
+| ---: | --- | --- |
+| 1 | `research.plan` | Objectives, coverage, latest-data checks, adaptive history, stop conditions. |
+| 2 | `evidence.official` | Filings, investor relations, exact availability. |
+| 3 | `evidence.market` | Market history and latest-session verification. |
+| 4 | `analysis.financial` | Filing, guidance, and transcript analysis. |
+| 5 | `analysis.company` | Company events, peers, and factors. |
+| 6 | `audit.evidence` | Claim grounding, counterevidence, coverage, and temporal audit. |
+| 7 | `verify.numerical` | Deterministic recalculation and unit/period reconciliation. |
+| 8 | `debate.bull` | Grounded bullish argument. |
+| 9 | `debate.bear` | Counterclaim, counterevidence, and rebuttal. |
+| 10 | `synthesis.valuation` | Scenario valuation with calculation links. |
+| 11 | `synthesis.risk` | Risk scenarios and sanitized portfolio context. |
+| 12 | `research.delta` | Cutoff-safe memory and change-from-prior research. |
+| 13 | `research.monitor` | Monitoring triggers and consequences. |
+| 14 | `evaluate.final` | Evidence, numerical, temporal, and completeness evaluation. |
+| 15 | `publish.dossier` | Completed-only atomic publication. |
 
-## Workflow contract
+Every stage declares only capability identifiers and JSON Schema output references. Concrete providers are absent from the manifest.
 
-For effective analysts `A`, research depth `N`, and risk depth `R`, a complete run contains:
+## V3 terminal contract
 
-1. each effective analyst in canonical order;
-2. exactly `2 × N` alternating bull/bear research turns;
-3. Research Manager;
-4. Trader analytical proposal;
-5. exactly `3 × R` aggressive/conservative/neutral risk turns;
-6. terminal Portfolio Manager decision.
+`host-submission.v3` contains the original request and one `ResearchDossierV3`. Both use schema version `2026-08-03.v3`; the workflow ID is `tradingagents.company-research.v2`.
 
-For host-native execution, the portable layer expands these semantics into exact stage descriptors with context projections, allowed tool-capability IDs, instructions, output schema references, and requested output language. Codex or another harness owns agent spawning, reasoning, and concrete tool binding. A reference sequential executor proves the contract without Codex or LangGraph. Each stage commit validates its schema before checkpointing; finalization validates completeness, provenance dates/cutoff, evidence references, non-executability, and credential-shaped fields before atomic publication. For optional legacy execution, provider behavior, data access, workflow decisions, and checkpoint mechanics remain upstream responsibilities.
+The request freezes:
 
-The manifest defines an additive research-intelligence convention under `EvidenceItem.values`. It permits declared source-quality labels, multi-period metrics, attributable article records, and catalyst, risk, conflict, unknown, and monitoring ledgers without changing the frozen outer schema. Original scalar values remain available to existing consumers. The convention requires primary regulatory and company sources before independent reporting, treats aggregators and snippets as discovery only, preserves units and periods, distinguishes reported facts from estimates and inference, and records missing fields rather than inventing them. Its adaptive-history policy resolves the newest cutoff-valid data first, uses evidence-specific baseline windows, extends through still-relevant company or industry cycles, and stops when older evidence no longer changes a decision-relevant conclusion. Concrete retrieval and any tool authentication remain host-owned.
+- exact `requested_at` and `cutoff_at` timestamps;
+- typed instrument identity and truthful `research_mode` (`live`, `fixture`, or `historical_replay`);
+- research objectives, coverage dimensions, history windows, latest-data checks, and stop conditions;
+- output language; and
+- optional sanitized, explicitly non-executable portfolio context.
 
-## Execution modes
+The completed result retains the request and dossier as distinct lossless artifacts. `research_request.v3` is authoritative for request semantics such as `research_mode`, exact cutoff, plan, and optional portfolio context. `research_dossier.v3` contains first-class documents, calculations, metrics, claims, arguments, filings, filing changes, transcripts, guidance, peers, factors, valuations, entities, events, risks, monitoring, prior outcomes, evaluation, research delta, coverage, recommendation, summary, limitations, and optional portfolio impact.
 
-- **Fixture:** deterministic, credential-free, network-free ORCL run used for local proof and conformance.
-- **Host-native lifecycle:** preferred credential-free path. The current harness executes the exact topology with its own agents/tools while the portable coordinator persists stage-boundary state, safe receipts, and completed outputs. The portable server does not invoke a model or accept provider configuration.
-- **Atomic host import:** backward-compatible path for a complete `host-submission.v2` payload; strict and idempotent, but without incremental lifecycle controls.
-- **Upstream delegation:** accepts arbitrary Yahoo-style company/instrument symbols through the standalone CLI or explicit opt-in legacy MCP, calls upstream `TradingAgentsGraph`, and maps completed state into portable contracts. This mode is absent from the Codex plugin.
+All IDs are local to the dossier and cross-references must resolve. Documents retain bounded extracts only when redistribution is permitted. The terminal artifact is size-bounded and cannot contain credential-shaped, raw-source, or execution material.
 
-Host-native tests prove lifecycle persistence/restart, revision conflicts, linked safe receipts, cursor polling, stage commit/replay, pause/resume, cancellation acknowledgement, publication-gated memory recall/outcomes, canonical bundle publication, crash-recoverable export, plan/request round trip, provenance cutoff validation, credential rejection, generic sequential execution, canonical projection, and CLI/MCP portability. They do not prove exact model text, token-level continuation, hard interruption, or optional push delivery; those remain host capabilities. Fixture and fake-graph tests separately prove the delegated adapter seam. Live legacy provider credentials and data-vendor access remain unverified.
+## Company-analytics execution
 
-Finalization may append the Portfolio decision to durable memory. A later host observation may add an outcome and reflection without mutating the original decision. Recall is intentionally bounded to five recent records for the same symbol and three recent cross-symbol records.
+`prepare_company_analytics` returns a 26-stage manifest, a selected research pack, and the execution mode selected before work starts. `compatible` is locally ready, `full` requires a host adapter, and `tools_only` remains partial until live research adapters are supplied. Stages 1–15 build and audit the frozen v3 dossier. Stages 16–26 add falsifiable hypotheses; fundamentals; DCF, reverse-DCF, comparables, and sensitivities; consensus; positioning; catalyst mapping; point-in-time experiment plans/receipts; Research Quality; and atomic completed publication.
 
-Completed runs can be exported as one directory containing `1_analysts/{market,sentiment,news,fundamentals}.md`, `2_research/{bull,bear,manager}.md`, `3_trading/trader.md`, `4_risk/{aggressive,conservative,neutral}.md`, `5_portfolio/decision.md`, `complete_report.md`, `result.json`, `events.ndjson`, optional `lifecycle/log.jsonl`, and `manifest.json` with SHA-256 digests. First publication is atomic; overwrite is permitted only for a verified prior bundle and uses a durable recovery journal.
+For a stateless plan, the host may execute dependency-ready work with native subagents and parallel tools before importing one complete payload. A durable full-mode run still commits one current first-incomplete stage at a time; parallel retrieval does not relax coordinator ordering. Every primary stage carries a versioned role, objective, completion criteria, semantic capabilities, dependencies, and output references. The profile-neutral sequential runner drives those same coordinator boundaries for a compatible one-agent host and resumes from the first incomplete stage. The portable semantics and terminal information remain the same; exact prompt wording, agent spawning, and scheduling do not.
 
-## Dashboard model
+`CompanyAnalyticsCoordinator` provides the public 26-stage lifecycle through `analytics-init` / `create_company_analytics_run` and shared lifecycle controls. It checkpoints bounded stage descriptors and safe receipts, accepts only the current first-incomplete stage, validates the terminal v4 payload, and binds the final run card to coordinator-owned envelope and commit-receipt digests for all 26 stages. The terminal commitment uses a normalized publication-candidate digest so the contract is not circular. It also rejects a terminal run card whose execution mode differs from the mode fixed at run creation. Completed `RunResult.artifacts` are the atomically published source of truth for analytics and quality sidecars. The separate quality outcome index uses hidden stage/publish steps and can be reconstructed from completed artifacts after a crash; the design does not claim a distributed transaction. Atomic complete import remains available when lifecycle state is unnecessary.
 
-The dashboard is a completed-run dossier centered on a decision-provenance ribbon. A lifecycle-backed run is not listable or readable through any dashboard route until the public lifecycle projection is `completed`; raw storage completion remains projected as `finalizing` with `publication_pending=true` until both the canonical result/event bundle and decision memory are published. Direct fixture/import runs without lifecycle state remain supported.
+`prepare_company_analytics` returns a self-contained bundled v4 schema containing typed analytics and inward source-lineage definitions. `source-lineage-crosswalk.v1` preserves provider-neutral host batch/observation identities without moving credentials or raw content into portable state. It declares whether each digest covers authoritative source content, an exact bounded UTF-8 extract, or a normalized source record, then joins that identity to the dossier document, analytics source/license receipt, and run-card batch set. JSON Schema validates shape and local URI/digest constraints; strict Python contracts remain authoritative for complete referential and entitlement equality and for cross-field rules such as the global requirement that every `forecast_id` start with `<quality_run_id>.`.
 
-`evidence → analysts → research debate → manager → trader → risk debate → portfolio`
+## Temporal model
 
-It exposes available completed-run data:
+The request cutoff is an exact instant, not only a market date. The dossier `as_of_at` must match it exactly.
 
-- run identity, request settings, capability/runtime provenance, and final status;
-- every analyst report and every available debate turn, with aggregate role-history fallback for completed upstream state;
-- Research Manager, Trader, all three risk roles, and Portfolio Manager outputs;
-- structured evidence/provenance when the executor supplies it, plus the complete upstream report text otherwise;
-- a normalized intelligence projection covering evidence counts, source mix and quality, freshness, metrics, articles, catalysts, risks, conflicts, unknowns, and monitoring conditions;
-- an evidence-integrity chain that distinguishes explicit evidence references from projected downstream relationships and shows what would change the final view;
-- available source dates, providers, degradation, and diagnostics without inventing missing metadata or publisher-quality scores;
-- durable reports/logs plus structured JSON, lifecycle/final events, Markdown artifacts, and verifiable export references.
+Source documents separate:
 
-It does not expose controls for configuration, launch, orchestration, live progress, cancellation, checkpoint cleanup, or resume. The HTTP API is read-only and includes the merged dossier at `GET /api/runs/{run_id}/view` and `GET /api/runs/current/view`.
+- when an event or source was published;
+- when it became available to the research process;
+- when the host retrieved it; and
+- the cutoff used for the run.
 
-The intelligence projection is additive and presentation-oriented. `EvidenceItem` remains the authoritative source record, and optional nested intelligence structures remain host-supplied. The projection sanitizes public article links and falls back to explicit `unknown` or synthetic-fixture source quality when richer metadata is absent; it does not claim that a host opened, corroborated, or independently verified a source unless the submitted record says so.
+Completed-contract validation rejects documents, filings, metric information vintages, transcript events, factor observations, historical events, and prior outcomes that were unavailable at the cutoff. A metric's `period_end` is its economic period, while `metric.as_of_at` is the cutoff-safe information vintage for the value. Reported metrics cannot describe a period later than their vintage; estimates, assumptions, and deterministic calculations may describe future periods when every input and supporting document was available by their declared vintage. Later processing and completion timestamps are allowed because validation distinguishes evidence availability, economic period, and processing time.
 
-Analytical ratings, targets, stops, and sizing scenarios remain visible as research artifacts. Every Trader and Portfolio decision records `executable=false`, `execution_authority=none`, and `submitted=false`; no projection exposes an order action or broker mutation.
+Decision memory applies the same model. Historical recall filters decisions before result limits, filters outcomes independently by observation time, and excludes embedded evidence availability later than the cutoff. Unparseable legacy availability metadata fails closed.
 
-## Incubation exit criteria
+## Calculation and claim integrity
 
-Any proposal back to the main project must distinguish verified portable behavior from runtime-unverified upstream behavior. At minimum:
+Claims link directly to source documents and metrics. Counterclaims and counterevidence remain separate. Debate turns link to claims and assumptions, name concessions and unresolved issues, and may rebut only an earlier turn in the same debate.
 
-- the deterministic ORCL flow completes every required stage and report section;
-- the plugin and skill manifests validate;
-- the exact MCP stdio command starts cleanly and all 27 default tools are discoverable;
-- the default MCP surface remains credential-free and imports no legacy/upstream module;
-- every expanded stage resolves to a versioned context/tool/output contract and the generic sequential conformance runner completes multiple company symbols;
-- the loopback server binds only to loopback and serves the same run/result/events/view projections;
-- backend, UI-contract, security, and integration tests pass without network or secrets;
-- the adapter delegates arbitrary supported symbols to `TradingAgentsGraph`, maps completed state, and fails with typed setup guidance when unavailable;
-- live provider execution and upstream-owned checkpoint resume remain explicitly unverified until credentialed evidence exists;
-- host-native durable lifecycle and the backward-compatible atomic import are independently verified;
-- portable live observation means sanitized cursor receipts, not raw prompts, tool arguments, transcripts, or fabricated token telemetry;
-- stage-boundary resume replays interrupted work; exact model text and token continuation remain harness-specific;
-- there is no broker/order execution surface;
-- an independent review confirms that no business logic was duplicated from the sibling repository.
+Calculated metrics and valuations use deterministic calculation receipts: engine, operation, formula, input metric IDs, constants, result, unit, tolerance, and rounding. Semantic conformance safely recomputes bounded arithmetic, requires every declared input and constant to appear in the formula, verifies the formula shape against the declared operation, applies decimal rounding followed by the declared absolute tolerance, and checks valuation and sensitivity outputs against referenced calculation results. Model prose cannot substitute for a calculation receipt.
 
-## Main-repository migration
+## Completeness and entitlements
 
-If migration is approved, move contracts and tests first, then the thin adapter, then the post-run dossier. Preserve the main repository's CLI and public Python API. Do not replace or fork `TradingAgentsGraph`; it remains the execution authority.
+Completeness means declared decision-relevant coverage, not omniscience. Every planned coverage dimension must appear in the dossier. `complete` requires retained sources; `partial`, `missing`, `stale`, `conflicting`, `entitlement_blocked`, and `not_applicable` require an explicit limitation.
+
+The host owns entitlement checks. Licensed sources may be referenced only under the host's rights. A non-redistributable source is metadata/reference only and cannot carry an extract, including a bounded one. Seeking Alpha content, transcripts, scores, ratings, and proprietary methodology are not bundled or treated as portable-owned data; its product patterns may inform UX, but content access remains a host licensing concern. The normalized `SourcePort` exposes one `fetch(capability, typed_query)` operation. Fixture, replay, and router adapters implement it, and query validation rejects credentials embedded in signed URLs as well as explicit credential fields.
+
+## Lifecycle and publication
+
+![Completed-only publication sequence showing the host, portable core, durable storage, and viewer](../assets/architecture/completed-publication.svg)
+
+The viewer receives no partial-stage path. A terminal submission is validated, staged, and atomically committed before the completed read model becomes visible.
+
+The existing public `run-lifecycle.v1` tools operate the compatibility workflow. `CompanyResearchCoordinator` implements the equivalent durable concepts across all 15 company-research stages:
+
+- private SQLite/WAL records and strict nonterminal opaque-reference envelopes;
+- optimistic revisions and first-incomplete-stage resume;
+- capability-scoped safe receipts with optional input/output digests;
+- pause, cooperative cancel request, and host acknowledgement;
+- cursor-readable lifecycle events;
+- strict validation of the terminal `publish.dossier` envelope;
+  - recoverable staging of result/events and derived indexes without claiming a distributed transaction; and
+- completed-only publication.
+
+The public CLI creates a company run with `company-init`; MCP uses `create_company_research_run`. Shared lifecycle operations resolve the coordinator from the run record, so start, receipts, commits, pause/resume, control, events, cancellation, finalization, export, and completed reads work without duplicating a second command family.
+
+Persistence flags describe observed execution, not requested intent. Stateless `company-import` has no lifecycle checkpoint or memory publication, so both flags are false. Durable company finalization sets checkpointing true. The public coordinator supplies a durable memory store by default. Custom coordinators either provide a store/factory, disable memory explicitly, or fail when memory is requested; they never silently downgrade the capability.
+
+## Completed-result projection
+
+`submit_company_research` converts a validated submission into the existing portable `RunResult`, preserves the request as `research_request.v3` and the complete dossier as `research_dossier.v3`, builds reports, and publishes result/events atomically. Content-derived run IDs make repeated stateless imports idempotent and keep different company submissions separate.
+
+`RunResult` capability flags derive from the declared research mode. Deterministic fixtures remain labeled fixture data; only a host submission that truthfully represents live retrieval may be labeled live.
+
+`build_run_view` projects both v3 artifacts without interpreting their contents. `research_request` preserves the authoritative request and `research_dossier` preserves the completed output. The browser renders only when the run status is completed. It displays research delta, coverage, source provenance, claims, earnings/filings, transcripts/guidance, factors, peers, valuations, events, risks, monitoring, prior outcomes, and evaluation receipts. Partial lifecycle state never becomes a dossier.
+
+Presentation is an adapter invoked only after that atomic publication succeeds. It returns a runtime-local
+`presentation-link.v1` receipt and ensures one reusable loopback viewer daemon per durable state directory. The same
+static application renders every company by loading the typed run selected through `?run=<run_id>`; no per-company
+HTML generation exists. The daemon rereads atomic durable bundles on each request so later publications become visible
+without restarting it, and it reopens the append-only quality projection so later outcome observations are visible.
+A private cross-process lifetime lease preserves the one-daemon invariant. A capability-token bootstrap, exact
+loopback Host/Origin checks, browser security headers, and protocol/package/schema/asset identity checks protect the
+detached boundary. A path-only adapter supports headless harnesses, and viewer failure never changes the completed
+research result.
+
+## Research Quality boundary
+
+Research Quality is an implemented v4 sidecar capability. It owns policy/run provenance, forecasts issued at publication, typed later outcome observations, decision-support status, and deterministic evaluation.
+
+It does not own retrieval, provider health workers, prompts, execution, portfolio mutation, or browser-side scoring. The frozen v3 dossier remains unchanged; the v4 wrapper carries the parallel artifacts described in [Research Quality](RESEARCH_QUALITY.md) and [Compatibility](COMPATIBILITY.md).
+
+## Code location map
+
+| Concern | Canonical location |
+| --- | --- |
+| Generic portable contracts | `src/tradingagents_portable/contracts.py` |
+| Company-research contracts | `src/tradingagents_portable/research_contracts.py` |
+| Company-research conformance | `src/tradingagents_portable/research_conformance.py` |
+| Workflow manifests and schemas | `src/tradingagents_portable/workflow/` |
+| Company planning/import | `src/tradingagents_portable/company_research.py` |
+| Company durable lifecycle | `src/tradingagents_portable/company_lifecycle.py` |
+| Company analytics profile | `src/tradingagents_portable/company_analytics_v1/`, `company_analytics.py` |
+| Deterministic analytics | `src/tradingagents_portable/analytics_v1/` |
+| Research lab and packs | `src/tradingagents_portable/research_lab_v1/` |
+| Research Quality | `src/tradingagents_portable/research_quality_v1/` |
+| Host source ports/adapters | `src/tradingagents_host/` |
+| Generic lifecycle/store/memory | `lifecycle.py`, `store.py`, `memory.py` |
+| Completed projection | `view.py`, `report_server.py`, packaged `web/` |
+| Automatic presentation | `presentation.py`, `viewer_daemon.py` |
+| CLI/MCP adapters | `cli.py`, `mcp_server.py` |
+| Optional upstream adapter | `legacy.py`, `legacy_mcp_server.py` |
+
+## Target runtime direction
+
+The product target is the host-native portable core, not a Codex-specific or LangGraph-specific core. Codex, generic multi-agent hosts, the one-agent sequential fallback, and tools-only MCP consumers translate their mechanisms into the same versioned stages and terminal contracts. Lifecycle, memory, export, and completed-only presentation remain common.
+
+Concrete research-data MCP implementations are a host-adapter concern. The isolated `tradingagents-research-data` MCP now registers six public metadata/fact tools: SEC filings, fundamentals, and statements; GDELT company and global news metadata plus publisher links; and World Bank macro observations. Licensed price/indicator adapters, host-OAuth Reddit, and approved StockTwits access are still absent from the default server. Provider SDKs, credentials, sessions, and entitlement enforcement stay outside the portable domain; current registration is not proof of live availability or complete company coverage. The adapter contract and proof requirements are defined in [Research-data MCP adapters](RESEARCH_DATA_MCP.md).
+
+The optional upstream executor is transitional. It remains available and not deprecated until the gates in [Legacy executor transition](LEGACY_TRANSITION.md) pass. CI now checks the exact pin with a credential-free pure-semantic differential over the declared whitelist; complete LLM/provider behavior and live correctness remain outside that proof. Even after executor removal, frozen schemas/readers and migrated historical results remain supported.
+
+## Optional upstream adapter
+
+The legacy adapter imports and invokes upstream `TradingAgentsGraph`; it does not fork upstream prompts, provider clients, LangGraph nodes, or persistence internals. LangGraph remains a thin optional runtime adapter for compatibility and differential development, not a dependency of the portable domain. The default plugin server does not register the legacy executor. Importability and revision identity prove neither behavioral parity nor provider credentials, data access, checkpoint resume, or a successful live run.
+
+## Security and safety invariants
+
+- No portable input or output carries API keys, tokens, authorization headers, or provider configuration secrets.
+- No raw copyrighted filing or transcript body belongs in the bounded dossier.
+- No broker/order execution field or UI action is allowed.
+- Portfolio context is optional, sanitized, and explicitly non-executable.
+- The dashboard binds only to loopback and exposes read-only completed results.
+- Missing sources and licensed-data gaps remain visible; no silent fallback is allowed.

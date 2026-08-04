@@ -5,13 +5,16 @@ from __future__ import annotations
 import hashlib
 import json
 import subprocess
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal, cast
 
 from .contracts import RunEvent, RunResult
 from .reporting import report_groups
-from .workflow import expand_workflow
+from .research_conformance import validate_research_dossier as validate_research_dossier_semantics
+from .research_contracts import CompanyResearchRequest
+from .workflow import expand_workflow, load_company_research_manifest
 
 PINNED_UPSTREAM_REVISION = "a33fd4c0f134485a43553a2c23a63cb14adbd88f"
 CONFORMANCE_SCHEMA_VERSION = "1.0.0"
@@ -165,8 +168,28 @@ def evaluate_conformance(
     if not isinstance(events, tuple) or not all(isinstance(event, RunEvent) for event in events):
         raise TypeError("events must be a tuple of RunEvent values")
     revision = upstream_revision(upstream_path) if upstream_path is not None else None
-    expected_topology = expand_workflow(result.request)
-    expected_stage_ids = tuple(stage.id for stage in expected_topology.stages)
+    dossier_artifact = next((artifact for artifact in result.artifacts if artifact.kind == "research_dossier.v3"), None)
+    request_artifact = next((artifact for artifact in result.artifacts if artifact.kind == "research_request.v3"), None)
+    is_company_research = dossier_artifact is not None or result.topology.name == "tradingagents.company-research.v2"
+    if is_company_research:
+        company_manifest = load_company_research_manifest()
+        expected_stage_ids = tuple(stage["id"] for stage in company_manifest["stages"])
+        dossier_arguments = (
+            dossier_artifact.content.get("arguments", ())
+            if dossier_artifact is not None and isinstance(dossier_artifact.content, Mapping)
+            else ()
+        )
+        expected_research_turns = sum(
+            1 for item in dossier_arguments if isinstance(item, Mapping) and item.get("debate") == "research"
+        )
+        expected_risk_turns = sum(
+            1 for item in dossier_arguments if isinstance(item, Mapping) and item.get("debate") == "risk"
+        )
+    else:
+        expected_topology = expand_workflow(result.request)
+        expected_stage_ids = tuple(stage.id for stage in expected_topology.stages)
+        expected_research_turns = 2 * result.request.debate_rounds
+        expected_risk_turns = 3 * result.request.risk_rounds
     actual_stage_ids = tuple(stage.id for stage in result.topology.stages)
     report_analysts = tuple(report.analyst for report in result.analyst_reports)
     retained_evidence_ids = {item.id for item in result.evidence}
@@ -209,6 +232,54 @@ def evaluate_conformance(
             "stage_completion_receipts",
             "No safe lifecycle completion receipts were available; only structural result conformance was checked.",
         )
+    company_check: ConformanceCheck | None = None
+    company_request_check: ConformanceCheck | None = None
+    if is_company_research:
+        if dossier_artifact is None or not isinstance(dossier_artifact.content, Mapping):
+            company_check = _check(
+                "research_dossier_v3_semantics",
+                False,
+                "Company research requires a structured research_dossier.v3 artifact.",
+            )
+        else:
+            semantic_report = validate_research_dossier_semantics(dossier_artifact.content)
+            company_check = _check(
+                "research_dossier_v3_semantics",
+                semantic_report.passed,
+                "Typed point-in-time, reference, calculation, debate, privacy, and completeness checks passed."
+                if semantic_report.passed
+                else f"Research dossier has {len(semantic_report.issues)} deterministic semantic issue(s).",
+            )
+        if request_artifact is None or not isinstance(request_artifact.content, Mapping):
+            company_request_check = _check(
+                "research_request_v3_truthfulness",
+                False,
+                "Company research requires a structured research_request.v3 artifact.",
+            )
+        else:
+            try:
+                company_request = CompanyResearchRequest.from_dict(request_artifact.content)
+                dossier_content = dossier_artifact.content if dossier_artifact is not None else {}
+                dossier_identity = dossier_content.get("identity") if isinstance(dossier_content, Mapping) else None
+                dossier_cutoff = dossier_content.get("as_of_at") if isinstance(dossier_content, Mapping) else None
+                fixture_mode = company_request.research_mode == "fixture"
+                truthful = (
+                    company_request.identity.symbol == result.request.symbol
+                    and dossier_identity == company_request.identity.to_dict()
+                    and dossier_cutoff == company_request.cutoff_at
+                    and result.capability.deterministic is fixture_mode
+                    and result.capability.live_data is (company_request.research_mode == "live")
+                    and all(item.provenance.fixture is fixture_mode for item in result.evidence)
+                )
+            except (TypeError, ValueError):
+                truthful = False
+            company_request_check = _check(
+                "research_request_v3_truthfulness",
+                truthful,
+                "Research mode, identity, exact cutoff, capability flags, and source provenance agree."
+                if truthful
+                else "Research request projection conflicts with the dossier, capability flags, or source provenance.",
+            )
     checks = (
         _skipped(
             "pinned_upstream_identity",
@@ -234,13 +305,13 @@ def evaluate_conformance(
         ),
         _check(
             "research_debate_count",
-            len(result.research_debate) == 2 * result.request.debate_rounds,
-            "Bull/Bear turns equal 2 x configured research rounds.",
+            len(result.research_debate) == expected_research_turns,
+            f"Research debate preserves all {expected_research_turns} declared argument turns.",
         ),
         _check(
             "risk_debate_count",
-            len(result.risk_debate) == 3 * result.request.risk_rounds,
-            "Aggressive/Conservative/Neutral turns equal 3 x configured risk rounds.",
+            len(result.risk_debate) == expected_risk_turns,
+            f"Risk debate preserves all {expected_risk_turns} declared argument turns.",
         ),
         _check(
             "decision_schema_separation",
@@ -273,6 +344,8 @@ def evaluate_conformance(
             "Analyst, research, trading, risk, and portfolio groups are present.",
         ),
         completion_check,
+        *((company_check,) if company_check is not None else ()),
+        *((company_request_check,) if company_request_check is not None else ()),
     )
     return ConformanceReport(result.run_id, revision, PINNED_UPSTREAM_REVISION, checks)
 

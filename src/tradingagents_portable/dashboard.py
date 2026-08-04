@@ -1,27 +1,60 @@
-"""Loopback-only dashboard server for the Designer-owned static frontend."""
+"""Compatibility implementation behind the loopback-only Research Dossier Viewer."""
 
 from __future__ import annotations
 
+import hmac
 import json
 import mimetypes
+import re
+import socket
+from collections.abc import Callable, Mapping
 from http import HTTPStatus
+from http.cookies import CookieError, SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from ipaddress import ip_address
 from pathlib import Path
 from threading import Thread
-from typing import Any, Protocol
-from urllib.parse import parse_qs, quote, unquote, urlparse
+from typing import Any, Protocol, cast
+from urllib.parse import parse_qs, quote, unquote, urlparse, urlsplit
 
+from . import company_lifecycle
+from .company_analytics import quality_projection_for_result
+from .company_research import select_run_coordinator
 from .contracts import PROTOTYPE_NOTICE
 from .lifecycle import HOST_RUN_COORDINATOR, is_lifecycle_run_id
+from .research_quality_v1.store import QualityStore
+from .semantics import build_completed_run_semantics
 from .store import RUN_STORE, RunStore
 from .view import build_run_view
 
 _SERVERS: list[ThreadingHTTPServer] = []
+_VIEWER_COOKIE = "tradingagents_viewer"
+
+
+class _ThreadingHTTPServerV6(ThreadingHTTPServer):
+    address_family = socket.AF_INET6
+
+
+def _http_authority(host: str, port: int) -> str:
+    return f"[{host}]:{port}" if ip_address(host).version == 6 else f"{host}:{port}"
 
 
 class PublicationCoordinator(Protocol):
     def control(self, run_id: str) -> dict[str, Any]: ...
+
+
+class _DefaultPublicationCoordinator:
+    def control(self, run_id: str) -> dict[str, Any]:
+        coordinator = select_run_coordinator(
+            run_id,
+            company_lifecycle.COMPANY_RESEARCH_COORDINATOR,
+            HOST_RUN_COORDINATOR,
+            (company_lifecycle.COMPANY_ANALYTICS_COORDINATOR,),
+        )
+        return coordinator.control(run_id)
+
+
+_DEFAULT_PUBLICATION_COORDINATOR = _DefaultPublicationCoordinator()
 
 
 def _default_web_root() -> Path:
@@ -34,10 +67,11 @@ def _publication_coordinator(
 ) -> PublicationCoordinator | None:
     if coordinator is not None:
         return coordinator
-    return HOST_RUN_COORDINATOR if store is RUN_STORE else None
+    return _DEFAULT_PUBLICATION_COORDINATOR if store is RUN_STORE else None
 
 
 def _is_publicly_visible(run_id: str, coordinator: PublicationCoordinator | None) -> bool:
+    """Return whether lifecycle publication has completed for a stored result."""
     if coordinator is None or not is_lifecycle_run_id(run_id):
         # Fixture and atomic-import IDs cannot have lifecycle records, so the
         # lifecycle publication gate does not apply to them.
@@ -50,6 +84,21 @@ def _is_publicly_visible(run_id: str, coordinator: PublicationCoordinator | None
     return control["status"] == "completed" and not control["publication_pending"]
 
 
+def _resolve_completed_run_id(
+    requested_run_id: str,
+    store: RunStore,
+    coordinator: PublicationCoordinator | None,
+) -> str | None:
+    """Resolve a viewer alias only when its canonical completed result is public."""
+    run_id = store.resolve_run_id(requested_run_id)
+    if run_id is None:
+        return None
+    result = store.get_result(run_id)
+    if result is None or result.status.value != "completed":
+        return None
+    return run_id if _is_publicly_visible(run_id, coordinator) else None
+
+
 def dashboard_report(
     run_id: str,
     store: RunStore = RUN_STORE,
@@ -57,9 +106,7 @@ def dashboard_report(
     coordinator: PublicationCoordinator | None = None,
 ) -> dict[str, object]:
     publication_coordinator = _publication_coordinator(store, coordinator)
-    resolved_run_id = store.resolve_run_id(run_id)
-    if resolved_run_id is not None and not _is_publicly_visible(resolved_run_id, publication_coordinator):
-        resolved_run_id = None
+    resolved_run_id = _resolve_completed_run_id(run_id, store, publication_coordinator)
     result = store.get_result(resolved_run_id) if resolved_run_id else None
     if result is None:
         return {"ok": False, "error": {"code": "run_not_found", "run_id": run_id}}
@@ -84,19 +131,121 @@ def _handler(
     store: RunStore,
     web_root: Path,
     coordinator: PublicationCoordinator | None,
+    *,
+    health_metadata: Mapping[str, object] | None = None,
+    request_observer: Callable[[], None] | None = None,
+    shutdown_callback: Callable[[], None] | None = None,
+    access_token: str | None = None,
+    session_cookie_name: str = _VIEWER_COOKIE,
 ) -> type[BaseHTTPRequestHandler]:
+    durable_state_dir = store.state_dir
+
+    def request_store() -> RunStore:
+        # A detached viewer can outlive the process that published the first
+        # run. Durable stores therefore get a fresh snapshot per request;
+        # in-memory/custom stores retain their existing object semantics.
+        return RunStore(durable_state_dir) if durable_state_dir is not None else store
+
+    def request_quality_projection(result: Any) -> Mapping[str, object] | None:
+        # Outcome observations may be appended by another publisher after this
+        # detached viewer starts, so durable quality state is reloaded per view.
+        if durable_state_dir is None:
+            return quality_projection_for_result(result)
+        return quality_projection_for_result(
+            result,
+            quality_store=QualityStore(durable_state_dir / "quality"),
+        )
+
     class DashboardHandler(BaseHTTPRequestHandler):
         server_version = "TradingAgentsPortable/0.1"
 
         def log_message(self, _format: str, *_args: object) -> None:
             return
 
-        def _json(self, payload: object, status: HTTPStatus = HTTPStatus.OK) -> None:
+        def _send_security_headers(self) -> None:
+            self.send_header(
+                "Content-Security-Policy",
+                "default-src 'self'; base-uri 'none'; connect-src 'self'; frame-ancestors 'none'; "
+                "form-action 'none'; img-src 'self' data:; object-src 'none'; script-src 'self'; style-src 'self'",
+            )
+            self.send_header("Cross-Origin-Resource-Policy", "same-origin")
+            self.send_header("Permissions-Policy", "camera=(), geolocation=(), microphone=(), payment=()")
+            self.send_header("Referrer-Policy", "no-referrer")
+            self.send_header("X-Frame-Options", "DENY")
+
+        def _bound_endpoint(self) -> tuple[str, int]:
+            server_address = cast(tuple[str | int, ...], self.server.server_address)
+            return str(server_address[0]), int(server_address[1])
+
+        def _bound_authority(self) -> str:
+            return _http_authority(*self._bound_endpoint())
+
+        def _authority_is_this_loopback(self, authority: str) -> bool:
+            bound_host, bound_port = self._bound_endpoint()
+            if authority != _http_authority(bound_host, bound_port):
+                return False
+            try:
+                parsed = urlsplit(f"//{authority}")
+                host = parsed.hostname
+                port = parsed.port
+                address = ip_address(host) if host is not None else None
+            except ValueError:
+                return False
+            if address is None or not address.is_loopback or parsed.username is not None or parsed.password is not None:
+                return False
+            bound_address = ip_address(bound_host)
+            if address != bound_address:
+                return False
+            return port == bound_port and parsed.path == "" and parsed.query == "" and parsed.fragment == ""
+
+        def _request_headers_are_safe(self) -> tuple[bool, str]:
+            host = self.headers.get("Host")
+            if host is None or not self._authority_is_this_loopback(host):
+                return False, "invalid_host"
+            origin = self.headers.get("Origin")
+            if origin is None:
+                return True, ""
+            parsed = urlsplit(origin)
+            if (
+                origin != f"http://{self._bound_authority()}"
+                or parsed.scheme != "http"
+                or parsed.path != ""
+                or parsed.query != ""
+                or parsed.fragment != ""
+                or not self._authority_is_this_loopback(parsed.netloc)
+            ):
+                return False, "invalid_origin"
+            return True, ""
+
+        def _api_token_is_valid(self) -> bool:
+            if access_token is None:
+                return True
+            supplied = self.headers.get("X-TradingAgents-Viewer-Token", "")
+            if hmac.compare_digest(supplied, access_token):
+                return True
+            cookie = SimpleCookie()
+            try:
+                cookie.load(self.headers.get("Cookie", ""))
+            except CookieError:
+                return False
+            morsel = cookie.get(session_cookie_name)
+            return morsel is not None and hmac.compare_digest(morsel.value, access_token)
+
+        def _json(
+            self,
+            payload: object,
+            status: HTTPStatus = HTTPStatus.OK,
+            *,
+            extra_headers: Mapping[str, str] | None = None,
+        ) -> None:
             data = json.dumps(payload, default=str, indent=2).encode("utf-8")
             self.send_response(status)
             self.send_header("Content-Type", "application/json; charset=utf-8")
             self.send_header("Cache-Control", "no-store")
             self.send_header("X-Content-Type-Options", "nosniff")
+            self._send_security_headers()
+            for name, value in (extra_headers or {}).items():
+                self.send_header(name, value)
             self.send_header("Content-Length", str(len(data)))
             self.end_headers()
             self.wfile.write(data)
@@ -107,7 +256,7 @@ def _handler(
             try:
                 candidate.relative_to(web_root.resolve())
             except ValueError:
-                self.send_error(HTTPStatus.FORBIDDEN)
+                self._json({"ok": False, "error": {"code": "forbidden_path"}}, HTTPStatus.FORBIDDEN)
                 return
             if not candidate.is_file() and "." not in Path(relative).name:
                 candidate = web_root / "index.html"
@@ -123,30 +272,63 @@ def _handler(
             self.send_header("Content-Type", content_type)
             self.send_header("Cache-Control", "no-store")
             self.send_header("X-Content-Type-Options", "nosniff")
+            self._send_security_headers()
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
 
+        def _authorize_request(self, path: str) -> bool:
+            safe_headers, header_error = self._request_headers_are_safe()
+            if not safe_headers:
+                self._json(
+                    {"ok": False, "error": {"code": header_error}},
+                    HTTPStatus.MISDIRECTED_REQUEST if header_error == "invalid_host" else HTTPStatus.FORBIDDEN,
+                )
+                return False
+            if path.startswith("/api/") and not self._api_token_is_valid():
+                self._json({"ok": False, "error": {"code": "viewer_token_required"}}, HTTPStatus.UNAUTHORIZED)
+                return False
+            if request_observer is not None:
+                request_observer()
+            return True
+
         def do_GET(self) -> None:  # noqa: N802 - BaseHTTPRequestHandler contract
             parsed_url = urlparse(self.path)
             path = parsed_url.path
+            if not self._authorize_request(path):
+                return
+            active_store = request_store()
             if path == "/api/health":
-                self._json({"ok": True, "loopback_only": True, "prototype_notice": PROTOTYPE_NOTICE})
+                self._json(
+                    {
+                        "ok": True,
+                        "loopback_only": True,
+                        "prototype_notice": PROTOTYPE_NOTICE,
+                        **dict(health_metadata or {}),
+                    }
+                )
+                return
+            if path == "/api/session":
+                session_headers = (
+                    {"Set-Cookie": (f"{session_cookie_name}={access_token}; HttpOnly; Path=/api; SameSite=Strict")}
+                    if access_token is not None
+                    else None
+                )
+                self._json({"ok": True}, extra_headers=session_headers)
                 return
             if path == "/api/runs":
                 reports = [
-                    dashboard_report(item.run_id, store, coordinator=coordinator) for item in store.list_results()
+                    dashboard_report(item.run_id, active_store, coordinator=coordinator)
+                    for item in active_store.list_results()
                 ]
                 self._json({"runs": [report for report in reports if report["ok"]]})
                 return
             if path.startswith("/api/runs/"):
                 parts = path.strip("/").split("/")
                 requested_run_id = parts[2] if len(parts) >= 3 else ""
-                run_id = store.resolve_run_id(requested_run_id)
-                if run_id is not None and not _is_publicly_visible(run_id, coordinator):
-                    run_id = None
+                run_id = _resolve_completed_run_id(requested_run_id, active_store, coordinator)
                 if len(parts) == 3:
-                    report = dashboard_report(requested_run_id, store, coordinator=coordinator)
+                    report = dashboard_report(requested_run_id, active_store, coordinator=coordinator)
                     self._json(
                         report,
                         HTTPStatus.OK if report["ok"] else HTTPStatus.NOT_FOUND,
@@ -158,7 +340,7 @@ def _handler(
                         after_sequence = int(query.get("after", ["0"])[0])
                         limit = int(query.get("limit", ["1000"])[0])
                         events = (
-                            store.get_events_after(run_id, after_sequence=after_sequence, limit=limit)
+                            active_store.get_events_after(run_id, after_sequence=after_sequence, limit=limit)
                             if run_id
                             else None
                         )
@@ -180,29 +362,53 @@ def _handler(
                     )
                     return
                 if len(parts) == 4 and parts[3] == "result":
-                    result = store.get_result(run_id) if run_id else None
+                    result = active_store.get_result(run_id) if run_id else None
                     self._json(
                         {"ok": result is not None, "result": result.to_dict() if result else None},
                         HTTPStatus.OK if result is not None else HTTPStatus.NOT_FOUND,
                     )
                     return
-                if len(parts) == 4 and parts[3] == "view":
-                    result = store.get_result(run_id) if run_id else None
-                    events = store.get_events(run_id) if run_id else None
-                    self._json(
-                        {
-                            "ok": result is not None and events is not None,
-                            "view": build_run_view(result, events).to_dict()
-                            if result is not None and events is not None
-                            else None,
-                        },
-                        HTTPStatus.OK if result is not None and events is not None else HTTPStatus.NOT_FOUND,
-                    )
+                if len(parts) == 4 and parts[3] in {"semantics", "view"}:
+                    result = active_store.get_result(run_id) if run_id else None
+                    events = active_store.get_events(run_id) if run_id else None
+                    if result is None or events is None:
+                        if parts[3] == "semantics":
+                            payload = {
+                                "ok": False,
+                                "error": {"code": "run_not_found", "run_id": requested_run_id},
+                            }
+                        else:
+                            payload = {"ok": False, "view": None}
+                        status = HTTPStatus.NOT_FOUND
+                    elif parts[3] == "semantics":
+                        payload = build_completed_run_semantics(result, events).to_dict()
+                        status = HTTPStatus.OK
+                    else:
+                        payload = {
+                            "ok": True,
+                            "view": build_run_view(
+                                result,
+                                events,
+                                quality_projection=request_quality_projection(result),
+                            ).to_dict(),
+                        }
+                        status = HTTPStatus.OK
+                    self._json(payload, status)
                     return
             if path.startswith("/api/"):
                 self._json({"ok": False, "error": {"code": "not_found"}}, HTTPStatus.NOT_FOUND)
                 return
             self._serve_file(path)
+
+        def do_POST(self) -> None:  # noqa: N802 - BaseHTTPRequestHandler contract
+            path = urlparse(self.path).path
+            if not self._authorize_request(path):
+                return
+            if path == "/api/shutdown" and shutdown_callback is not None:
+                self._json({"ok": True, "shutdown_requested": True})
+                shutdown_callback()
+                return
+            self._json({"ok": False, "error": {"code": "not_found"}}, HTTPStatus.NOT_FOUND)
 
     return DashboardHandler
 
@@ -214,6 +420,11 @@ def create_dashboard_server(
     store: RunStore = RUN_STORE,
     *,
     coordinator: PublicationCoordinator | None = None,
+    health_metadata: Mapping[str, object] | None = None,
+    request_observer: Callable[[], None] | None = None,
+    shutdown_callback: Callable[[], None] | None = None,
+    access_token: str | None = None,
+    session_cookie_name: str = _VIEWER_COOKIE,
 ) -> ThreadingHTTPServer:
     try:
         address = ip_address(host)
@@ -221,9 +432,24 @@ def create_dashboard_server(
         raise ValueError("dashboard host must be an explicit loopback IP address") from exc
     if not address.is_loopback:
         raise ValueError("dashboard may bind only to a loopback address")
+    if re.fullmatch(r"[A-Za-z0-9_]{1,64}", session_cookie_name) is None:
+        raise ValueError("dashboard session cookie name must contain only letters, digits, or underscores")
     root = Path(web_root).resolve() if web_root else _default_web_root()
     publication_coordinator = _publication_coordinator(store, coordinator)
-    return ThreadingHTTPServer((host, port), _handler(store, root, publication_coordinator))
+    server_type = _ThreadingHTTPServerV6 if address.version == 6 else ThreadingHTTPServer
+    return server_type(
+        (host, port),
+        _handler(
+            store,
+            root,
+            publication_coordinator,
+            health_metadata=health_metadata,
+            request_observer=request_observer,
+            shutdown_callback=shutdown_callback,
+            access_token=access_token,
+            session_cookie_name=session_cookie_name,
+        ),
+    )
 
 
 def launch_dashboard(
@@ -236,9 +462,7 @@ def launch_dashboard(
     coordinator: PublicationCoordinator | None = None,
 ) -> dict[str, object]:
     publication_coordinator = _publication_coordinator(store, coordinator)
-    if run_id is not None and (
-        store.get_result(run_id) is None or not _is_publicly_visible(run_id, publication_coordinator)
-    ):
+    if run_id is not None and _resolve_completed_run_id(run_id, store, publication_coordinator) is None:
         raise ValueError(f"completed run not found: {run_id}")
     server = create_dashboard_server(host, port, web_root, store, coordinator=publication_coordinator)
     thread = Thread(target=server.serve_forever, name="tradingagents-dashboard", daemon=True)
@@ -248,7 +472,8 @@ def launch_dashboard(
     bound_port = int(server.server_address[1])
     return {
         "ok": True,
-        "url": f"http://{bound_host}:{bound_port}/" + (f"?run={quote(run_id, safe='')}" if run_id else ""),
+        "url": f"http://{_http_authority(bound_host, bound_port)}/"
+        + (f"?run={quote(run_id, safe='')}" if run_id else ""),
         "run_id": run_id,
         "host": bound_host,
         "port": bound_port,

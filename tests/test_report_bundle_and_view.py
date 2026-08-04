@@ -7,7 +7,7 @@ from threading import Thread
 from typing import Any
 from urllib.request import urlopen
 
-from tradingagents_portable.contracts import RunRequest
+from tradingagents_portable.contracts import Artifact, RunRequest
 from tradingagents_portable.dashboard import create_dashboard_server
 from tradingagents_portable.fixture import run_fixture
 from tradingagents_portable.legacy import LegacyTradingAgentsAdapter
@@ -107,6 +107,51 @@ def test_run_view_is_lossless_and_keeps_decision_and_signal_separate() -> None:
     assert all(action["id"] != "execute_trade" for action in view["actions"])
 
 
+def test_run_view_projects_completed_v3_dossier_artifact_losslessly() -> None:
+    result, events = run_fixture(RunRequest(), RunStore())
+    dossier = {
+        "cutoff": {"as_of": result.request.as_of_date, "knowledge_time": "2026-01-01T00:00:00Z"},
+        "documents": [
+            {
+                "id": "doc-1",
+                "available_at": "2025-12-31T21:00:00Z",
+                "locator": {"accession": "0001", "section": "Item 7"},
+                "entitlement": "public",
+                "title": "</h3><script>alert('xss')</script>",
+            }
+        ],
+        "claims": [{"id": "claim-1", "evidence_ids": ["doc-1"], "status": "supported"}],
+        "valuation_cases": [{"name": "base", "inputs": {"revenue": 10}, "output": 12}],
+        "evaluation_receipts": [{"check": "licensed_consensus", "status": "skipped", "reason": "entitlement_blocked"}],
+    }
+    completed = replace(
+        result,
+        artifacts=result.artifacts
+        + (
+            Artifact(
+                id="research_dossier.v3",
+                kind="research_dossier.v3",
+                title="Completed research dossier",
+                content=dossier,
+            ),
+        ),
+    )
+
+    view = build_run_view(completed, events).to_dict()
+
+    assert view["research_dossier"] == dossier
+    assert view["research_dossier"]["documents"][0]["locator"]["section"] == "Item 7"
+    assert view["research_dossier"]["evaluation_receipts"][0]["status"] == "skipped"
+
+
+def test_run_view_omits_completed_research_dossier_for_legacy_results() -> None:
+    result, events = run_fixture(RunRequest(), RunStore())
+
+    view = build_run_view(result, events).to_dict()
+    assert view["research_request"] is None
+    assert view["research_dossier"] is None
+
+
 def test_run_view_projects_full_fixture_intelligence_without_inventing_sources() -> None:
     result, events = run_fixture(RunRequest(), RunStore())
     view = build_run_view(result, events).to_dict()
@@ -123,6 +168,7 @@ def test_run_view_projects_full_fixture_intelligence_without_inventing_sources()
         "conflicts",
         "unknowns",
         "monitoring_conditions",
+        "source_analysis",
     }
     assert intelligence["coverage"] == {
         "evidence_count": 4,

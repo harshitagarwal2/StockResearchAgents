@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import json
+import runpy
 from pathlib import Path
 
 import pytest
@@ -469,3 +470,24 @@ def test_failed_host_import_does_not_publish_a_partial_run() -> None:
 
     assert store.current_run_id() is None
     assert store.list_results() == ()
+
+
+def test_lifecycle_smoke_distinguishes_attested_replay_from_observed_execution(tmp_path: Path) -> None:
+    submission = tmp_path / "submission.json"
+    submission.write_text(json.dumps(_payload()), encoding="utf-8")
+    replay = runpy.run_path(str(Path(__file__).parents[1] / "scripts" / "smoke_lifecycle_matrix.py"))["replay"]
+
+    summary = replay(submission, tmp_path / "state", None)  # type: ignore[operator]
+
+    assert summary["lifecycle_smoke_passed"] is True
+    validation = summary["lifecycle_validation"]
+    assert isinstance(validation, dict)
+    assert validation["attested_commit_boundaries_passed"] is True
+    assert validation["execution_observed"] is False
+    conformance = summary["conformance"]
+    assert isinstance(conformance, dict)
+    assert conformance["passed"] is False
+    assert (
+        next(check for check in conformance["checks"] if check["name"] == "stage_completion_receipts")["passed"]
+        is False
+    )

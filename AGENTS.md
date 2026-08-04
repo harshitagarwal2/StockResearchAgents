@@ -1,10 +1,10 @@
-# TradingAgents Portable — repository guidance
+# StockResearchAgents — repository guidance
 
-This repository is an incubation environment for a harness-neutral TradingAgents capability. It must validate independently before any production integration into the sibling repository at `/Users/harshitagarwal/projects/tradingAgents`.
+This repository is the independent incubation environment for the harness-neutral StockResearchAgents capability. It must validate independently before any upstream proposal or integration.
 
 ## Boundaries
 
-- Treat the sibling TradingAgents repository as read-only reference and an optional runtime dependency.
+- Treat TauricResearch/TradingAgents as a pinned, read-only conformance reference and optional compatibility dependency, not as the portable core.
 - Do not copy or fork its prompts, workflow business logic, provider implementations, or persistence internals when an adapter can call them.
 - Keep portable contracts, fixture execution, MCP tools, plugin metadata, and UI projections independent of LangGraph and any specific harness.
 - No broker integration, order placement, simulated fills, portfolio mutation, or executable trading action.

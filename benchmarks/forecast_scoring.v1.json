@@ -1,0 +1,92 @@
+{
+  "schema_version": "synthetic-forecast-scoring-conformance.v1",
+  "provenance": "Original synthetic fixture authored for tradingagents-portable; no external predictions or outcomes.",
+  "cases": [
+    {
+      "case_id": "binary_event_true",
+      "forecast": {
+        "schema_version": "research-quality.v1",
+        "forecast_id": "run.synthetic.forecast.binary",
+        "run_id": "run.synthetic",
+        "instrument_id": "equity.synthetic",
+        "claim_id": "claim.synthetic.event",
+        "forecast_kind": "binary_event",
+        "target": "Synthetic event occurs",
+        "forecast_at": "2026-08-03T00:00:00Z",
+        "information_cutoff_at": "2026-08-02T00:00:00Z",
+        "resolve_after": "2026-09-03T00:00:00Z",
+        "horizon": "30d",
+        "resolution_rule": "Use the retained synthetic outcome document.",
+        "probability": 0.7,
+        "point_estimate": null,
+        "interval_lower": null,
+        "interval_upper": null,
+        "direction": null,
+        "unit": null,
+        "benchmark_id": null,
+        "evidence_document_ids": ["document.synthetic.evidence"],
+        "producer_provenance": "synthetic benchmark harness"
+      },
+      "outcome": {
+        "schema_version": "research-quality.v1",
+        "observation_id": "outcome.synthetic.binary",
+        "forecast_id": "run.synthetic.forecast.binary",
+        "observed_at": "2026-09-04T00:00:00Z",
+        "available_at": "2026-09-04T01:00:00Z",
+        "resolved_at": "2026-09-04T02:00:00Z",
+        "resolution_status": "resolved",
+        "binary_outcome": true,
+        "numeric_outcome": null,
+        "realized_return": null,
+        "benchmark_return": null,
+        "outcome_document_ids": ["document.synthetic.outcome"],
+        "evaluator": "synthetic benchmark evaluator",
+        "supersedes_observation_id": null
+      },
+      "expected_metrics": {"brier_score": 0.09, "log_loss": 0.35667494393873245}
+    },
+    {
+      "case_id": "numeric_metric",
+      "forecast": {
+        "schema_version": "research-quality.v1",
+        "forecast_id": "run.synthetic.forecast.numeric",
+        "run_id": "run.synthetic",
+        "instrument_id": "equity.synthetic",
+        "claim_id": "claim.synthetic.metric",
+        "forecast_kind": "numeric_metric",
+        "target": "Synthetic revenue",
+        "forecast_at": "2026-08-03T00:00:00Z",
+        "information_cutoff_at": "2026-08-02T00:00:00Z",
+        "resolve_after": "2026-09-03T00:00:00Z",
+        "horizon": "30d",
+        "resolution_rule": "Use the retained synthetic outcome document.",
+        "probability": null,
+        "point_estimate": 105.0,
+        "interval_lower": null,
+        "interval_upper": null,
+        "direction": null,
+        "unit": "USD",
+        "benchmark_id": null,
+        "evidence_document_ids": ["document.synthetic.evidence"],
+        "producer_provenance": "synthetic benchmark harness"
+      },
+      "outcome": {
+        "schema_version": "research-quality.v1",
+        "observation_id": "outcome.synthetic.numeric",
+        "forecast_id": "run.synthetic.forecast.numeric",
+        "observed_at": "2026-09-04T00:00:00Z",
+        "available_at": "2026-09-04T01:00:00Z",
+        "resolved_at": "2026-09-04T02:00:00Z",
+        "resolution_status": "resolved",
+        "binary_outcome": null,
+        "numeric_outcome": 100.0,
+        "realized_return": null,
+        "benchmark_return": null,
+        "outcome_document_ids": ["document.synthetic.outcome"],
+        "evaluator": "synthetic benchmark evaluator",
+        "supersedes_observation_id": null
+      },
+      "expected_metrics": {"mae": 5.0, "rmse": 5.0, "signed_bias": 5.0}
+    }
+  ]
+}

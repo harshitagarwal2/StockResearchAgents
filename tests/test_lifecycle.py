@@ -14,8 +14,14 @@ import pytest
 from tradingagents_portable import dashboard
 from tradingagents_portable.contracts import RunRequest, StageKind
 from tradingagents_portable.dashboard import create_dashboard_server, dashboard_report, launch_dashboard
-from tradingagents_portable.lifecycle import HostRunCoordinator, LifecycleStatus, LifecycleStore, RevisionConflict
+from tradingagents_portable.lifecycle import (
+    HostRunCoordinator,
+    LifecycleStatus,
+    LifecycleStore,
+    RevisionConflict,
+)
 from tradingagents_portable.memory import DecisionMemoryStore
+from tradingagents_portable.presentation import ViewerDaemonPresenter
 from tradingagents_portable.store import RunStore
 from tradingagents_portable.view import build_run_view
 
@@ -124,6 +130,15 @@ def _coordinator(root: Path, memory: DecisionMemoryStore | None = None) -> HostR
     return HostRunCoordinator(LifecycleStore(root), RunStore(root), memory_store=memory)
 
 
+def test_host_coordinator_uses_explicit_composed_repository_ports() -> None:
+    lifecycle_store = LifecycleStore()
+    result_store = RunStore()
+    coordinator = HostRunCoordinator(lifecycle_store, result_store)
+
+    assert coordinator.lifecycle_store is lifecycle_store
+    assert coordinator.result_store is result_store
+
+
 def _complete(coordinator: HostRunCoordinator, run_id: str, revision: int, *, rating: str = "Hold") -> int:
     while True:
         next_stage = coordinator.next_stage(run_id)
@@ -214,7 +229,8 @@ def test_durable_lifecycle_completes_all_stages_and_publishes_only_at_finalizati
     assert result.persistence.decision_memory_enabled is True
     assert coordinator.result_store.get_result(run_id) == result
     assert coordinator.control(run_id)["status"] == LifecycleStatus.COMPLETED
-    assert len([event for event in events if event.data.get("execution_observed") is True]) == 9
+    assert len([event for event in events if event.data.get("host_completion_attested") is True]) == 9
+    assert not any(event.data.get("execution_observed") is True for event in events)
     assert events[-2].kind.value == "artifact"
     assert events[-1].status == "completed"
     recall = memory.recall("ORCL")
@@ -358,7 +374,11 @@ def test_stage_commit_validates_nested_schema_and_does_not_fabricate_execution(t
     events = coordinator.result_store.get_events(control["run_id"])
     assert committed["control"]["completed_stage_ids"] == [stage["id"]]
     assert events is not None
+    assert events[-1].status == "committed"
+    assert events[-1].data["envelope_observed"] is True
     assert events[-1].data["output_observed"] is True
+    assert events[-1].data["output_content_verified"] is True
+    assert events[-1].data["host_completion_attested"] is False
     assert events[-1].data["execution_observed"] is False
     assert events[-1].data["execution_receipt_ids"] == []
 
@@ -516,29 +536,39 @@ def test_control_remains_publication_pending_until_memory_visibility_succeeds(
             coordinator=coordinator,
         )
 
-    monkeypatch.setattr(memory, "publish_decision", original_publish)
-    result, _events = coordinator.finalize(control["run_id"], pending["revision"])
-    assert result.run_id == control["run_id"]
-    assert coordinator.control(control["run_id"])["status"] == LifecycleStatus.COMPLETED
-    assert len(memory.recall("ORCL").same_symbol) == 1
-    assert dashboard_report(control["run_id"], coordinator.result_store, coordinator=coordinator)["ok"] is True
-    completed_runs, completed_statuses = _dashboard_visibility(coordinator, control["run_id"])
-    assert [item["run_id"] for item in completed_runs] == [control["run_id"]]
-    assert completed_statuses == {"": 200, "/result": 200, "/view": 200, "/events": 200}
-    launched = launch_dashboard(
-        "127.0.0.1",
-        0,
-        WEB_ROOT,
-        run_id=control["run_id"],
-        store=coordinator.result_store,
-        coordinator=coordinator,
-    )
-    launched_server = dashboard._SERVERS.pop()
+    presenter = ViewerDaemonPresenter(coordinator.result_store, startup_timeout=1)
     try:
-        assert launched["run_id"] == control["run_id"]
+        pending_link = presenter.present(control["run_id"])
+        assert pending_link.status == "unavailable"
+        assert pending_link.error is not None
+        assert pending_link.error["code"] == "viewer_run_not_ready"
+
+        monkeypatch.setattr(memory, "publish_decision", original_publish)
+        result, _events = coordinator.finalize(control["run_id"], pending["revision"])
+        assert result.run_id == control["run_id"]
+        assert coordinator.control(control["run_id"])["status"] == LifecycleStatus.COMPLETED
+        assert len(memory.recall("ORCL").same_symbol) == 1
+        assert dashboard_report(control["run_id"], coordinator.result_store, coordinator=coordinator)["ok"] is True
+
+        completed_runs, completed_statuses = _dashboard_visibility(coordinator, control["run_id"])
+        assert [item["run_id"] for item in completed_runs] == [control["run_id"]]
+        assert completed_statuses == {"": 200, "/result": 200, "/view": 200, "/events": 200}
+        launched = launch_dashboard(
+            "127.0.0.1",
+            0,
+            WEB_ROOT,
+            run_id=control["run_id"],
+            store=coordinator.result_store,
+            coordinator=coordinator,
+        )
+        launched_server = dashboard._SERVERS.pop()
+        try:
+            assert launched["run_id"] == control["run_id"]
+        finally:
+            launched_server.shutdown()
+            launched_server.server_close()
     finally:
-        launched_server.shutdown()
-        launched_server.server_close()
+        presenter.stop(timeout=5)
 
 
 @pytest.mark.parametrize(

@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -17,6 +18,8 @@ EXPECTED_TOOLS = {
     "acknowledge_run_cancellation",
     "append_run_receipts",
     "commit_host_stage",
+    "create_company_research_run",
+    "create_company_analytics_run",
     "create_host_run",
     "discover_capability",
     "export_completed_run",
@@ -27,28 +30,47 @@ EXPECTED_TOOLS = {
     "get_run",
     "get_run_events",
     "get_run_result",
+    "get_run_semantics",
     "get_run_view",
     "get_run_control",
+    "get_research_report_summary",
+    "get_research_quality",
+    "launch_research_report",
     "launch_local_dashboard",
     "import_host_run",
+    "import_company_research",
+    "import_company_analytics",
     "pause_host_run",
     "poll_run_events",
     "prepare_host_run",
+    "prepare_company_research",
+    "prepare_company_analytics",
     "prepare_fixture",
     "query_decision_memory",
     "record_decision_outcome",
+    "record_research_outcome",
     "request_run_cancellation",
     "resume_host_run",
     "run_fixture",
     "start_host_run",
 }
+EXPECTED_RESEARCH_DATA_TOOLS = {
+    "research_data_get_regulatory_filings": ["issuer", "jurisdiction", "form_types", "filed_after", "filed_before"],
+    "research_data_get_fundamentals": ["symbol", "metrics", "as_of"],
+    "research_data_get_financial_statements": ["issuer", "statement_types", "periods", "as_of"],
+    "research_data_get_company_news": ["symbol", "published_after", "published_before", "max_items"],
+    "research_data_get_global_news": ["topics", "published_after", "published_before", "max_items"],
+    "research_data_get_macro": ["series", "regions", "start_time", "end_time", "vintage_as_of"],
+}
 
 
-def _server_parameters() -> StdioServerParameters:
+def _server_parameters(server_name: str, state_dir: Path | None = None) -> StdioServerParameters:
     manifest = json.loads((ROOT / ".mcp.json").read_text(encoding="utf-8"))
-    server = manifest["mcpServers"]["tradingagents-portable"]
+    server = manifest["mcpServers"][server_name]
     environment = os.environ.copy()
     environment.update(server.get("env", {}))
+    if state_dir is not None:
+        environment["TRADINGAGENTS_PORTABLE_STATE_DIR"] = str(state_dir)
     for name in server.get("env_vars", ()):
         if name in os.environ:
             environment[name] = os.environ[name]
@@ -73,7 +95,8 @@ def _payload(response: CallToolResult) -> dict[str, Any]:
 
 
 async def smoke() -> None:
-    parameters = _server_parameters()
+    temporary_state = tempfile.TemporaryDirectory(prefix="tradingagents-portable-mcp-smoke-")
+    parameters = _server_parameters("tradingagents-portable", Path(temporary_state.name))
     async with stdio_client(parameters) as (read_stream, write_stream):
         async with ClientSession(read_stream, write_stream) as session:
             await session.initialize()
@@ -87,6 +110,24 @@ async def smoke() -> None:
             assert capability["executors"]["host_native"] is True
             assert capability["executors"]["legacy"] is False
             assert "run_legacy" not in capability["tools"]
+            transition_contracts = capability["transition_contracts"]
+            research_data_contract = transition_contracts["research_data_tools"]
+            research_data_tools = {tool["mcp_name"] for tool in research_data_contract["tools"]}
+            assert research_data_contract["implementation_status"] == "partial_live"
+            assert {tool["mcp_name"] for tool in research_data_contract["tools"] if tool["default_exposed"]} == set(
+                EXPECTED_RESEARCH_DATA_TOOLS
+            )
+            assert research_data_tools.isdisjoint(names)
+            legacy_transition = transition_contracts["legacy_transition"]
+            assert legacy_transition["removal_allowed"] is False
+            assert all(
+                gate["status"] == "blocked" and gate["verification"] == "unverified"
+                for gate in legacy_transition["removal_gates"]
+            )
+            executor_states = capability["executor_states"]
+            assert executor_states["research_data_adapters"]["surface_exposed"] is True
+            assert executor_states["research_data_adapters"]["coordination_mcp_exposed"] is False
+            assert executor_states["legacy_transition"]["ready_for_removal"] is False
 
             plan_response = await session.call_tool(
                 "prepare_host_run",
@@ -130,6 +171,7 @@ async def smoke() -> None:
                     "as_of_date": "2026-07-03",
                     "debate_rounds": 2,
                     "risk_rounds": 2,
+                    "presentation_mode": "path_only",
                 },
             )
             run_payload = _payload(run_response)
@@ -176,6 +218,21 @@ async def smoke() -> None:
                 f"metrics={len(intelligence['evidence_metrics'])} news={len(intelligence['news'])} "
                 "executable=false"
             )
+
+    research_parameters = _server_parameters("tradingagents-research-data")
+    async with stdio_client(research_parameters) as (read_stream, write_stream):
+        async with ClientSession(read_stream, write_stream) as session:
+            await session.initialize()
+            tools = await session.list_tools()
+            by_name = {tool.name: tool for tool in tools.tools}
+            assert set(by_name) == set(EXPECTED_RESEARCH_DATA_TOOLS)
+            for name, required in EXPECTED_RESEARCH_DATA_TOOLS.items():
+                schema = by_name[name].input_schema
+                assert schema["required"] == required
+                assert list(schema["properties"]) == required
+                assert not {"api_key", "token", "authorization", "password"}.intersection(schema["properties"])
+            print(f"ok research_data_tools={len(by_name)} isolated=true credentials=false")
+    temporary_state.cleanup()
 
 
 def main() -> None:

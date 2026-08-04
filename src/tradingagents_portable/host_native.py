@@ -18,6 +18,7 @@ from datetime import UTC, date, datetime, timedelta
 from typing import Any
 from urllib.parse import urlsplit
 
+from .application_ports import ResultPublicationPort
 from .contracts import (
     SCHEMA_VERSION,
     AnalystReport,
@@ -42,7 +43,7 @@ from .contracts import (
     reject_secret_shaped_keys,
 )
 from .reporting import build_report_artifacts
-from .store import RUN_STORE, RunStore
+from .store import RUN_STORE
 from .workflow import (
     WorkflowManifest,
     expand_workflow,
@@ -516,18 +517,17 @@ def _events(result: RunResult) -> tuple[RunEvent, ...]:
     return tuple(events)
 
 
-def submit_host_run(
+def build_host_run(
     payload: Mapping[str, Any],
     *,
-    store: RunStore = RUN_STORE,
     run_id_override: str | None = None,
 ) -> tuple[RunResult, tuple[RunEvent, ...]]:
-    """Validate and persist one completed host-executed workflow submission.
+    """Validate and build one completed host-executed workflow submission.
 
     ``run_id_override`` is an internal coordinator seam. It is deliberately not
     part of the host submission wire contract, so a lifecycle can retain the
-    durable identity allocated before execution without letting submissions
-    choose arbitrary storage identifiers.
+    identity allocated before execution without letting submissions choose
+    arbitrary storage identifiers. This builder performs no persistence.
     """
     reject_secret_shaped_keys(payload)
     _reject_unknown_keys(
@@ -770,11 +770,6 @@ def submit_host_run(
     if run_id_override is not None and not re.fullmatch(r"host-[a-f0-9]{12}", run_id_override):
         raise ValueError("run_id_override must match host- followed by 12 lowercase hexadecimal characters")
     run_id = run_id_override or _run_id(payload)
-    existing_result = store.get_result(run_id)
-    existing_events = store.get_events(run_id)
-    if existing_result is not None and existing_events is not None:
-        return existing_result, existing_events
-
     started_at = datetime.now(UTC).isoformat()
     topology = expand_workflow(request)
     base_result = RunResult(
@@ -841,7 +836,7 @@ def submit_host_run(
             upstream_business_logic=False,
         ),
         warnings=(
-            "Reasoning was supplied by the active host harness; TradingAgents Portable accepted no model API key.",
+            "Reasoning was supplied by the active host harness; StockResearchAgents accepted no model API key.",
             "Evidence provenance was supplied by the host and structurally validated; the importer did not fetch it.",
             "Host-native events are validated completion receipts, not token-by-token model telemetry.",
             *warnings,
@@ -851,5 +846,20 @@ def submit_host_run(
     )
     result = replace(base_result, artifacts=build_report_artifacts(base_result))
     events = _events(result)
-    store.put(result, events)
     return result, events
+
+
+def submit_host_run(
+    payload: Mapping[str, Any],
+    *,
+    store: ResultPublicationPort = RUN_STORE,
+    run_id_override: str | None = None,
+) -> tuple[RunResult, tuple[RunEvent, ...]]:
+    """Validate and atomically publish one completed host workflow submission."""
+    result, events = build_host_run(payload, run_id_override=run_id_override)
+    existing_result = store.get_result(result.run_id)
+    existing_events = store.get_events(result.run_id)
+    if existing_result is not None and existing_events is not None:
+        return existing_result, existing_events
+    store.stage(result, events)
+    return store.publish_staged(result.run_id)

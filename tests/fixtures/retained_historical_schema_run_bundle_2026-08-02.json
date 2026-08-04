@@ -1,0 +1,162 @@
+{
+  "events": [
+    {
+      "data": {},
+      "id": "event-historical-1",
+      "kind": "decision",
+      "message": "Historical decision completed.",
+      "run_id": "historical-run",
+      "schema_version": "2026-08-02",
+      "sequence": 1,
+      "stage_id": null,
+      "status": "completed",
+      "timestamp": "2026-08-02T12:00:00Z"
+    }
+  ],
+  "result": {
+    "analyst_reports": [],
+    "artifacts": [],
+    "capability": {
+      "deterministic": true,
+      "executor": "fixture",
+      "external_credentials_required": false,
+      "host_tool_auth": "not_applicable",
+      "live_data": false,
+      "observation_mode": "fixture",
+      "portable_boundary_credentials_required": false,
+      "schema_version": "2026-08-02",
+      "upstream_business_logic": false
+    },
+    "completed_at": "2026-08-02T12:00:00Z",
+    "evidence": [],
+    "execution_config": {
+      "anthropic_effort": null,
+      "backend_url": null,
+      "checkpoint_enabled": false,
+      "data_vendors": [],
+      "deep_model": null,
+      "executor": "fixture",
+      "google_thinking_level": null,
+      "llm_provider": null,
+      "max_debate_rounds": 1,
+      "max_retries": null,
+      "max_risk_discuss_rounds": 1,
+      "openai_reasoning_effort": null,
+      "output_language": null,
+      "quick_model": null,
+      "schema_version": "2026-08-02",
+      "temperature": null
+    },
+    "final_trade_decision": "",
+    "instrument": {
+      "asset_type": "stock",
+      "company_of_interest": "Oracle Corporation",
+      "instrument_context": "retained historical-schema fixture",
+      "requested_symbol": "ORCL",
+      "schema_version": "2026-08-02",
+      "trade_date": "2026-08-02"
+    },
+    "investment_plan": "",
+    "persistence": {
+      "checkpoint_enabled": false,
+      "decision_memory_enabled": true,
+      "outputs": [],
+      "run_logging_enabled": true,
+      "schema_version": "2026-08-02",
+      "writes_expected": false
+    },
+    "portfolio_decision": {
+      "action": "approve_research_case",
+      "disclaimer": "Prototype research output only.",
+      "executable": true,
+      "schema_version": "2026-08-02",
+      "summary": "A useful research case, not an order."
+    },
+    "portfolio_manager_decision": "",
+    "processed_signal": "",
+    "prototype_notice": "Prototype research output only. Not financial advice and never an order, broker instruction, or authorization to trade.",
+    "report_sections": {
+      "fundamentals_report": "",
+      "market_report": "",
+      "news_report": "",
+      "schema_version": "2026-08-02",
+      "sentiment_report": ""
+    },
+    "request": {
+      "analysts": [
+        "market",
+        "social",
+        "news",
+        "fundamentals"
+      ],
+      "as_of_date": "2026-08-02",
+      "asset_type": "stock",
+      "checkpoint_enabled": false,
+      "debate_rounds": 1,
+      "executor": "fixture",
+      "output_language": "English",
+      "risk_rounds": 1,
+      "schema_version": "2026-08-02",
+      "symbol": "ORCL"
+    },
+    "research_debate": [],
+    "research_debate_snapshot": {
+      "count": 0,
+      "current_response": "",
+      "current_responses": {},
+      "history": "",
+      "judge_decision": "",
+      "role_histories": {},
+      "schema_version": "2026-08-02"
+    },
+    "research_decision": {
+      "confidence": 0.7,
+      "decision": "Buy",
+      "rationale": "Historical rationale.",
+      "schema_version": "2026-08-02",
+      "supporting_turns": [
+        1
+      ]
+    },
+    "risk_debate": [],
+    "risk_debate_snapshot": {
+      "count": 0,
+      "current_response": "",
+      "current_responses": {},
+      "history": "",
+      "judge_decision": "",
+      "role_histories": {},
+      "schema_version": "2026-08-02"
+    },
+    "risk_decision": {
+      "constraints": [],
+      "risk_level": "unknown",
+      "schema_version": "2026-08-02",
+      "unresolved": []
+    },
+    "run_id": "historical-run",
+    "schema_version": "2026-08-02",
+    "started_at": "2026-08-02T11:00:00Z",
+    "status": "completed",
+    "topology": {
+      "analysts": [],
+      "debate_rounds": 1,
+      "name": "legacy-full",
+      "risk_rounds": 1,
+      "schema_version": "2026-08-02",
+      "stages": [],
+      "terminal_stage": "portfolio"
+    },
+    "trader_decision": {
+      "caveats": [
+        "Research only."
+      ],
+      "executable": true,
+      "plan": "Wait for a confirmed entry.",
+      "schema_version": "2026-08-02",
+      "stance": "overweight"
+    },
+    "trader_investment_plan": "",
+    "warnings": []
+  }
+}

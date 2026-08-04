@@ -1,0 +1,36 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Avenir Next, Segoe UI, sans-serif","primaryColor":"#eef3ff","primaryTextColor":"#071c26","primaryBorderColor":"#2257ff","lineColor":"#516a75","secondaryColor":"#e5f7f5","tertiaryColor":"#fff4df","background":"#f5f8f9","actorBkg":"#ffffff","actorBorder":"#2257ff","actorTextColor":"#071c26","signalColor":"#28424f","signalTextColor":"#071c26","noteBkgColor":"#fff4df","noteBorderColor":"#ad6500"}}}%%
+sequenceDiagram
+  accTitle: Completed-only publication sequence
+  accDescr: A host commits one ordered stage at a time. StockResearchAgents validates v4, atomically publishes authoritative RunResult artifacts, then publishes a recoverable quality index. The viewer remains empty until canonical completion.
+
+  participant H as Research host
+  participant P as Portable core
+  participant S as Durable storage
+  participant Q as Quality outcome index
+  participant V as Dossier Viewer
+
+  H->>P: Prepare Research Request
+  P-->>H: Ordered workflow + allowed capabilities
+  loop Each nonterminal stage
+    H->>P: Opaque completed-stage envelope
+    P->>S: Persist revision + safe receipt
+    V-->>P: Query completed result
+    P-->>V: No completed dossier
+  end
+  H->>P: Terminal Completed Research Dossier
+  P->>P: Validate references, time, calculations, coverage, safety
+  alt Rejected or incomplete
+    P-->>H: Typed validation failure
+    P-->>V: No completed dossier
+  else Accepted
+    P->>P: Rebind report descriptors to lifecycle run_id
+    P->>S: Stage canonical RunResult, events, reports, artifacts
+    P->>Q: Stage hidden derived index
+    P->>S: Atomic canonical publication commit
+    S-->>P: Completed publication receipt
+    P->>Q: Publish index, or reconstruct after recovery
+    V->>P: Query completed result
+    P-->>V: Read-only RunView
+  end
+
+  Note over S,Q: Recoverable coordination, not a distributed transaction

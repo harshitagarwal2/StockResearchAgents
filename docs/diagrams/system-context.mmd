@@ -1,0 +1,40 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Avenir Next, Segoe UI, sans-serif","primaryColor":"#eef3ff","primaryTextColor":"#071c26","primaryBorderColor":"#2257ff","lineColor":"#516a75","secondaryColor":"#e5f7f5","tertiaryColor":"#fff4df","background":"#f5f8f9","clusterBkg":"#ffffff","clusterBorder":"#96aab2"},"flowchart":{"curve":"basis","htmlLabels":true}}}%%
+flowchart LR
+  accTitle: StockResearchAgents system context
+  accDescr: A host harness retrieves evidence and runs agents. StockResearchAgents validates, persists, and publishes a completed dossier. The read-only viewer and exports can see only completed results.
+
+  S["External evidence<br/><small>filings · market · news · transcripts</small>"]
+  H["Research host<br/><small>retrieval · reasoning · credentials · entitlements</small>"]
+
+  subgraph P["STOCKRESEARCHAGENTS · no credentials · no broker authority"]
+    direction LR
+    C["Versioned contracts<br/><small>request · workflow · dossier</small>"]
+    V{"Conformance<br/>and publication gate"}
+    L["Durable lifecycle<br/><small>stage boundaries · recovery</small>"]
+    Q["Research Quality<br/><small>policy · forecasts · outcomes · scoring</small>"]
+    D[["Completed Research Dossier"]]
+    C --> V
+    L --> V
+    Q -. quality receipt .-> V
+    V -->|accepted| D
+  end
+
+  U["Research Dossier Viewer<br/><small>completed only · read only</small>"]
+  X["Portable exports<br/><small>JSON · Markdown</small>"]
+
+  S --> H
+  H -->|typed submission| C
+  H -->|opaque stage commits| L
+  D --> U
+  D --> X
+
+  classDef host fill:#fff4df,stroke:#ad6500,color:#071c26,stroke-width:2px;
+  classDef port fill:#eef3ff,stroke:#2257ff,color:#071c26,stroke-width:2px;
+  classDef quality fill:#e5f7f5,stroke:#00746e,color:#071c26,stroke-width:2px;
+  classDef artifact fill:#ffffff,stroke:#1231a6,color:#071c26,stroke-width:3px;
+  classDef view fill:#ffffff,stroke:#516a75,color:#071c26,stroke-width:2px;
+  class S,H host;
+  class C,L,V port;
+  class Q quality;
+  class D artifact;
+  class U,X view;

@@ -1,0 +1,53 @@
+{
+  "schema_version": "synthetic-time-split-conformance.v1",
+  "provenance": "Original synthetic fixture authored for tradingagents-portable; no external market data.",
+  "accepted_cases": [
+    {
+      "split_id": "split.synthetic.valid",
+      "strategy": "purged_walk_forward",
+      "train_start_at": "2024-01-01T00:00:00+00:00",
+      "train_end_at": "2025-12-31T00:00:00+00:00",
+      "test_start_at": "2026-01-08T00:00:00+00:00",
+      "test_end_at": "2026-06-30T00:00:00+00:00",
+      "purge_days": 7,
+      "embargo_days": 2,
+      "shuffled": false,
+      "content_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  ],
+  "rejected_cases": [
+    {
+      "case_id": "declared_purge_exceeds_gap",
+      "error": "gap is smaller than the declared purge",
+      "split": {
+        "split_id": "split.synthetic.short-gap",
+        "strategy": "purged_walk_forward",
+        "train_start_at": "2024-01-01T00:00:00+00:00",
+        "train_end_at": "2025-12-31T00:00:00+00:00",
+        "test_start_at": "2026-01-03T00:00:00+00:00",
+        "test_end_at": "2026-06-30T00:00:00+00:00",
+        "purge_days": 7,
+        "embargo_days": 2,
+        "shuffled": false,
+        "content_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    {
+      "case_id": "shuffle_is_forbidden",
+      "error": "cannot be shuffled",
+      "split": {
+        "split_id": "split.synthetic.shuffled",
+        "strategy": "walk_forward",
+        "train_start_at": "2024-01-01T00:00:00+00:00",
+        "train_end_at": "2025-12-31T00:00:00+00:00",
+        "test_start_at": "2026-01-08T00:00:00+00:00",
+        "test_end_at": "2026-06-30T00:00:00+00:00",
+        "purge_days": 0,
+        "embargo_days": 0,
+        "shuffled": true,
+        "content_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      }
+    }
+  ]
+}
+

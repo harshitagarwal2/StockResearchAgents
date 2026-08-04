@@ -1,7 +1,7 @@
 {
   "name": "tradingagents-portable-local",
   "interface": {
-    "displayName": "TradingAgents Portable local"
+    "displayName": "StockResearchAgents local"
   },
   "plugins": [
     {

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from html.parser import HTMLParser
 from pathlib import Path
 from threading import Thread
@@ -10,7 +11,7 @@ from urllib.request import urlopen
 import pytest
 
 from tradingagents_portable import dashboard
-from tradingagents_portable.contracts import RunRequest
+from tradingagents_portable.contracts import RunRequest, RunStatus
 from tradingagents_portable.dashboard import create_dashboard_server, dashboard_report, launch_dashboard
 from tradingagents_portable.fixture import run_fixture
 from tradingagents_portable.store import RunStore
@@ -177,6 +178,23 @@ def test_launched_dashboard_pins_the_requested_run_and_uses_the_supplied_store()
         server.server_close()
 
 
+def test_launched_dashboard_supports_ipv6_loopback_when_available() -> None:
+    store = RunStore()
+    result, _ = run_fixture(RunRequest(), store)
+    try:
+        launched = launch_dashboard("::1", 0, WEB_ROOT, run_id=result.run_id, store=store)
+    except OSError as exc:
+        pytest.skip(f"IPv6 loopback is unavailable: {exc}")
+    server = dashboard._SERVERS.pop()
+    try:
+        assert launched["host"] == "::1"
+        assert str(launched["url"]).startswith("http://[::1]:")
+        assert str(launched["url"]).endswith(f"/?run={result.run_id}")
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
 def test_loopback_dashboard_serves_html_json_result_and_events() -> None:
     store = RunStore()
     result, events = run_fixture(RunRequest(), store)
@@ -190,7 +208,7 @@ def test_loopback_dashboard_serves_html_json_result_and_events() -> None:
             html = response.read().decode("utf-8")
             assert response.headers["Cache-Control"] == "no-store"
             assert response.headers["X-Content-Type-Options"] == "nosniff"
-            assert "TradingAgents" in html
+            assert "StockResearchAgents" in html
 
         with urlopen(f"{base}/api/runs/{result.run_id}", timeout=5) as response:  # noqa: S310
             report = json.load(response)
@@ -238,6 +256,31 @@ def test_dashboard_current_alias_resolves_the_run_requested_by_the_frontend() ->
             payload = json.load(response)
             assert payload["ok"] is True
             assert len(payload["events"]) == len(events)
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
+def test_dashboard_hides_noncompleted_results_from_all_public_routes_and_aliases() -> None:
+    store = RunStore()
+    result, events = run_fixture(RunRequest(), store)
+    store.put(replace(result, status=RunStatus.RUNNING), events[:-1])
+    server = create_dashboard_server("127.0.0.1", 0, WEB_ROOT, store)
+    thread = Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    host, port = server.server_address[:2]
+    base = f"http://{host}:{port}"
+    try:
+        with urlopen(f"{base}/api/runs", timeout=5) as response:  # noqa: S310
+            assert json.load(response)["runs"] == []
+        for requested_run_id in (result.run_id, "current"):
+            for suffix in ("", "/result", "/semantics", "/view", "/events"):
+                with pytest.raises(HTTPError) as exc_info:
+                    urlopen(f"{base}/api/runs/{requested_run_id}{suffix}", timeout=5)  # noqa: S310
+                assert exc_info.value.code == 404
+        with pytest.raises(ValueError, match="completed run not found"):
+            launch_dashboard("127.0.0.1", 0, WEB_ROOT, run_id="current", store=store)
     finally:
         server.shutdown()
         server.server_close()

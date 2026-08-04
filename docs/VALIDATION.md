@@ -1,88 +1,135 @@
 # Validation checklist
 
-This checklist records current evidence, not intended capability. Checked items must have a fresh local test or static assertion. Credentialed upstream execution was not performed.
+- **Purpose:** record what local, credential-free validation can establish.
+- **Audience:** contributors, reviewers, and release owners.
+- **Canonical for:** executable proof and explicit validation gaps.
+- **Not canonical for:** architecture decisions or Research Quality interpretation semantics.
 
-Fresh evidence on `2026-08-03`: `229 passed` from the credential-free local suite. Ruff, Ruff format, mypy, compileall, wheel build, the 27-tool MCP smoke, source-plugin validation, and installed-plugin cache validation also pass. Browser checks cover desktop and mobile layouts, completion-only rendering, synthetic-fixture disclosure, safe source links, and an empty console. Credentialed upstream execution was not performed.
+## Company-research v2/v3 contract
 
-## Verified research-intelligence dossier increment
+- [x] The workflow manifest loads as `tradingagents.company-research.v2`, has 15 contiguous ordered stages, resolves only earlier dependencies, declares capability IDs and v3 output references, uses sequential fallback, and terminates at `publish.dossier`.
+- [x] Discovery returns both `financial-research.v1`/`host-submission.v2` and `company-research.v2`/`host-submission.v3` without changing the legacy profile.
+- [x] The v3 dataclass parser and JSON Schema require schema version `2026-08-03.v3`, the company workflow ID, a typed request, and a completed dossier.
+- [x] Requests require truthful `research_mode` values (`live`, `fixture`, or `historical_replay`), and imported result capability flags distinguish fixture data from live host retrieval.
+- [x] Strict parsing rejects unknown fields, duplicate IDs, dangling references, schema/runtime bound mismatches, unsafe market symbols, mismatched request/dossier identity or cutoff, and terminal dossiers over the configured size bound.
+- [x] First-class contract tests cover identity, documents, calculations, metrics, claims, debate arguments, filings, filing changes, transcripts, guidance, peers, factors, valuations, entities, events, risks, monitoring, prior outcomes, evaluation, research delta, coverage, and optional sanitized portfolio context.
+- [x] Deterministic ORCL, META, QQQ, and ACME submissions exercise multiple company/fund identities and keep their research IDs isolated.
 
-- [x] Projection tests confirm backward-compatible normalization of `EvidenceItem.values` metrics, articles, catalysts, risks, conflicts, unknowns, and monitoring conditions, including safe public URLs, recognized source-quality values, mixed timezone offsets, and sparse legacy evidence.
-- [x] Workflow and skill tests confirm newest-cutoff-valid retrieval, adaptive history, primary-source-first news, discovery-only aggregator handling, multi-period fundamentals, explicit source quality, verification status, deduplication, and no-key fallback guidance.
-- [x] UI contract and browser checks confirm the evidence-integrity chain, coverage/source/freshness panels, metric and news ledgers, catalysts, risk register, conflicts, unknowns, and monitoring conditions render only for completed runs without controls or executable actions.
-- [x] The deterministic ORCL fixture demonstrates the richer structures while labeling every fixture date and timestamp as synthetic and explicitly stating that no live retrieval occurred.
-- [x] The full credential-free suite, Ruff, Ruff format, mypy, compileall, build, MCP smoke checks, source-plugin validation, and installed-plugin cache validation pass after the increment.
-- [x] Desktop and 390-pixel mobile browser checks show no page-level horizontal overflow; navigation and the metrics ledger scroll independently, metric headers expose column scopes, fixture source links remain non-clickable, and browser logs are empty.
+## Point-in-time and evidence integrity
 
-## Verified credential-free proof
+- [x] Document availability, filing timestamps, metric information vintages, transcript events, factor timestamps, historical events, and prior outcomes after the cutoff are rejected. Reported metric periods cannot follow their information vintage; cutoff-safe estimates, assumptions, and calculations may describe future periods.
+- [x] Post-cutoff processing/completion remains allowed because processing time is distinct from evidence availability.
+- [x] Claims, calculations, metrics, filings, transcripts, peers, factors, valuations, events, risks, monitoring, evaluation, coverage, and research delta must resolve their referenced IDs.
+- [x] Claims require retained evidence or metrics; completed dossiers require non-empty documents/claims and a structured two-role challenge with an explicit rebuttal.
+- [x] Complete coverage requires retained sources. Partial, missing, stale, conflicting, entitlement-blocked, and not-applicable coverage requires a limitation.
+- [x] Entitlement-blocked fixtures retain the gap without a licensed extract or fabricated consensus claim; affirmative claims and non-assumption metrics need at least one accessible source.
+- [x] Non-redistributable sources are metadata/reference only and reject all extracts, including bounded extracts; recursive safety checks reject raw-source fields.
+- [x] `SourcePort.fetch(capability, typed_query)` conformance covers fixture, replay, and router adapters; typed queries reject explicit credentials and credential-bearing signed URLs before dispatch.
+- [x] `SourceBatch` v1 validates exact query/capability pairing, cutoff, typed status, provenance, entitlement, completeness, pagination, limitations, and deterministic normalized observations. `SourceObservation.content_sha256_scope` distinguishes source bytes, exact bounded extracts, and normalized source records while preserving the safe normalized-record adapter default.
+- [x] The isolated `tradingagents-research-data` default server registers exactly six conformance-receipted public tools: three SEC, two GDELT metadata/link, and one World Bank macro tool. The coordination MCP registers none of them.
+- [x] SEC company-fact observations have provider-order-independent IDs and a hard item cap that reports omitted matches as partial coverage; GDELT observations have canonical-URI deduplication, provider-order-independent IDs, explicit seen-time semantics, and partial coverage at the result cap.
+- [x] Prices and indicators remain unregistered without a licensed host `SourcePort`; Reddit remains unregistered without host OAuth; StockTwits is denied and unregistered.
 
-- [x] `uv run tradingagents-portable fixture --events` completes the deterministic synthetic ORCL run without provider credentials.
-- [x] Fixture tests confirm all configured analyst, research-debate, manager, trader, risk-debate, and portfolio stages.
-- [x] Tests confirm the fixture produces typed result data, ordered events, the five report groups, and JSON/Markdown artifacts.
-- [x] `run-lifecycle.v1` tests confirm SQLite/WAL restart recovery, optimistic revision conflicts, create/start/receipt/commit/pause/resume/cancel-ack/finalize transitions, and replay of only the interrupted incomplete stage.
-- [x] `host-submission.v2` remains the frozen terminal schema; tests independently retain backward-compatible stateless plan/import validation and atomic publication.
-- [x] Safe live stage/tool receipts reject credential-shaped fields, unsupported fields, invalid digests, duplicate IDs, disallowed stage capabilities, and incorrect stage/attempt associations. `execution_observed` requires linked start/completion receipts with an output digest matching the checkpoint; receipt batches, retained counts, evidence IDs, cursor pages, and lifecycle record size are bounded.
-- [x] Durable result/event fault tests inject failure at every direct-put boundary; restart recovers from the private intent into one canonical atomic bundle, never exposes an orphan result, and keeps lifecycle stages hidden until explicit publication.
-- [x] Decision-memory tests confirm SQLite durability, publication gating during finalization, idempotent retry by run ID, at most five same-symbol plus three cross-symbol recalls, later outcome/reflection append, and secret-shaped-key rejection.
-- [x] Export tests verify every report path, complete report, result/events, optional lifecycle log, byte counts, and SHA-256 digests. Overwrite accepts only a verified prior bundle and subprocess crash injection confirms journaled recovery between directory renames.
-- [x] Host-native tests confirm plan expansion, complete-run validation, recursive credential rejection, five report groups, and CLI round-trip without provider keys.
-- [x] A complete point-in-time ORCL run researched by this Codex task was freshly replayed through every durable boundary as `host-fe876e15883a`: 9 evidence records, 4 analyst reports, 2 Bull/Bear turns, Research Manager, Trader, 3 risk turns, Portfolio Manager, 8 artifacts, and 42 linked-receipt/lifecycle/final events. Earlier browser rendering used `host-e19da9daacb2` and remains separate visual evidence.
-- [x] Dashboard tests confirm loopback serving and read-only run, events, result, and merged `/view` endpoints, including the `current` alias.
-- [x] MCP registration/discovery tests confirm the default credential-free surface has 27 tools and the opt-in legacy server adds only `run_legacy`.
-- [x] The published host-submission JSON Schema and importer reject future cutoffs, post-cutoff sources, explicit `null` arrays, malformed provenance, unknown fields, duplicate/dangling evidence references, executable decisions, and credential-shaped keys.
-- [x] The generic sequential runner executes the same manifest stages through a four-argument `StageExecutor` contract and projects only each stage's declared context.
-- [x] `uv build` includes the workflow manifest and browser assets; an isolated wheel smoke loads both and completes the fixture.
-- [x] Manifest tests parse `.codex-plugin/plugin.json` and `.mcp.json`, inspect the bundled skill, and verify the MCP tool surface.
-- [x] Credential-free conformance tests validate portable workflow order/counts, decision schemas, signal derivation, evidence references, report groups, and linked receipt contracts. When supplied, the sibling checkout separately matches pinned revision `a33fd4c0f134485a43553a2c23a63cb14adbd88f`; this is identity verification, not upstream behavioral proof.
-- [x] CLI tests cover interactive-capable durable setup, control/events, cooperative cancellation, memory, export, and conformance command routing.
-- [x] `uv run ruff check .`, `uv run ruff format --check .`, `uv run mypy --ignore-missing-imports src`, and compileall pass.
-- [x] `uv run pytest -q` passes without live credentials.
+## Company-analytics v1/v4 contract
 
-## Verified safety and boundary proof
+- [x] Prepare returns the 26-stage manifest, selected research pack, and one self-contained bundled v4 schema with typed analytics records.
+- [x] Strict Python contracts validate cross-field semantics beyond JSON Schema, including the exact `<quality_run_id>.` prefix on every global `forecast_id`.
+- [x] V4 parsing and conformance cover the unchanged v3 submission, analytics bundle, provider-neutral source-lineage crosswalk, run card, hypothesis ledger, iterations, quality receipt, and forecasts.
+- [x] Source-lineage validation requires exact run-card batch membership, one-to-one coverage of every dossier document and analytics source license, and matching source IDs, canonical URIs, content digests, terms URIs, access, machine-use denial, and redistribution semantics.
+- [x] Durable finalization rebinds report result/event descriptors to the lifecycle `run_id`.
+- [x] Completed `RunResult.artifacts` are authoritative sidecars. Quality-index stage/publish failure tests keep derived state hidden and reconstruct it from completed artifacts without claiming a distributed transaction.
+- [x] The profile-neutral sequential runner executes all 26 primary stages, resumes from the first incomplete stage, and finalizes through the same v4 lifecycle coordinator.
+- [x] Every primary stage exposes a strictly validated `stage-instructions.v1` role, objective, completion criteria, dependencies, semantic capabilities, and output references without provider, model, Codex, or LangGraph coupling.
 
-- [x] The ORCL fixture is synthetic and does not call a real provider.
-- [x] Security tests reject credential-shaped portable configuration and confirm environment credentials are not serialized.
-- [x] Dashboard tests reject non-loopback bind addresses and verify escaping/path traversal protections.
-- [x] Surface tests confirm there is no broker/order tool or executable action and trade-like outputs are labeled non-executable.
-- [x] Lifecycle and memory receipt tests confirm API keys, tokens, authorization fields, and other credential-shaped keys cannot cross portable boundaries.
-- [x] UI contract tests confirm the browser is a post-run reader: it fetches the merged `/view` response and contains no fixture or upstream execution controls.
+## Numerical, peer, debate, and portfolio conformance
 
-## Verified delegated adapter behavior
+- [x] Metrics require finite numbers, units, economic periods, and an exact cutoff-safe information vintage. Calculated metric values and units bind to deterministic calculation receipts and cannot predate their inputs.
+- [x] The conformance engine recomputes bounded deterministic formulas, requires all declared metrics/constants, validates formula shape against the typed operation, applies rounding and absolute tolerance, and rejects tampered calculation, valuation, and sensitivity outputs.
+- [x] Peer records require inclusion rationale and normalization methodology.
+- [x] Debate turns require claim links; rebuttals must target an earlier turn in the same debate; concessions and unresolved items must be unique and disjoint.
+- [x] Supersession links reject missing, self-referential, and cyclic targets.
+- [x] Portfolio fields require an explicit non-execution boundary and reject private account/customer identity.
+- [x] Credential-shaped keys are rejected recursively.
 
-- [x] Fake-graph tests confirm portable CLI/MCP symbol strings are delegated unchanged to upstream `TradingAgentsGraph`, including stock, exchange-qualified, and crypto examples; the portable parser does not restrict other Yahoo-style instrument families.
-- [x] Tests confirm selected analysts, asset type, date, debate/risk rounds, typed provider/model settings, and checkpoint override map to the upstream call.
-- [x] A fake-graph boundary test confirms `openai_codex` and its reasoning setting pass through while Codex OAuth paths/content remain outside serialized results.
-- [x] Missing upstream installation/configuration produces typed setup guidance.
-- [x] An explicit upstream checkout cannot be silently shadowed by an already-imported `tradingagents` package; the adapter fails with typed fresh-process guidance instead of purging shared module state.
-- [x] Upstream symbol-normalization failures propagate; uppercase fallback is limited to the optional symbol-utility module being unavailable.
-- [x] The adapter projects completed upstream logical state into portable contracts without parsing terminal output or copying upstream business logic.
-- [x] Checkpointing is opt-in at the portable boundary.
+## Memory and lifecycle
 
-## Not yet verified
+- [x] Exact-cutoff memory recall filters decisions before applying same/cross-symbol limits and filters outcomes independently by `observed_at`.
+- [x] Recall excludes later `created_at`, later decision `as_of_date`, and embedded post-cutoff filing/event/metric-vintage/outcome availability while retaining cutoff-safe forecasts with future economic periods; malformed legacy rows and outcomes fail closed without aborting safe recall.
+- [x] Staged decisions remain outside recall until final publication.
+- [x] `CompanyResearchCoordinator` tests cover all 15 stage boundaries, strict opaque reference descriptors, digest-bound receipts, optimistic revision conflicts, pause/resume, cooperative cancellation, cursor events, fresh-coordinator recovery, cutoff-safe memory recall, and completed publication.
+- [x] Existing `run-lifecycle.v1` tests continue to cover the compatibility workflow's checkpoints, resume, cancellation, memory gating, and atomic result/event publication.
+- [x] `CompanyAnalyticsCoordinator` tests cover all 26 ordered stage commits, rejection of out-of-order dependency-ready commits, first-incomplete resume, v4 terminal validation, report descriptor rebinding, quality-index staging/publication, and crash reconstruction.
 
-- [ ] A live upstream run completes with real provider and data-vendor credentials.
-- [ ] Live provider responses and data access work for the documented arbitrary instrument families.
-- [ ] Upstream-owned checkpoint creation and resume work end to end in a credentialed legacy process.
-- [ ] Live upstream stage events stream during legacy execution; the upstream adapter still has no observer seam.
-- [x] A current host harness can execute every workflow stage and atomically import the completed result without API keys.
-- [x] Host-native cursor receipts, durable stage-boundary resume, and cooperative cancellation are locally verified.
-- [ ] Exact model text, token-level continuation, host hard interruption, and optional push delivery remain harness-specific and are not claimed by portable conformance.
+## Plan/import, UI, and package surfaces
 
-## Verified final-only UI
+- [x] Python, CLI, and MCP plan/import tests validate the company request, return the frozen manifest/schema, import a complete v3 payload, and publish content-addressed symbol-specific results.
+- [x] Public lifecycle routing tests create v2 runs through `company-init`/`create_company_research_run` and route shared lifecycle operations to the company coordinator by run ID.
+- [x] Analytics lifecycle routing tests create v4 runs through `analytics-init`/`create_company_analytics_run` and route the shared lifecycle controls without duplicating the protocol.
+- [x] Repeated identical imports are idempotent; different company submissions receive different run IDs.
+- [x] The v3 request and dossier are preserved separately and losslessly as `research_request.v3` and `research_dossier.v3`, then projected as `RunView.research_request` and `RunView.research_dossier`.
+- [x] Research-mode tests read the authoritative value from `RunView.research_request` for live, fixture, and historical replay submissions.
+- [x] Direct import tests require `checkpoint_enabled=false` and `decision_memory_enabled=false`; durable lifecycle tests require checkpointing and enable memory only when a store is configured.
+- [x] UI contract tests cover research delta, coverage, sources, claims, filings, transcripts/guidance, factors, peers, valuations, events, risks, monitoring, prior outcomes, and evaluation receipts.
+- [x] The browser remains empty without a completed result and contains no research, run-control, credential, or broker actions.
+- [x] `report`, `launch_research_report`, and `get_research_report_summary` provide preferred Research Dossier Viewer names while dashboard-named surfaces remain compatible.
+- [x] Completed CLI and MCP responses carry a versioned presentation receipt; spawned-process tests prove one private loopback daemon is reused for multiple companies, observes later atomic publications and quality outcomes, survives the short-lived CLI command, recovers from killed or incompatible generations, and leaves publication-pending results hidden.
+- [x] Detached-viewer tests prove per-daemon capability authentication, hostile Host/Origin rejection, restrictive browser headers, private registry permissions, startup diagnostics, headless no-spawn behavior, and per-call MCP presentation policy.
+- [x] Documentation checks validate relative links, required canonical documents, Mermaid source/SVG pairs, poster HTML/PNG pairs, PNG dimensions, and SVG parseability.
+- [x] JSON metadata tests parse `.codex-plugin/plugin.json`, `.mcp.json`, workflow manifests, and terminal schemas.
 
-- [x] The loopback dashboard rendered durable run `host-e19da9daacb2` with Research `Hold`, Trader `Hold`, Portfolio `Hold`, derived signal `HOLD`, 4 analyst cards, 9 safe source links, all merged decision sections, and no run buttons or input controls.
-- [x] Markdown-like report content is rendered through DOM/text nodes; literal heading markers are removed and no `innerHTML` execution path is used.
-- [x] Browser console inspection returned no warnings or errors for the completed ORCL dossier.
+## Legacy transition proof
 
-## Verified cross-company matrix
+- [x] The default credential-free MCP server excludes `run_legacy`; the opt-in executor remains isolated.
+- [x] Transition and research-data tool manifests are machine-readable and must not report removal eligibility while a required gate is unverified.
+- [x] The executable legacy-removal verifier fails closed on the canonical empty evidence index and independently derives local, provider/operational, release-attestation, external, and overall gate status. Evidence must bind exact clean `HEAD`, gate-specific referenced hashes, and an authenticated trust-root verifier.
+- [ ] The line-item parity ledger covers every whitelisted observable and the pure-semantic probe passes, but fresh release commit/date/sign-off evidence is still absent.
+- [ ] Concrete provider-neutral research-data MCP adapters are registered and conformant for every required category. Six public categories pass locally, but licensed prices/indicators and lawful social-provider coverage remain open.
+- [x] CI checks out the exact upstream pin and runs a credential-free pure-semantic comparison of scoped observable contracts. This is not an LLM/provider graph dual-run.
+- [ ] A representative live and failure symbol matrix has recorded, reproducible evidence.
+- [x] Python, CLI, MCP, export/reload, dashboard, and RunView return the same canonical completed-run semantic projection and digest; the projection content-addresses every terminal artifact, evidence item, report section, and complete terminal research payload.
+- [x] Complete retained historical-schema `2026-08-02` result/event goldens exercise strict migration plus copy-on-write store/export/memory receipts. These fixtures are not provenance-backed public-release artifacts.
+- [ ] The published-release saved-result inventory and release-owner attestation are not yet reconciled.
+- [ ] One published deprecation release has warned on every legacy entry point and named a later major removal version.
+- [ ] Executor removal occurs only at the documented later major-version boundary.
 
-- [x] This Codex task freshly replayed and finalized full durable host-native dossiers for MSFT (`host-0bb0768da623`), JPM (`host-42d7fb642292`), and Tencent `0700.HK` (`host-025683fdba08`) with the `2026-08-01` cutoff; fresh ORCL is `host-fe876e15883a`.
-- [x] Every fresh matrix dossier contains four analyst reports, two research-debate turns, three risk-debate turns, the Research Manager, Trader, Portfolio Manager, eight artifacts, 42 linked-receipt/lifecycle/final events, non-executable decisions, and `external_credentials_required=false`.
-- [x] Every fresh matrix run rehydrated after a new store instance, exposed exactly one completed decision-memory record, exported 16 content/log files plus a digest manifest, passed every portable observable-invariant check, and separately verified the sibling checkout identity at revision `a33fd4c0f134485a43553a2c23a63cb14adbd88f`.
-- [x] Evidence counts were 7 for MSFT and 6 each for JPM and Tencent. No source date exceeded the cutoff, and every retrieval timestamp included a timezone.
-- [x] The keyless market evidence tool returned dated snapshots for MSFT, JPM, `0700.HK`, `BRK-B`, `7203.T`, `SAP.DE`, and BABA. The plan contract also expanded the complete 12-stage topology for the four additional symbol formats.
-- [x] Browser verification found the correct company/run identity, four analyst cards, one safe link per evidence record, no input or run controls, no literal Markdown headings, and no console warnings/errors for all three dossiers.
-- [x] Matrix testing found and fixed two negative-path defects: invalid future plans now return structured guidance instead of a traceback, and legitimate financial authorization fields no longer trigger the credential-key scanner. Actual credential-shaped fields remain rejected.
+Until every unchecked item passes together, legacy removal and complete observable behavioral-parity claims are prohibited.
 
-## Integration decision
+## Verification commands
 
-Do not treat fake-graph delegation, importability, or credential-free observable conformance as evidence of credentialed live readiness. The host owns reasoning, agent spawning, concrete tools, and hard interruption. The browser remains a finalized-result reader, and no portable surface accepts API keys or performs broker/order execution.
+Run the credential-free gates from the repository root:
+
+```bash
+uv run pytest -q
+uv run ruff check .
+uv run ruff format --check .
+uv run mypy --ignore-missing-imports src
+uv run python -m compileall -q src tests
+uv run python scripts/check_docs.py
+uv build --offline
+uv run pytest -q tests/test_manifests_and_mcp.py
+uv run python scripts/verify_legacy_removal.py --expect-blocked
+```
+
+The fixture and CLI help are safe smoke checks:
+
+```bash
+uv run stock-research-agents fixture --events
+uv run stock-research-agents --help
+```
+
+Record fresh counts and command results in the release or handoff report. Do not preserve a stale fixed test count or MCP tool count in this document.
+
+## Not verified by local tests
+
+- [ ] A live provider-backed company-research run.
+- [ ] Live public-source freshness or coverage for any symbol.
+- [ ] Seeking Alpha or another licensed provider integration, entitlement, or redistribution behavior.
+- [ ] Credentialed upstream TradingAgents execution and checkpoint resume.
+- [ ] Exact generated text or recommendation equivalence across hosts.
+- [ ] Token-level continuation of an interrupted agent/tool call.
+- [ ] Host-specific push event delivery or hard-interruption behavior.
+- [ ] Live-network freshness and arbitrary-symbol coverage for the six default SEC/GDELT/World Bank tools; local tests use recorded transports and prove contracts, normalization, and registration rather than current upstream availability.
+- [ ] Concrete licensed price/indicator retrieval, host-OAuth Reddit retrieval, or approved StockTwits access.
+- [ ] Full behavioral upstream dual-run conformance with credentialed live providers; the pure-semantic pinned differential is implemented.
+- [ ] Published-release migration attestation or a published legacy deprecation release.
+- [ ] Broker or order execution; this is intentionally prohibited, not a validation target.

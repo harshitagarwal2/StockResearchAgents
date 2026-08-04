@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=1800, initial-scale=1">
+    <title>StockResearchAgents design patterns</title>
+    <link rel="stylesheet" href="render.css">
+  </head>
+  <body>
+    <main class="canvas" aria-label="StockResearchAgents component and design pattern map">
+      <header class="poster-head">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">TA</div>
+          <div>
+            <p class="eyebrow">Architecture map</p>
+            <h1>Small patterns, hard boundaries</h1>
+            <p class="subtitle">Patterns are used where they protect portability, conformance, and publication—not as framework decoration.</p>
+          </div>
+        </div>
+        <div class="safety"><span class="safety-dot" aria-hidden="true"></span>The browser is a projection. The host is an adapter. Strict domain rules remain the authority.</div>
+      </header>
+
+      <section class="pattern-grid">
+        <article class="pattern-column inbound">
+          <h2>Inbound adapters</h2><p>Translate harness intent into strict portable requests.</p>
+          <div class="component-list">
+            <div class="component"><b>CLI & Python</b><small>Local automation and direct library integration.</small><code>cli.py · company_research.py</code></div>
+            <div class="component"><b>MCP, Codex & hosts</b><small>Thin adapters; planned research-data MCP stays host-owned.</small><code>mcp_server.py · SourcePort</code></div>
+            <div class="component"><b>Upstream oracle</b><small>Temporary executor; CI/dev semantic reference until gated retirement.</small><code>legacy.py · transition.v1</code></div>
+          </div>
+        </article>
+        <div class="pattern-arrow" aria-hidden="true">→</div>
+        <article class="pattern-column application">
+          <h2>Application core</h2><p>Coordinates use cases without owning provider or model behavior.</p>
+          <div class="component-list">
+            <div class="component"><b>Research coordinator</b><small>Orders stages and enforces capability-scoped boundaries.</small><code>CompanyResearchCoordinator</code></div>
+            <div class="component"><b>Lifecycle state machine</b><small>Optimistic revisions, pause/resume, cancellation, recovery.</small><code>company_lifecycle.py</code></div>
+            <div class="component"><b>Publication service</b><small>Stages and atomically exposes completed artifacts.</small><code>submit_company_research</code></div>
+          </div>
+        </article>
+        <div class="pattern-arrow" aria-hidden="true">→</div>
+        <article class="pattern-column domain">
+          <h2>Domain rules</h2><p>Pure, strict, versioned semantics that every harness shares.</p>
+          <div class="component-list">
+            <div class="component"><b>Contract value objects</b><small>Exact identity, cutoff, evidence, calculations, dossier.</small><code>research_contracts.py</code></div>
+            <div class="component"><b>Specifications</b><small>Composable temporal, numerical, reference, and safety checks.</small><code>research_conformance.py</code></div>
+            <div class="component"><b>Research Quality</b><small>Policy receipts, forecasts, append-only outcomes, typed evaluators.</small><code>research-quality.v1</code></div>
+          </div>
+        </article>
+        <div class="pattern-arrow" aria-hidden="true">→</div>
+        <article class="pattern-column outbound">
+          <h2>Outbound adapters</h2><p>Persist and present authoritative completed state.</p>
+          <div class="component-list">
+            <div class="component"><b>Repositories</b><small>SQLite/WAL lifecycle and append-only decision memory.</small><code>lifecycle.py · memory.py</code></div>
+            <div class="component"><b>Atomic bundles</b><small>Content-addressed result, events, reports, and current pointer.</small><code>store.py</code></div>
+            <div class="component"><b>Completed read model</b><small>RunView, exports, and the Research Dossier Viewer.</small><code>view.py · report facade</code></div>
+          </div>
+        </article>
+      </section>
+
+      <section class="pattern-notes">
+        <div class="pattern-note"><b>Ports & adapters</b> keep harness APIs replaceable.</div>
+        <div class="pattern-note"><b>State machine</b> makes lifecycle transitions explicit.</div>
+        <div class="pattern-note"><b>Specification pattern</b> makes validation deterministic.</div>
+        <div class="pattern-note"><b>Projection pattern</b> keeps the viewer non-authoritative.</div>
+      </section>
+    </main>
+  </body>
+</html>

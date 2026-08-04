@@ -1,7 +1,7 @@
 """Canonical, side-effect-free report artifacts for every executor.
 
 The upstream CLI presents five ordered groups.  This module preserves that
-information model in memory so MCP, a dashboard, or another harness can render
+information model in memory so MCP, the Research Dossier Viewer, or another harness can render
 the same report without requiring filesystem writes.
 """
 

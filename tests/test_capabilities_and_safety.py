@@ -16,7 +16,7 @@ from tradingagents_portable.legacy import LegacyTradingAgentsAdapter
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_feature_matrix_has_no_parity_blocker_statuses() -> None:
+def test_feature_matrix_has_no_ambiguous_blocker_statuses_and_keeps_partial_data_truthful() -> None:
     matrix = feature_matrix(legacy_path=str(ROOT / "does-not-exist"))
     serialized = json.dumps(matrix.to_dict()).lower()
 
@@ -27,7 +27,9 @@ def test_feature_matrix_has_no_parity_blocker_statuses() -> None:
     assert "legacy_full_topology" in {feature.name for feature in matrix.features}
     assert "orcl_fixture" in {feature.name for feature in matrix.features}
     assert "loopback_dashboard" in {feature.name for feature in matrix.features}
-    assert {feature.level.value for feature in matrix.features} <= {"supported", "optional", "prohibited"}
+    assert {feature.level.value for feature in matrix.features} <= {"supported", "partial", "optional", "prohibited"}
+    research_data = next(feature for feature in matrix.features if feature.name == "research_data_adapter_contracts")
+    assert research_data.level.value == "partial"
 
 
 def test_discovery_has_no_broker_or_order_tool_surface() -> None:

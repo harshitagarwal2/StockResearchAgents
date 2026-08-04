@@ -168,7 +168,7 @@ def _fixture_evidence(request: RunRequest) -> tuple[EvidenceItem, ...]:
                 "articles": [
                     {
                         "headline": "Synthetic cloud demand scenario remains constructive",
-                        "publisher": "TradingAgents Portable fixture",
+                        "publisher": "StockResearchAgents fixture",
                         "published_at": request.as_of_date,
                         "source_quality": "synthetic_fixture",
                         "claim_type": "inference",
@@ -187,7 +187,7 @@ def _fixture_evidence(request: RunRequest) -> tuple[EvidenceItem, ...]:
                     },
                     {
                         "headline": "Synthetic capacity expansion scenario has mixed execution effects",
-                        "publisher": "TradingAgents Portable fixture",
+                        "publisher": "StockResearchAgents fixture",
                         "published_at": request.as_of_date,
                         "source_quality": "synthetic_fixture",
                         "claim_type": "inference",
@@ -205,7 +205,7 @@ def _fixture_evidence(request: RunRequest) -> tuple[EvidenceItem, ...]:
                     },
                     {
                         "headline": "Synthetic leverage scenario highlights downside sensitivity",
-                        "publisher": "TradingAgents Portable fixture",
+                        "publisher": "StockResearchAgents fixture",
                         "published_at": request.as_of_date,
                         "source_quality": "synthetic_fixture",
                         "claim_type": "inference",

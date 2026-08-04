@@ -24,6 +24,7 @@ def test_plugin_manifest_and_skill_are_complete() -> None:
     assert plugin["mcpServers"] == "./.mcp.json"
     assert skill.startswith("---\nname: tradingagents-portable\n")
     assert "run_fixture" in skill
+    assert "launch_research_report" in skill
     assert "launch_local_dashboard" in skill
     assert "checkpoint_enabled" in skill
     assert "decision/report persistence" in skill
@@ -54,6 +55,24 @@ def test_mcp_manifest_has_exact_local_stdio_launch_command() -> None:
     assert "API_KEY" not in json.dumps(server)
     assert "CODEX_AUTH" not in json.dumps(server)
 
+    research_data = manifest["mcpServers"]["tradingagents-research-data"]
+    assert research_data == {
+        "command": "uv",
+        "args": [
+            "run",
+            "--no-project",
+            "--with",
+            "mcp>=2.0,<3",
+            "python",
+            "-m",
+            "tradingagents_host.research_data_mcp",
+        ],
+        "cwd": ".",
+        "env": {"PYTHONDONTWRITEBYTECODE": "1", "PYTHONPATH": "src"},
+    }
+    assert "API_KEY" not in json.dumps(research_data)
+    assert "CODEX_AUTH" not in json.dumps(research_data)
+
 
 def test_mcp_discovery_and_function_schemas_cover_required_surface() -> None:
     payload = discovery(legacy_path=str(ROOT / "does-not-exist"), include_legacy=False)
@@ -64,6 +83,14 @@ def test_mcp_discovery_and_function_schemas_cover_required_surface() -> None:
         "run_fixture",
         "prepare_host_run",
         "import_host_run",
+        "prepare_company_research",
+        "import_company_research",
+        "prepare_company_analytics",
+        "import_company_analytics",
+        "record_research_outcome",
+        "get_research_quality",
+        "create_company_research_run",
+        "create_company_analytics_run",
         "create_host_run",
         "start_host_run",
         "append_run_receipts",
@@ -82,7 +109,10 @@ def test_mcp_discovery_and_function_schemas_cover_required_surface() -> None:
         "get_run",
         "get_run_events",
         "get_run_result",
+        "get_run_semantics",
         "get_run_view",
+        "launch_research_report",
+        "get_research_report_summary",
         "launch_local_dashboard",
         "get_dashboard_report",
     }
@@ -114,6 +144,8 @@ def test_mcp_discovery_and_function_schemas_cover_required_surface() -> None:
     assert defaults("prepare_host_run")["risk_rounds"] == 1
     assert defaults("launch_local_dashboard")["host"] == "127.0.0.1"
     assert defaults("launch_local_dashboard")["port"] == 0
+    assert defaults("launch_research_report")["host"] == "127.0.0.1"
+    assert defaults("launch_research_report")["port"] == 0
 
     parameter_names = {
         parameter.arg.lower()
@@ -131,6 +163,25 @@ def test_registered_mcp_tool_names_match_discovery() -> None:
 
     assert names == set(discovery(legacy_path=str(ROOT / "does-not-exist"), include_legacy=False)["tools"])
     assert "run_legacy" not in names
+
+
+def test_isolated_research_data_mcp_registers_only_receipted_public_tools() -> None:
+    pytest.importorskip("mcp")
+    research_server = importlib.import_module("tradingagents_host.research_data_mcp")
+    registered = {tool.name for tool in research_server.mcp._tool_manager.list_tools()}
+
+    assert registered == {
+        "research_data_get_regulatory_filings",
+        "research_data_get_fundamentals",
+        "research_data_get_financial_statements",
+        "research_data_get_company_news",
+        "research_data_get_global_news",
+        "research_data_get_macro",
+    }
+    assert not {"research_data_get_prices", "research_data_get_indicators", "research_data_get_reddit"}.intersection(
+        registered
+    )
+    assert "research_data_get_stocktwits" not in registered
 
 
 def test_mcp_publication_gate_uses_lifecycle_namespace_without_masking_errors(

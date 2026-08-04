@@ -5,8 +5,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="light">
-    <meta name="description" content="A human-readable, non-executable TradingAgents research dossier.">
-    <title>TradingAgents · Research dossier</title>
+    <meta name="description" content="The completed-only, non-executable StockResearchAgents Research Dossier Viewer.">
+    <title>StockResearchAgents · Research Dossier Viewer</title>
     <link rel="stylesheet" href="./styles.css">
     <script src="./app.js" defer></script>
   </head>
@@ -14,9 +14,9 @@
     <a class="skip-link" href="#report">Skip to research report</a>
 
     <header class="masthead">
-      <a class="wordmark" href="#report" aria-label="TradingAgents research dossier home">
-        <span class="wordmark-mark" aria-hidden="true">TA</span>
-        <span><b>TradingAgents</b><small>Research dossier</small></span>
+      <a class="wordmark" href="#report" aria-label="StockResearchAgents Research Dossier Viewer home">
+        <span class="wordmark-mark" aria-hidden="true">SRA</span>
+        <span><b>StockResearchAgents</b><small>Research Dossier Viewer</small></span>
       </a>
       <div class="masthead-receipt" aria-label="Report source and status">
         <span id="data-source-label">No report loaded</span>
@@ -29,7 +29,7 @@
         <span class="empty-glyph" aria-hidden="true">◇</span>
         <p class="eyebrow">Research report</p>
         <h1 id="empty-title">No completed dossier is available.</h1>
-        <p id="empty-copy">Start the local report server after a research run. This page reads only the canonical final RunView and does not run research itself.</p>
+        <p id="empty-copy">Start the local report server after a research run. This viewer reads only a completed canonical result and does not run research itself.</p>
       </section>
 
       <div class="report-shell" id="report-shell" hidden>
@@ -53,7 +53,7 @@
           </div>
 
           <aside class="decision-aperture" aria-label="Executive decision summary">
-            <p>Portfolio rating</p>
+            <p>Research conclusion</p>
             <strong id="decision-action">—</strong>
             <div class="decision-rule" aria-hidden="true"><span></span><i></i></div>
             <dl>
@@ -71,6 +71,8 @@
           <a href="#executive">Executive case</a>
           <a href="#decision-trace">Integrity chain</a>
           <a href="#intelligence">Decision intelligence</a>
+          <a id="complete-research-nav" href="#complete-research" hidden>Completed Research Dossier</a>
+          <a id="research-lab-nav" href="#research-lab" hidden>Research analytics</a>
           <a href="#analysts">Analyst reports</a>
           <a href="#research-debate">Research debate</a>
           <a href="#risk">Risk review</a>
@@ -155,6 +157,30 @@
               </section>
             </div>
 
+            <section class="source-analysis-module" id="source-analysis" aria-labelledby="source-analysis-title">
+              <header class="source-analysis-lead">
+                <div>
+                  <p class="section-code">Source audit</p>
+                  <h3 id="source-analysis-title">Identity, access, breadth, and claim support</h3>
+                  <p id="source-analysis-summary">The completed result has not declared a source-portfolio receipt.</p>
+                  <p class="source-analysis-boundary">This viewer audits the completed portfolio; it does not fetch or invent extra sources. Missing regulator, issuer, market, independent-publisher, peer, macro, expectations, or adversarial lanes must be collected by the research host before publication.</p>
+                </div>
+                <span class="matrix-status" id="source-analysis-verdict" data-tone="unassessed">Unassessed</span>
+              </header>
+              <div class="source-analysis-layout">
+                <div class="table-frame source-analysis-matrix" id="source-coverage-matrix" role="region" aria-label="Declared-plan source coverage by research area" tabindex="0"></div>
+                <aside class="source-analysis-receipt" aria-labelledby="source-analysis-receipt-title">
+                  <h4 id="source-analysis-receipt-title">Completed projection receipt</h4>
+                  <dl id="source-analysis-totals"></dl>
+                  <p id="source-independence-note">Editorial independence is not inferred from publisher names or hostnames.</p>
+                </aside>
+              </div>
+              <div class="source-analysis-gaps" aria-labelledby="source-analysis-gaps-title">
+                <h4 id="source-analysis-gaps-title">What evidence is still needed</h4>
+                <ul id="source-analysis-gap-list"></ul>
+              </div>
+            </section>
+
             <section class="intelligence-ledger" id="financials" aria-labelledby="financials-title">
               <header>
                 <p class="section-code">Financial and market ledger</p>
@@ -197,6 +223,91 @@
                 <header><p class="section-code">Change conditions</p><h3 id="monitoring-title">Monitoring</h3></header>
                 <div class="structured-ledger" id="monitoring-ledger"></div>
               </section>
+            </div>
+          </section>
+
+          <section class="report-section complete-research-section" id="complete-research" aria-labelledby="complete-research-title" hidden>
+            <header class="section-lead">
+              <p class="section-code">Completed research dossier</p>
+              <h2 id="complete-research-title">Auditable company research</h2>
+              <p>Point-in-time evidence, deterministic analysis, risks, monitoring rules, and evaluation receipts from the completed terminal result.</p>
+            </header>
+
+            <section class="dossier-module" aria-labelledby="research-change-title">
+              <header><p class="section-code">Research delta</p><h3 id="research-change-title">What changed</h3></header>
+              <div class="structured-ledger" id="research-change"></div>
+            </section>
+
+            <section class="dossier-module" aria-labelledby="research-coverage-title">
+              <header><p class="section-code">Completeness receipt</p><h3 id="research-coverage-title">Research coverage</h3></header>
+              <div class="structured-ledger" id="research-coverage"></div>
+            </section>
+
+            <section class="dossier-module" aria-labelledby="source-explorer-title">
+              <header><p class="section-code">Temporal provenance</p><h3 id="source-explorer-title">Source explorer</h3><p>Availability times, exact document locators, access entitlements, and verification status remain explicit.</p></header>
+              <div class="research-record-grid" id="source-explorer"></div>
+            </section>
+
+            <section class="dossier-module" aria-labelledby="claim-graph-title">
+              <header><p class="section-code">Grounded thesis and debate</p><h3 id="claim-graph-title">Claims and arguments</h3></header>
+              <div class="research-record-grid" id="claim-graph"></div>
+            </section>
+
+            <div class="dossier-module-grid">
+              <section class="dossier-module" aria-labelledby="filings-title"><header><p class="section-code">Regulatory change</p><h3 id="filings-title">Filings and material changes</h3></header><div class="research-record-grid" id="filings-ledger"></div></section>
+              <section class="dossier-module" aria-labelledby="earnings-title"><header><p class="section-code">Management record</p><h3 id="earnings-title">Earnings, guidance, and transcript themes</h3></header><div class="research-record-grid" id="earnings-ledger"></div></section>
+            </div>
+
+            <div class="dossier-module-grid dossier-module-grid--three">
+              <section class="dossier-module" aria-labelledby="factors-title"><header><p class="section-code">Factor history</p><h3 id="factors-title">Factors</h3></header><div class="research-record-grid" id="factor-history"></div></section>
+              <section class="dossier-module" aria-labelledby="peers-title"><header><p class="section-code">Comparable set</p><h3 id="peers-title">Peer matrix</h3></header><div class="research-record-grid" id="peer-matrix"></div></section>
+              <section class="dossier-module" aria-labelledby="valuation-title"><header><p class="section-code">Reproducible cases</p><h3 id="valuation-title">Valuation and sensitivities</h3></header><div class="research-record-grid" id="valuation-cases"></div></section>
+            </div>
+
+            <section class="dossier-module" aria-labelledby="event-timeline-title"><header><p class="section-code">Event propagation</p><h3 id="event-timeline-title">Events and entities</h3></header><div class="research-record-grid" id="event-timeline"></div></section>
+            <section class="dossier-module" aria-labelledby="stress-scenarios-title"><header><p class="section-code">Structured downside</p><h3 id="stress-scenarios-title">Risk and stress scenarios</h3></header><div class="research-record-grid" id="stress-scenarios"></div></section>
+            <section class="dossier-module" aria-labelledby="invalidation-rules-title"><header><p class="section-code">Decision maintenance</p><h3 id="invalidation-rules-title">Monitoring and invalidation rules</h3></header><div class="research-record-grid" id="invalidation-rules"></div></section>
+
+            <div class="dossier-module-grid dossier-module-grid--three">
+              <section class="dossier-module" aria-labelledby="prior-outcomes-title"><header><p class="section-code">Calibration history</p><h3 id="prior-outcomes-title">Prior outcomes</h3></header><div class="research-record-grid" id="prior-outcomes"></div></section>
+              <section class="dossier-module" aria-labelledby="portfolio-context-impact-title"><header><p class="section-code">Portfolio fit</p><h3 id="portfolio-context-impact-title">Context and impact</h3><p>Exposure effects remain analytical and non-executable.</p></header><div class="research-record-grid" id="portfolio-context-impact"></div></section>
+              <section class="dossier-module" aria-labelledby="evaluation-receipts-title"><header><p class="section-code">Verification ledger</p><h3 id="evaluation-receipts-title">Evaluation receipts</h3><p>Passed, failed, skipped, unverified, and entitlement-blocked checks are shown as reported.</p></header><div class="research-record-grid" id="evaluation-receipts"></div></section>
+            </div>
+          </section>
+
+          <section class="report-section research-lab-section" id="research-lab" aria-labelledby="research-lab-title" hidden>
+            <header class="section-lead">
+              <p class="section-code">Research analytics and quality</p>
+              <h2 id="research-lab-title">What was measured, tested, and challenged</h2>
+              <p>Deterministic calculations, point-in-time experiments, explicit hypotheses, source rights, and forecast rules are merged from completed sidecars. This page displays receipts; it does not recalculate them.</p>
+            </header>
+
+            <div class="intelligence-summary research-lab-summary">
+              <section aria-labelledby="analytics-summary-title"><h3 id="analytics-summary-title">Analytics coverage</h3><dl id="analytics-summary"></dl></section>
+              <section aria-labelledby="run-summary-title"><h3 id="run-summary-title">Run card</h3><dl id="run-summary"></dl></section>
+              <section aria-labelledby="quality-summary-title"><h3 id="quality-summary-title">Quality receipt</h3><dl id="quality-summary"></dl></section>
+            </div>
+
+            <div class="dossier-module-grid">
+              <section class="dossier-module" aria-labelledby="run-card-title"><header><p class="section-code">Execution receipt</p><h3 id="run-card-title">Completed stages</h3></header><div class="research-record-grid" id="run-card-ledger"></div></section>
+              <section class="dossier-module" aria-labelledby="hypothesis-lab-title"><header><p class="section-code">Falsifiable thesis</p><h3 id="hypothesis-lab-title">Hypothesis lifecycle</h3></header><div class="research-record-grid" id="hypothesis-lab"></div></section>
+            </div>
+
+            <section class="dossier-module" aria-labelledby="fundamental-lab-title"><header><p class="section-code">Point-in-time fundamentals</p><h3 id="fundamental-lab-title">Facts, periods, and restatements</h3></header><div class="research-record-grid" id="fundamental-lab"></div></section>
+            <section class="dossier-module" aria-labelledby="model-lab-title"><header><p class="section-code">Deterministic models</p><h3 id="model-lab-title">Ratios, DCF, reverse DCF, and comparables</h3></header><div class="research-record-grid" id="model-lab"></div></section>
+
+            <div class="dossier-module-grid dossier-module-grid--three">
+              <section class="dossier-module" aria-labelledby="consensus-lab-title"><header><p class="section-code">External expectations</p><h3 id="consensus-lab-title">Consensus and revisions</h3></header><div class="research-record-grid" id="consensus-lab"></div></section>
+              <section class="dossier-module" aria-labelledby="positioning-lab-title"><header><p class="section-code">Ownership context</p><h3 id="positioning-lab-title">Positioning</h3></header><div class="research-record-grid" id="positioning-lab"></div></section>
+              <section class="dossier-module" aria-labelledby="event-lab-title"><header><p class="section-code">Conditional path</p><h3 id="event-lab-title">Catalysts and clusters</h3></header><div class="research-record-grid" id="event-lab"></div></section>
+            </div>
+
+            <section class="dossier-module" aria-labelledby="experiment-lab-title"><header><p class="section-code">Leakage-safe testing</p><h3 id="experiment-lab-title">Datasets, splits, factors, and experiment receipts</h3></header><div class="research-record-grid" id="experiment-lab"></div></section>
+
+            <div class="dossier-module-grid dossier-module-grid--three">
+              <section class="dossier-module" aria-labelledby="forecast-lab-title"><header><p class="section-code">Explicit predictions</p><h3 id="forecast-lab-title">Forecasts</h3><p>Probabilities are forecasts with declared resolution rules—not model confidence.</p></header><div class="research-record-grid" id="forecast-lab"></div></section>
+              <section class="dossier-module" aria-labelledby="quality-lab-title"><header><p class="section-code">Conformance</p><h3 id="quality-lab-title">Quality rules</h3></header><div class="research-record-grid" id="quality-lab"></div></section>
+              <section class="dossier-module" aria-labelledby="policy-lab-title"><header><p class="section-code">Data rights</p><h3 id="policy-lab-title">Source-policy receipts</h3></header><div class="research-record-grid" id="policy-lab"></div></section>
             </div>
           </section>
 
@@ -313,7 +424,7 @@
 
           <details class="methodology" id="methodology">
             <summary>
-              <span><b>Methodology and timeline</b><small>Workflow stages and event coverage from this RunView</small></span>
+              <span><b>Methodology and timeline</b><small>Workflow stages and event coverage from the completed read model</small></span>
               <span aria-hidden="true">+</span>
             </summary>
             <div class="methodology-body">
@@ -331,6 +442,6 @@
     </main>
 
     <p class="sr-only" id="interface-status" role="status" aria-live="polite">Loading final research report.</p>
-    <noscript><p class="noscript">JavaScript is required to load the local final RunView.</p></noscript>
+    <noscript><p class="noscript">JavaScript is required to load the local completed research view.</p></noscript>
   </body>
 </html>

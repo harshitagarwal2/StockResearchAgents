@@ -16,6 +16,23 @@
         "PYTHONDONTWRITEBYTECODE": "1",
         "PYTHONPATH": "src"
       }
+    },
+    "tradingagents-research-data": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--no-project",
+        "--with",
+        "mcp>=2.0,<3",
+        "python",
+        "-m",
+        "tradingagents_host.research_data_mcp"
+      ],
+      "cwd": ".",
+      "env": {
+        "PYTHONDONTWRITEBYTECODE": "1",
+        "PYTHONPATH": "src"
+      }
     }
   }
 }

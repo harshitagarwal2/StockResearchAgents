@@ -10,6 +10,7 @@ from enum import Enum
 from typing import Any, Literal, TypeVar, Union, cast, get_args, get_origin, get_type_hints
 
 from .contracts import SCHEMA_VERSION, RunEvent, RunResult
+from .migrations import migrate_payload
 
 _T = TypeVar("_T")
 _TYPE_MARKER = "__tradingagents_portable_json_type__"
@@ -38,7 +39,11 @@ def _encode_dataclass(value: object) -> dict[str, object]:
     if not is_dataclass(value) or isinstance(value, type):
         raise TypeError(f"expected dataclass instance, got {type(value).__name__}")
     hints = get_type_hints(type(value))
-    return {item.name: _encode_value(hints[item.name], getattr(value, item.name)) for item in fields(cast(Any, value))}
+    return {
+        item.name: _encode_value(hints[item.name], getattr(value, item.name))
+        for item in fields(cast(Any, value))
+        if not item.metadata.get("ephemeral", False)
+    }
 
 
 def _encode_any(value: object) -> object:
@@ -113,10 +118,16 @@ def _decode_any(value: object, path: str) -> object:
 def _decode_dataclass(cls: type[_T], value: object, path: str) -> _T:
     if not isinstance(value, Mapping):
         raise ValueError(f"{path} must be an object")
-    field_by_name = {item.name: item for item in fields(cast(Any, cls))}
-    unknown = sorted(set(value) - set(field_by_name))
+    all_field_by_name = {item.name: item for item in fields(cast(Any, cls))}
+    field_by_name = {
+        item.name: item for item in all_field_by_name.values() if not item.metadata.get("ephemeral", False)
+    }
+    unknown = sorted(set(value) - set(all_field_by_name))
     if unknown:
         raise ValueError(f"{path} contains unsupported fields: {unknown}")
+    missing = sorted(set(field_by_name) - set(value))
+    if missing:
+        raise ValueError(f"{path} is missing required fields: {missing}")
     schema = value.get("schema_version")
     if schema is not None and schema != SCHEMA_VERSION:
         raise ValueError(f"{path}.schema_version must be {SCHEMA_VERSION}")
@@ -130,6 +141,23 @@ def _decode_dataclass(cls: type[_T], value: object, path: str) -> _T:
         return cls(**kwargs)
     except (TypeError, ValueError) as exc:
         raise ValueError(f"invalid {path}: {exc}") from exc
+
+
+def _validate_run_result_conformance(result: RunResult) -> None:
+    if not result.run_id:
+        raise ValueError("run result.run_id must be non-empty")
+    if result.status.value != "completed":
+        raise ValueError("run result.status must be completed")
+    if not result.started_at or not result.completed_at:
+        raise ValueError("run result timestamps must be non-empty")
+
+
+def _validate_run_event_conformance(event: RunEvent, path: str) -> None:
+    for field_name in ("id", "run_id", "timestamp", "status", "message"):
+        if not getattr(event, field_name):
+            raise ValueError(f"{path}.{field_name} must be non-empty")
+    if event.sequence < 1:
+        raise ValueError(f"{path}.sequence must be positive")
 
 
 def _decode_value(expected: object, value: object, path: str) -> object:
@@ -206,8 +234,11 @@ def serialize_run_result(result: RunResult) -> str:
 def deserialize_run_result(payload: str | bytes | bytearray) -> RunResult:
     """Deserialize and validate a run result from JSON."""
     value = _json_object(payload, "run result")
+    value = cast(Mapping[str, object], migrate_payload(value, "run_result").payload)
     _validate_schema(value, "run result")
-    return _decode_dataclass(RunResult, value, "run result")
+    result = _decode_dataclass(RunResult, value, "run result")
+    _validate_run_result_conformance(result)
+    return result
 
 
 def serialize_run_event(event: RunEvent) -> str:
@@ -220,8 +251,11 @@ def serialize_run_event(event: RunEvent) -> str:
 def deserialize_run_event(payload: str | bytes | bytearray) -> RunEvent:
     """Deserialize and validate one run event from JSON."""
     value = _json_object(payload, "run event")
+    value = cast(Mapping[str, object], migrate_payload(value, "run_event").payload)
     _validate_schema(value, "run event")
-    return _decode_dataclass(RunEvent, value, "run event")
+    event = _decode_dataclass(RunEvent, value, "run event")
+    _validate_run_event_conformance(event, "run event")
+    return event
 
 
 def serialize_run_events(events: tuple[RunEvent, ...]) -> str:
@@ -239,10 +273,14 @@ def deserialize_run_events(payload: str | bytes | bytearray) -> tuple[RunEvent, 
         raise ValueError("run events must be valid JSON") from exc
     if not isinstance(value, list):
         raise ValueError("run events must be a JSON array")
+    if value:
+        value = cast(list[object], migrate_payload(value, "run_events").payload)
     events: list[RunEvent] = []
     for index, item in enumerate(value):
         if not isinstance(item, dict):
             raise ValueError(f"run events[{index}] must be an object")
         _validate_schema(item, f"run events[{index}]")
-        events.append(_decode_dataclass(RunEvent, item, f"run events[{index}]"))
+        event = _decode_dataclass(RunEvent, item, f"run events[{index}]")
+        _validate_run_event_conformance(event, f"run events[{index}]")
+        events.append(event)
     return tuple(events)

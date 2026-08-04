@@ -11,6 +11,7 @@ from pathlib import Path
 from threading import RLock
 
 from .contracts import RunEvent, RunResult
+from .migrations import ArtifactKind, migrate_json_file, migrate_payload, migrated_copy_path
 from .serialization import (
     deserialize_run_events,
     deserialize_run_result,
@@ -22,7 +23,7 @@ _RUN_ID_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}\Z")
 
 
 def _default_state_dir() -> Path:
-    configured = os.environ.get("TRADINGAGENTS_PORTABLE_STATE_DIR")
+    configured = os.environ.get("STOCKRESEARCHAGENTS_STATE_DIR") or os.environ.get("TRADINGAGENTS_PORTABLE_STATE_DIR")
     if configured:
         return Path(configured).expanduser()
     xdg_state_home = os.environ.get("XDG_STATE_HOME")
@@ -68,6 +69,36 @@ def _durable_unlink(path: Path) -> None:
         os.fsync(directory_descriptor)
     finally:
         os.close(directory_descriptor)
+
+
+def _read_migrated_json(path: Path, artifact_kind: ArtifactKind) -> bytes:
+    """Read current JSON, creating a receipt-backed copy for historical data."""
+    content = path.read_bytes()
+    try:
+        payload = json.loads(content)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ValueError(f"saved {artifact_kind} must be valid JSON: {path}") from exc
+    if artifact_kind == "run_events" and payload == []:
+        return content
+    migration = migrate_payload(payload, artifact_kind)
+    if not migration.receipt.migration_ids:
+        return content
+    destination = migrated_copy_path(path)
+    migrate_json_file(path, artifact_kind, destination=destination)
+    return destination.read_bytes()
+
+
+def _read_current_run_id(path: Path) -> str:
+    try:
+        current = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ValueError("current run pointer must be valid JSON") from exc
+    if not isinstance(current, dict) or set(current) != {"run_id"}:
+        raise ValueError("current run pointer must contain only run_id")
+    run_id = current.get("run_id")
+    if not isinstance(run_id, str):
+        raise ValueError("current run pointer run_id must be a string")
+    return _validate_run_id(run_id)
 
 
 class RunStore:
@@ -117,27 +148,52 @@ class RunStore:
             self._load_results(state_dir / "results")
             current_path = state_dir / "current.json"
             if current_path.is_file():
-                try:
-                    current = json.loads(current_path.read_text(encoding="utf-8"))
-                except json.JSONDecodeError as exc:
-                    raise ValueError("current run pointer must be valid JSON") from exc
-                if not isinstance(current, dict) or set(current) != {"run_id"}:
-                    raise ValueError("current run pointer must contain only run_id")
-                raw_run_id = current.get("run_id")
-                if not isinstance(raw_run_id, str):
-                    raise ValueError("current run pointer run_id must be a string")
-                run_id = _validate_run_id(raw_run_id)
+                run_id = _read_current_run_id(current_path)
                 if run_id not in self._results and run_id not in self._events:
                     raise ValueError("current run pointer references an unknown run")
                 self._current_run_id = run_id
         self._loaded = True
+
+    def _load_single_durable_bundle(
+        self,
+        requested_run_id: str,
+    ) -> tuple[RunResult, tuple[RunEvent, ...]] | None:
+        """Read one atomic bundle without scanning the complete run history."""
+        state_dir = self._state_path()
+        if state_dir is None or not state_dir.exists():
+            return None
+        self._recover_direct_put(state_dir)
+        if requested_run_id == "current":
+            current_path = state_dir / "current.json"
+            if not current_path.is_file():
+                return None
+            run_id = _read_current_run_id(current_path)
+        else:
+            run_id = _validate_run_id(requested_run_id)
+        cached_result = self._results.get(run_id)
+        cached_events = self._events.get(run_id)
+        if cached_result is not None and cached_events is not None:
+            return cached_result, cached_events
+        path = state_dir / "bundles" / f"{run_id}.json"
+        if not path.is_file():
+            return None
+        result, events = self._read_bundle(
+            path,
+            expected_run_id=run_id,
+            description="persisted run bundle",
+        )
+        self._results[run_id] = result
+        self._events[run_id] = events
+        if requested_run_id == "current":
+            self._current_run_id = run_id
+        return result, events
 
     def _load_results(self, directory: Path) -> None:
         if not directory.exists():
             return
         for path in sorted(directory.glob("*.json")):
             run_id = _validate_run_id(path.stem)
-            result = deserialize_run_result(path.read_bytes())
+            result = deserialize_run_result(_read_migrated_json(path, "run_result"))
             if result.run_id != run_id:
                 raise ValueError(f"persisted result run_id does not match filename: {path.name}")
             # Legacy split projections are readable only when their event half exists.
@@ -149,7 +205,7 @@ class RunStore:
             return
         for path in sorted(directory.glob("*.json")):
             run_id = _validate_run_id(path.stem)
-            events = deserialize_run_events(path.read_bytes())
+            events = deserialize_run_events(_read_migrated_json(path, "run_events"))
             self._validate_events(run_id, events)
             self._events.setdefault(run_id, events)
 
@@ -173,7 +229,7 @@ class RunStore:
         description: str,
     ) -> tuple[RunResult, tuple[RunEvent, ...]]:
         try:
-            payload = json.loads(path.read_text(encoding="utf-8"))
+            payload = json.loads(_read_migrated_json(path, "durable_bundle"))
         except json.JSONDecodeError as exc:
             raise ValueError(f"{description} must be valid JSON") from exc
         if not isinstance(payload, dict) or set(payload) != {"result", "events"}:
@@ -345,12 +401,20 @@ class RunStore:
 
     def current_run_id(self) -> str | None:
         with self._lock:
+            if not self._loaded:
+                publication = self._load_single_durable_bundle("current")
+                if publication is not None:
+                    return publication[0].run_id
             self._ensure_loaded()
             return self._current_run_id
 
     def resolve_run_id(self, run_id: str) -> str | None:
-        """Resolve the dashboard's stable ``current`` alias under the store lock."""
+        """Resolve the Research Dossier Viewer's stable ``current`` alias under the store lock."""
         with self._lock:
+            if not self._loaded:
+                publication = self._load_single_durable_bundle(run_id)
+                if publication is not None:
+                    return publication[0].run_id
             self._ensure_loaded()
             if run_id == "current":
                 return self._current_run_id
@@ -359,11 +423,19 @@ class RunStore:
 
     def get_result(self, run_id: str) -> RunResult | None:
         with self._lock:
+            if not self._loaded:
+                publication = self._load_single_durable_bundle(run_id)
+                if publication is not None:
+                    return publication[0]
             self._ensure_loaded()
             return self._results.get(_validate_run_id(run_id))
 
     def get_events(self, run_id: str) -> tuple[RunEvent, ...] | None:
         with self._lock:
+            if not self._loaded:
+                publication = self._load_single_durable_bundle(run_id)
+                if publication is not None:
+                    return publication[1]
             self._ensure_loaded()
             return self._events.get(_validate_run_id(run_id))
 

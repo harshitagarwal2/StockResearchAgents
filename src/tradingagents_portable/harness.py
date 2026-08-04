@@ -10,12 +10,26 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from copy import deepcopy
-from typing import Any
+from typing import Any, Protocol
 
-from .contracts import RunRequest, RunResult, StageKind, reject_secret_shaped_keys
+from .company_lifecycle import CompanyResearchCoordinator
+from .contracts import RunEvent, RunRequest, RunResult, StageKind, reject_secret_shaped_keys
 from .host_native import prepare_host_run, submit_host_run
+from .lifecycle import LifecycleStatus, LifecycleStore
+from .lifecycle_profiles import CompanyAnalyticsLifecycleProfile, LifecycleProfileStrategy
+from .research_contracts import CompanyResearchRequest
 from .store import RUN_STORE, RunStore
 from .workflow import StageExecutor, expand_workflow, load_workflow_manifest, stage_runtime_contract
+
+
+class LifecycleStageExecutor(Protocol):
+    """Host boundary for one durable profile stage at a time."""
+
+    def execute_stage(
+        self,
+        stage: Mapping[str, Any],
+        context: Mapping[str, Any],
+    ) -> Mapping[str, Any]: ...
 
 
 def _stage_mapping(value: Mapping[str, Any], stage_id: str) -> dict[str, Any]:
@@ -134,3 +148,68 @@ def run_sequential_host_workflow(
             submission["warnings"].extend(_stage_array(output.get("warnings", []), f"{stage.id}.warnings"))
 
     return submit_host_run(submission, store=store)
+
+
+def run_sequential_company_lifecycle(
+    executor: LifecycleStageExecutor,
+    *,
+    request: CompanyResearchRequest | Mapping[str, object] | None = None,
+    run_id: str | None = None,
+    coordinator: CompanyResearchCoordinator | None = None,
+    profile: LifecycleProfileStrategy | None = None,
+    research_pack_id: str | None = None,
+    decision_memory_enabled: bool = False,
+) -> tuple[RunResult, tuple[RunEvent, ...]]:
+    """Execute or resume a durable profile lifecycle through its shared coordinator.
+
+    A new run requires ``request``. Supplying ``run_id`` resumes an existing run
+    at its first incomplete stage, including a run interrupted while a stage was
+    executing. The default profile is ``company-analytics.v1``; callers may inject
+    any lifecycle profile strategy or a coordinator already configured with one.
+    """
+    if coordinator is None:
+        coordinator = CompanyResearchCoordinator(
+            LifecycleStore(),
+            RunStore(),
+            profile=profile or CompanyAnalyticsLifecycleProfile(),
+        )
+    elif profile is not None and coordinator.profile is not profile:
+        raise ValueError("profile must be the same strategy instance used by coordinator")
+
+    if run_id is None:
+        if request is None:
+            raise ValueError("request is required when creating a sequential lifecycle run")
+        control = coordinator.create(
+            request,
+            research_pack_id=research_pack_id,
+            decision_memory_enabled=decision_memory_enabled,
+        )
+        run_id = str(control["run_id"])
+        next_stage = coordinator.start(run_id, int(control["revision"]))
+    else:
+        if request is not None:
+            raise ValueError("request cannot be supplied when resuming an existing lifecycle run")
+        control = coordinator.control(run_id)
+        status = control["status"]
+        if status == LifecycleStatus.PREPARED.value:
+            next_stage = coordinator.start(run_id, int(control["revision"]))
+        elif status in {LifecycleStatus.RUNNING.value, LifecycleStatus.PAUSED.value}:
+            next_stage = coordinator.resume(run_id, int(control["revision"]))
+        elif status in {LifecycleStatus.FINALIZING.value, LifecycleStatus.COMPLETED.value}:
+            return coordinator.finalize(run_id, int(control["revision"]))
+        else:
+            raise ValueError(f"run {run_id} cannot be executed sequentially while status is {status}")
+
+    while next_stage["stage"] is not None:
+        stage = next_stage["stage"]
+        context = next_stage["context"]
+        envelope = _stage_mapping(executor.execute_stage(stage, context), str(stage["id"]))
+        next_stage = coordinator.commit_stage(
+            run_id,
+            str(stage["id"]),
+            envelope,
+            int(next_stage["control"]["revision"]),
+            attempt=int(next_stage["attempt"]),
+        )
+
+    return coordinator.finalize(run_id, int(next_stage["control"]["revision"]))

@@ -10,11 +10,14 @@ import shutil
 import tempfile
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from uuid import uuid4
 
 from .contracts import SCHEMA_VERSION, RunEvent, RunResult, reject_secret_shaped_keys
+from .migrations import HISTORICAL_SCHEMA_VERSION, MigrationReceipt, migrate_payload
 from .reporting import build_report_artifacts
+from .semantics import CompletedRunSemanticsV1, build_completed_run_semantics
 from .serialization import deserialize_run_event, deserialize_run_result, serialize_run_event, serialize_run_result
 
 _BUNDLE_FORMAT = "tradingagents-portable-run-bundle-v1"
@@ -38,6 +41,7 @@ class RunExportReceipt:
     output_path: str
     files: tuple[ExportedFile, ...]
     manifest_sha256: str
+    semantics_sha256: str
     schema_version: str = SCHEMA_VERSION
 
     def to_dict(self) -> dict[str, object]:
@@ -47,6 +51,7 @@ class RunExportReceipt:
             "output_path": self.output_path,
             "files": [item.to_dict() for item in self.files],
             "manifest_sha256": self.manifest_sha256,
+            "semantics_sha256": self.semantics_sha256,
         }
 
 
@@ -191,6 +196,7 @@ def _validate_prior_export_bundle(target: Path) -> str:
         "complete_report.md",
         "result.json",
         "events.ndjson",
+        "semantics.v1.json",
     }
     actual: set[str] = set()
     actual_directories: set[str] = set()
@@ -216,6 +222,16 @@ def _validate_prior_export_bundle(target: Path) -> str:
     run_id = manifest["run_id"]
     if result.run_id != run_id or any(event.run_id != run_id for event in events):
         raise ValueError(f"overwrite target contains mismatched portable run data: {target}")
+    try:
+        semantic_payload = json.loads((target / "semantics.v1.json").read_text(encoding="utf-8"))
+        if not isinstance(semantic_payload, dict):
+            raise ValueError("semantic projection must be an object")
+        semantics = CompletedRunSemanticsV1.from_dict(semantic_payload)
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError, ValueError) as exc:
+        raise ValueError(f"overwrite target contains invalid completed-run semantics: {target}") from exc
+    expected_semantics = build_completed_run_semantics(result, events).to_dict()
+    if semantics.to_dict() != expected_semantics or manifest.get("semantics_sha256") != semantic_payload["digest"]:
+        raise ValueError(f"overwrite target semantics do not match its portable run data: {target}")
     return hashlib.sha256(manifest_path.read_bytes()).hexdigest()
 
 
@@ -394,6 +410,11 @@ def export_run_bundle(
         files.append(_write_file(staging, "result.json", _text(serialize_run_result(result))))
         event_data = "".join(f"{serialize_run_event(event)}\n" for event in event_values).encode("utf-8")
         files.append(_write_file(staging, "events.ndjson", event_data))
+        semantics = build_completed_run_semantics(result, event_values).to_dict()
+        semantics_data = _text(
+            json.dumps(semantics, ensure_ascii=True, allow_nan=False, sort_keys=True, separators=(",", ":"))
+        )
+        files.append(_write_file(staging, "semantics.v1.json", semantics_data))
         if lifecycle_log is not None:
             files.append(_write_file(staging, "lifecycle/log.jsonl", _json_lines(lifecycle_log)))
         files.sort(key=lambda item: item.path)
@@ -401,6 +422,7 @@ def export_run_bundle(
             "schema_version": SCHEMA_VERSION,
             "bundle_format": _BUNDLE_FORMAT,
             "run_id": result.run_id,
+            "semantics_sha256": semantics["digest"],
             "files": [item.to_dict() for item in files],
         }
         manifest_data = _text(
@@ -450,11 +472,172 @@ def export_run_bundle(
             output_path=str(target),
             files=tuple(files),
             manifest_sha256=new_manifest_sha256,
+            semantics_sha256=str(semantics["digest"]),
         )
     except BaseException:
         if not _overwrite_journal_path(target).exists() and staging.exists():
             shutil.rmtree(staging)
         raise
+
+
+def _bundle_digest(root: Path) -> str:
+    digest = hashlib.sha256()
+    for path in sorted(item for item in root.rglob("*") if item.is_file()):
+        relative = path.relative_to(root).as_posix().encode("utf-8")
+        content = path.read_bytes()
+        digest.update(len(relative).to_bytes(8, "big"))
+        digest.update(relative)
+        digest.update(len(content).to_bytes(8, "big"))
+        digest.update(content)
+    return digest.hexdigest()
+
+
+def migrate_export_bundle(
+    source_dir: str | os.PathLike[str],
+    destination_dir: str | os.PathLike[str] | None = None,
+    *,
+    timestamp: str | None = None,
+) -> MigrationReceipt:
+    """Copy and migrate a verified 2026-08-02 export bundle."""
+    source = Path(source_dir).expanduser().absolute()
+    destination = (
+        Path(destination_dir).expanduser().absolute()
+        if destination_dir is not None
+        else source.with_name(f"{source.name}.migrated-{SCHEMA_VERSION}")
+    )
+    if not source.is_dir() or source.is_symlink():
+        raise ValueError(f"export bundle source must be a directory, not a symlink: {source}")
+    if destination == source or source in destination.parents:
+        raise ValueError("migration destination must be outside the source export bundle")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    manifest_path = source / "manifest.json"
+    try:
+        manifest = json.loads(manifest_path.read_bytes())
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ValueError(f"export bundle has no valid manifest: {source}") from exc
+    if not isinstance(manifest, dict):
+        raise ValueError(f"export bundle has no valid manifest: {source}")
+    schema = manifest.get("schema_version")
+    if schema not in {HISTORICAL_SCHEMA_VERSION, SCHEMA_VERSION}:
+        raise ValueError(f"unsupported export_bundle schema version: {schema!r}")
+    if schema == SCHEMA_VERSION:
+        return migrate_payload(
+            manifest,
+            "export_bundle",
+            timestamp=timestamp,
+            original_path=source,
+            migrated_path=source,
+        ).receipt
+    entries = manifest.get("files")
+    if not isinstance(entries, list):
+        raise ValueError(f"export bundle has no valid file manifest: {source}")
+    declared: set[str] = set()
+    for entry in entries:
+        if not isinstance(entry, dict):
+            raise ValueError(f"export bundle has no valid file manifest: {source}")
+        relative, expected_digest, expected_bytes = entry.get("path"), entry.get("sha256"), entry.get("bytes")
+        if (
+            not isinstance(relative, str)
+            or relative in declared
+            or Path(relative).is_absolute()
+            or ".." in Path(relative).parts
+            or not isinstance(expected_digest, str)
+            or not isinstance(expected_bytes, int)
+            or isinstance(expected_bytes, bool)
+        ):
+            raise ValueError(f"export bundle has no valid file manifest: {source}")
+        path = source / relative
+        if path.is_symlink() or not path.is_file():
+            raise ValueError(f"export bundle does not match its file manifest: {source}")
+        content = path.read_bytes()
+        if len(content) != expected_bytes or hashlib.sha256(content).hexdigest() != expected_digest:
+            raise ValueError(f"export bundle does not match its file manifest: {source}")
+        declared.add(relative)
+    actual = set()
+    for path in source.rglob("*"):
+        if path.is_symlink():
+            raise ValueError(f"export bundle contains a symlink: {source}")
+        if path.is_file():
+            actual.add(path.relative_to(source).as_posix())
+    if actual != declared | {"manifest.json"}:
+        raise ValueError(f"export bundle does not match its file manifest: {source}")
+
+    before_sha256 = _bundle_digest(source)
+    result_payload = json.loads((source / "result.json").read_bytes())
+    result_migration = migrate_payload(result_payload, "run_result", timestamp=timestamp)
+    event_payloads = [json.loads(line) for line in (source / "events.ndjson").read_bytes().splitlines() if line.strip()]
+    event_migrations = [migrate_payload(item, "run_event", timestamp=timestamp) for item in event_payloads]
+    migration_ids = list(result_migration.receipt.migration_ids)
+    for item in event_migrations:
+        for migration_id in item.receipt.migration_ids:
+            if migration_id not in migration_ids:
+                migration_ids.append(migration_id)
+
+    receipt_path = destination.with_name(f"{destination.name}.migration-receipt.json")
+    if destination.exists() or receipt_path.exists():
+        try:
+            existing = json.loads(receipt_path.read_bytes())
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise FileExistsError(f"migration destination already exists: {destination}") from exc
+        if (
+            destination.is_dir()
+            and isinstance(existing, dict)
+            and existing.get("before_sha256") == before_sha256
+            and existing.get("after_sha256") == _bundle_digest(destination)
+            and existing.get("source_schema") == HISTORICAL_SCHEMA_VERSION
+            and existing.get("target_schema") == SCHEMA_VERSION
+        ):
+            return MigrationReceipt(
+                HISTORICAL_SCHEMA_VERSION,
+                SCHEMA_VERSION,
+                "export_bundle",
+                before_sha256,
+                str(existing["after_sha256"]),
+                tuple(str(item) for item in existing.get("migration_ids", [])),
+                str(existing["timestamp"]),
+                str(source),
+                str(destination),
+            )
+        raise FileExistsError(f"migration destination already exists: {destination}")
+
+    staging = Path(tempfile.mkdtemp(prefix=f".{destination.name}.tmp-", dir=destination.parent))
+    try:
+        shutil.copytree(source, staging, dirs_exist_ok=True)
+        result_content = _text(json.dumps(result_migration.payload, sort_keys=True, separators=(",", ":")))
+        (staging / "result.json").write_bytes(result_content)
+        event_content = b"".join(
+            _text(json.dumps(item.payload, sort_keys=True, separators=(",", ":"))) for item in event_migrations
+        )
+        (staging / "events.ndjson").write_bytes(event_content)
+        updated_entries: list[dict[str, object]] = []
+        for entry in entries:
+            relative = str(entry["path"])
+            content = (staging / relative).read_bytes()
+            updated_entries.append(
+                {"path": relative, "sha256": hashlib.sha256(content).hexdigest(), "bytes": len(content)}
+            )
+        manifest["schema_version"] = SCHEMA_VERSION
+        manifest["files"] = updated_entries
+        (staging / "manifest.json").write_bytes(_text(json.dumps(manifest, sort_keys=True, separators=(",", ":"))))
+        os.replace(staging, destination)
+        _fsync_directory(destination.parent)
+    except BaseException:
+        if staging.exists():
+            shutil.rmtree(staging)
+        raise
+    receipt = MigrationReceipt(
+        HISTORICAL_SCHEMA_VERSION,
+        SCHEMA_VERSION,
+        "export_bundle",
+        before_sha256,
+        _bundle_digest(destination),
+        tuple(migration_ids),
+        timestamp or datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+        str(source),
+        str(destination),
+    )
+    receipt_path.write_bytes(_text(json.dumps(receipt.to_dict(), sort_keys=True, separators=(",", ":"))))
+    return receipt
 
 
 # Friendly integration alias.

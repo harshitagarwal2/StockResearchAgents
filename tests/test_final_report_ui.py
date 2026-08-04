@@ -33,6 +33,7 @@ def test_ui_exposes_every_merged_final_report_section() -> None:
         "executive",
         "decision-trace",
         "intelligence",
+        "complete-research",
         "analysts",
         "research-debate",
         "trader",
@@ -49,6 +50,13 @@ def test_ui_exposes_every_merged_final_report_section() -> None:
         "coverage-grid",
         "source-mix",
         "freshness-grid",
+        "source-analysis",
+        "source-analysis-summary",
+        "source-analysis-verdict",
+        "source-coverage-matrix",
+        "source-analysis-totals",
+        "source-independence-note",
+        "source-analysis-gap-list",
         "evidence-metrics",
         "news-intelligence",
         "catalyst-ledger",
@@ -56,6 +64,21 @@ def test_ui_exposes_every_merged_final_report_section() -> None:
         "conflict-ledger",
         "unknown-ledger",
         "monitoring-ledger",
+        "research-change",
+        "research-coverage",
+        "source-explorer",
+        "claim-graph",
+        "filings-ledger",
+        "earnings-ledger",
+        "factor-history",
+        "peer-matrix",
+        "valuation-cases",
+        "event-timeline",
+        "stress-scenarios",
+        "invalidation-rules",
+        "prior-outcomes",
+        "evaluation-receipts",
+        "portfolio-context-impact",
         "research-mode",
         "analyst-grid",
         "research-debate-list",
@@ -98,6 +121,7 @@ def test_ui_renders_the_intelligence_projection_with_safe_dom_helpers() -> None:
 
     assert "renderDecisionTrace" in javascript
     assert "renderIntelligence" in javascript
+    assert "renderSourceAnalysis" in javascript
     assert "view.intelligence" in javascript
     assert "publicSourceLink" in javascript
     assert 'role="region" aria-label="Structured evidence metrics table" tabindex="0"' in html
@@ -106,6 +130,78 @@ def test_ui_renders_the_intelligence_projection_with_safe_dom_helpers() -> None:
     assert 'endsWith(".invalid")' in javascript
     assert "innerHTML" not in javascript
     assert "insertAdjacentHTML" not in javascript
+
+
+def test_ui_renders_completed_dossier_sections_and_keeps_legacy_results_absent() -> None:
+    html = (WEB_ROOT / "index.html").read_text(encoding="utf-8")
+    javascript = (WEB_ROOT / "app.js").read_text(encoding="utf-8")
+
+    assert 'id="complete-research"' in html
+    assert 'id="complete-research" aria-labelledby="complete-research-title" hidden' in html
+    assert "renderCompletedResearch" in javascript
+    assert 'if (!Object.keys(dossier).length || dossier.status !== "completed")' in javascript
+    assert "section.hidden = true" in javascript
+    assert "navigation.hidden = true" in javascript
+    for field in (
+        "research_delta",
+        "documents",
+        "source_documents",
+        "claims",
+        "arguments",
+        "filings",
+        "filing_changes",
+        "transcripts",
+        "guidance",
+        "factor_snapshots",
+        "peer_set",
+        "valuation_cases",
+        "calculations",
+        "stress_scenarios",
+        "monitoring_rules",
+        "prior_outcomes",
+        "portfolio_context",
+        "portfolio_impact",
+        "entities",
+        "evaluation",
+        "evaluation_receipts",
+    ):
+        assert f'"{field}"' in javascript
+
+
+def test_completed_dossier_renderer_uses_text_nodes_for_untrusted_nested_values() -> None:
+    javascript = (WEB_ROOT / "app.js").read_text(encoding="utf-8")
+
+    assert "function researchValue" in javascript
+    assert 'return node("span", "", text(value, "Not declared"))' in javascript
+    assert "element.textContent = String(content)" in javascript
+    assert ".innerHTML" not in javascript
+    assert "insertAdjacentHTML" not in javascript
+
+    result = _run_debate_projection(
+        r"""
+        class Element {
+          constructor(tag) { this.tag = tag; this.children = []; this.textContent = ''; this.className = ''; }
+          append(...children) { this.children.push(...children); }
+        }
+        global.document = {createElement: (tag) => new Element(tag), querySelector: () => null};
+        const ui = require('./src/tradingagents_portable/web/app.js');
+        const hostile = '<img src=x onerror=alert(1)><script>alert(2)</script>';
+        const rendered = ui.researchValue({title: hostile, locator: {section: hostile}});
+        const scalarNodes = rendered.children.flatMap((row) => row.children[1].children).flatMap((value) =>
+          value.tag === 'dl' ? value.children.flatMap((row) => row.children[1].children) : [value]
+        );
+        process.stdout.write(JSON.stringify({
+          text: scalarNodes.map((item) => item.textContent).filter(Boolean),
+          tags: scalarNodes.map((item) => item.tag)
+        }));
+        """
+    )
+
+    assert result["text"] == [
+        "<img src=x onerror=alert(1)><script>alert(2)</script>",
+        "<img src=x onerror=alert(1)><script>alert(2)</script>",
+    ]
+    assert result["tags"] == ["span", "span"]
 
 
 def test_ui_loads_only_the_canonical_final_view_without_fabricated_fallback() -> None:
@@ -212,3 +308,76 @@ def test_ui_resolves_saved_run_urls_without_falling_forward_to_current() -> None
         "saved": "/api/runs/host-dc2616f0e2c2/view",
         "invalid": None,
     }
+
+
+def test_ui_uses_authoritative_research_mode_and_explicit_utc_timestamps() -> None:
+    javascript = (WEB_ROOT / "app.js").read_text(encoding="utf-8")
+
+    assert "researchRequest.research_mode" in javascript
+    assert 'set("#research-mode", fixtureMode ?' not in javascript
+    result = _run_debate_projection(
+        """
+        const ui = require('./src/tradingagents_portable/web/app.js');
+        process.stdout.write(JSON.stringify({
+          instant: ui.timestamp('2026-08-01T00:30:00Z'),
+          invalid: ui.timestamp('not-a-date')
+        }));
+        """
+    )
+
+    assert result["instant"].endswith(" UTC")
+    assert result["invalid"] == "not-a-date"
+
+
+def test_ui_guards_final_product_and_hides_legacy_complete_research_navigation() -> None:
+    html = (WEB_ROOT / "index.html").read_text(encoding="utf-8")
+    javascript = (WEB_ROOT / "app.js").read_text(encoding="utf-8")
+    result = _run_debate_projection(
+        """
+        const ui = require('./src/tradingagents_portable/web/app.js');
+        process.stdout.write(JSON.stringify({
+          completed: ui.isCompletedView({overview: {status: 'completed'}}),
+          running: ui.isCompletedView({overview: {status: 'running'}}),
+          absent: ui.isCompletedView({})
+        }));
+        """
+    )
+
+    assert result == {"completed": True, "running": False, "absent": False}
+    assert 'id="complete-research-nav" href="#complete-research" hidden' in html
+    assert "Final research remains hidden until completion." in javascript
+
+
+def test_completed_research_is_summary_first_with_progressive_raw_disclosures() -> None:
+    javascript = (WEB_ROOT / "app.js").read_text(encoding="utf-8")
+    stylesheet = (WEB_ROOT / "styles.css").read_text(encoding="utf-8")
+
+    for renderer in (
+        "renderResearchDelta",
+        "renderCoverageStatusMatrix",
+        "renderSources",
+        "renderArgumentsAndClaims",
+        "renderFilingChanges",
+        "renderTranscriptsAndGuidance",
+        "renderFactors",
+        "renderPeers",
+        "renderValuationAndCalculations",
+        "renderEventsAndEntities",
+        "renderRisks",
+        "renderMonitoring",
+        "renderPriorOutcomes",
+        "renderPortfolioContextAndImpact",
+        "renderEvaluationStatusMatrix",
+    ):
+        assert f"function {renderer}" in javascript
+    assert 'node("details", "research-raw")' in javascript
+    assert 'node("summary", "", "Full structured record")' in javascript
+    assert 'if (key === "as_of_at") return "Information vintage";' in javascript
+    assert '"Forecast / model period"' in javascript
+    assert '"Reported / measurement period"' in javascript
+    assert "summaryLabel: metricSummaryLabel" in javascript
+    assert "#source-explorer" in stylesheet
+    assert "white-space: nowrap" in stylesheet
+    assert "grid-template-columns: 1fr" in stylesheet
+    assert "var(--paper-warm)" not in stylesheet
+    assert "var(--serif)" not in stylesheet

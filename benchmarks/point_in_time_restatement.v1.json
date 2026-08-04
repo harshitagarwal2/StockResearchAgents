@@ -1,0 +1,51 @@
+{
+  "schema_version": "synthetic-point-in-time-conformance.v1",
+  "provenance": "Original synthetic fixture authored for tradingagents-portable; no external filing data.",
+  "period": {
+    "period_id": "synthetic-2025-annual",
+    "fiscal_year": 2025,
+    "fiscal_quarter": null,
+    "start_date": "2025-01-01",
+    "end_date": "2025-12-31",
+    "period_type": "annual"
+  },
+  "facts": [
+    {
+      "fact_id": "fact.synthetic.revenue.original",
+      "concept": "revenue",
+      "value": "1000",
+      "unit": "USD",
+      "currency": "USD",
+      "scale": 0,
+      "filed_at": "2026-02-20T20:00:00+00:00",
+      "available_at": "2026-02-20T20:05:00+00:00",
+      "source_id": "filing.synthetic.original",
+      "accession_number": "SYNTHETIC-ORIGINAL",
+      "amendment_of_fact_id": null
+    },
+    {
+      "fact_id": "fact.synthetic.revenue.amended",
+      "concept": "revenue",
+      "value": "980",
+      "unit": "USD",
+      "currency": "USD",
+      "scale": 0,
+      "filed_at": "2026-04-10T20:00:00+00:00",
+      "available_at": "2026-04-10T20:05:00+00:00",
+      "source_id": "filing.synthetic.amendment",
+      "accession_number": "SYNTHETIC-AMENDMENT",
+      "amendment_of_fact_id": "fact.synthetic.revenue.original"
+    }
+  ],
+  "restatement": {
+    "original_fact_id": "fact.synthetic.revenue.original",
+    "amended_fact_id": "fact.synthetic.revenue.amended",
+    "amendment_available_at": "2026-04-10T20:05:00+00:00",
+    "reason": "Synthetic correction used to test point-in-time visibility."
+  },
+  "cutoff_cases": [
+    {"cutoff_at": "2026-03-01T00:00:00+00:00", "expected_fact_id": "fact.synthetic.revenue.original", "expected_value": "1000"},
+    {"cutoff_at": "2026-04-11T00:00:00+00:00", "expected_fact_id": "fact.synthetic.revenue.amended", "expected_value": "980"}
+  ]
+}
+

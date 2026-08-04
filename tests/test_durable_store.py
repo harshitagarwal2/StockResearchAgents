@@ -72,6 +72,22 @@ def test_durable_store_rehydrates_completed_run_after_restart(tmp_path: Path) ->
     assert restarted.list_results() == (result,)
 
 
+def test_exact_durable_lookup_does_not_scan_complete_run_history(tmp_path: Path, monkeypatch) -> None:
+    result, events = _completed_run()
+    state_dir = tmp_path / "state"
+    RunStore(state_dir=state_dir).put(result, events)
+    restarted = RunStore(state_dir=state_dir)
+
+    def fail_history_scan(_directory: Path) -> None:
+        pytest.fail("exact durable lookup scanned every saved bundle")
+
+    monkeypatch.setattr(restarted, "_load_bundles", fail_history_scan)
+
+    assert restarted.resolve_run_id(result.run_id) == result.run_id
+    assert restarted.get_result(result.run_id) == result
+    assert restarted.get_events(result.run_id) == events
+
+
 def test_event_only_partial_run_rehydrates_and_can_be_appended(tmp_path: Path) -> None:
     state_dir = tmp_path / "state"
     first = RunStore(state_dir=state_dir)

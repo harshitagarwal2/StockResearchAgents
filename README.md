@@ -1,167 +1,153 @@
-# TradingAgents Portable
+# StockResearchAgents
 
-An isolated, harness-neutral TradingAgents capability that lets the active host harness perform the reasoning and then presents the completed result as a portable dossier.
+Evidence-first company research that preserves what was known, why a conclusion was reached, and how the completed work can be audited.
 
-> **Prototype research only. Not financial advice.** The capability may preserve analytical ratings, targets, stops, and sizing scenarios, but it has no broker integration or authority to submit, modify, cancel, approve, or fill an order.
+> **Prototype research only. Not financial advice.** StockResearchAgents has no broker integration and cannot submit, modify, approve, cancel, or fill an order.
 
-## Product boundary
+[![StockResearchAgents system overview: host-owned research flows through the evidence-first portable core into a completed research dossier and read-only viewer](assets/architecture/system-overview.png)](assets/architecture/system-overview.png)
 
-- The preferred Codex and generic-harness path is the durable `host_native` lifecycle: create, start, append safe receipts, commit each completed stage, optionally pause/resume or request/acknowledge cancellation, then finalize one validated result. The portable boundary accepts no API keys or model-provider configuration; concrete tools and any tool authentication remain host-owned.
-- The optional `research` CLI and explicit `tradingagents-portable-legacy-mcp` executable retain backward-compatible delegation to upstream `TradingAgentsGraph`; neither is registered by the Codex plugin.
-- This repository does not copy analyst, debate, trader, risk, portfolio-manager, provider, or checkpoint business logic from upstream.
-- Richer research remains backward compatible with the frozen terminal schema. Hosts may add structured `source_quality`, `metrics`, `articles`, `catalysts`, `risks`, `conflicts`, `unknowns`, and `monitoring_conditions` under `EvidenceItem.values`; older scalar values remain valid.
-- The UI is a strictly completed-result, read-only dossier. Lifecycle-backed runs stay absent from every dashboard surface while `get_run_control` or `poll_run_events` reports `finalizing` with `publication_pending=true`; direct fixture/import runs remain available without a lifecycle record. Lifecycle control and cursor polling are CLI/MCP concerns, and the browser does not configure, start, orchestrate, monitor, cancel, or resume a run.
-- The deterministic ORCL fixture is the credential-free local proof. It uses synthetic data, executes every declared fixture stage, and emits ordered events without network access.
-- The mutable `run-lifecycle.v1` protocol is separate from the frozen terminal `host-submission.v2` schema. Private SQLite/WAL checkpoints, atomic canonical result/event bundles, optimistic revisions, receipt-linked observation, stage-boundary resume, cooperative cancellation, publication-gated decision memory, and report export are locally verified.
-- Topology, decision-schema, report-group, lifecycle, persistence, interactive CLI, portable-invariant conformance, optional pinned-checkout identity, and safety-contract parity are verified; see [Feature parity](docs/FEATURE_PARITY.md).
-- Live upstream execution still requires the provider and data credentials expected by TradingAgents. The adapter and result mapping are tested with fakes, but a credentialed live provider run has not been verified in this repository.
+[Open the full-resolution system overview.](assets/architecture/system-overview.png)
 
-The feature matrix separates implementation from runtime readiness. `runtime_readiness.legacy_upstream.ready` reports whether upstream is importable, not whether credentials, data access, checkpoint resume, or a live run are working. Exact model text and token-level continuation remain harness-specific. Broker/order execution is prohibited.
+StockResearchAgents is a harness-neutral capability bundle. A **research host**—Codex, another agent harness, or a custom application—retrieves evidence and runs models. The primary `company-analytics.v1` profile adds deterministic fundamentals, valuation, consensus, positioning, catalysts, experiments, falsifiable hypotheses, forecasts, and outcome scoring to the evidence-first dossier. The portable core validates exact-cutoff contracts, atomically publishes the completed bundle, and serves a read-only **Research Dossier Viewer**.
 
-## Quick start
+The boundary is deliberate:
 
-Python 3.11+ and `uv` are recommended.
+- **The host owns** retrieval, reasoning, credentials, entitlements, tool invocation, exact prompt wording, and agent scheduling.
+- **Portable owns** versioned stage roles/objectives/completion-criteria declarations, contracts, deterministic conformance, stage boundaries, recovery, terminal validation, publication, exports, and completed read models. A host attests intermediate criterion satisfaction; opaque nonterminal content remains host-owned and is not called verified by Portable.
+- **The viewer owns no research logic.** It remains empty until a completed result is published.
+
+## Five-minute safe demo
+
+Python 3.11+ and [`uv`](https://docs.astral.sh/uv/) are recommended.
 
 ```bash
-uv run tradingagents-portable fixture --events
-uv run tradingagents-portable dashboard --fixture
-uv run tradingagents-portable host-init ORCL --date 2026-08-01 --interactive
-uv run tradingagents-portable host-plan ORCL --date 2026-08-01
-uv run tradingagents-portable host-import --input ./orcl-host-run.json --dashboard
+uv sync
+uv run stock-research-agents fixture --events
 ```
 
-`host-init` starts the durable path and may prompt for portable, non-secret research settings with `--interactive`. The host then owns reasoning, agent spawning, concrete tool calls, and hard interruption. The portable layer owns stage order, safe receipts, checkpoint commits, cursor-readable events, validation, and publication.
+Open the returned `presentation.url`. Completed CLI and MCP operations automatically ensure one shared loopback viewer
+and return a URL pinned to that exact run; later companies reuse the same application. The ORCL data is deterministic
+fixture material and is visibly labeled as such; it does not claim to be current market research. The foreground
+`report` command remains available for diagnostics or an explicitly selected port.
 
-### Durable Codex/host task flow
-
-1. `host-init` creates a `run-lifecycle.v1` record; `host-start` returns the first stage.
-2. The host performs that stage and may append sanitized `host-receipts` containing summaries, digests, timings, and evidence IDs—never prompts, raw tool arguments, transcripts, or credentials. A truthful observed execution uses matching `stage_started` and `stage_completed` receipts for the same attempt; the completion digest must match the committed output.
-3. `host-stage-commit` atomically checkpoints the stage output and returns the next stage. Every mutation uses the latest returned `revision`.
-4. `host-pause`/`host-resume` continue from the first incomplete stage. Interrupted in-flight work is replayed; token-level continuation is not promised.
-5. `run-cancel` requests cooperative cancellation and `run-cancel-ack` makes it terminal after the host has actually stopped its work.
-6. `host-finalize` validates all committed stages, stages result/events and memory behind hidden publication boundaries, commits the lifecycle, then atomically publishes the canonical completed bundle. Any boundary failure is retryable; memory is excluded from recall until lifecycle completion. Launch the browser only after this succeeds.
-
-`run-events RUN_ID --after CURSOR` provides portable live progress through a monotonic polling cursor. A harness may add push delivery, but push is not required by the contract.
-
-### Research intelligence convention
-
-The workflow manifest asks host-native analysts to build a decision-useful evidence record without changing `host-submission.v2`:
-
-- News starts with regulatory filings and official investor-relations material, broadens through public-web discovery, and retains attributable reporting only after the underlying source is opened. Search snippets and aggregators remain discovery leads, not verified evidence.
-- Fundamentals retain comparable periods, units, reporting basis, trend, calculation provenance, and reconciliation limits for reported figures, cash flow, leverage, commitments, guidance, and valuation inputs when available.
-- History is adaptive: resolve the newest cutoff-valid evidence first, then normally cover five years of market and annual financial history, eight quarters, current trailing-twelve-month figures, a 90-day intensive news review, and a 12-month material-event chronology. Extend toward ten years, listing inception, or a still-relevant strategic or capital-structure change when it materially explains the current company or spans the relevant cycle; stop when older evidence no longer changes the thesis.
-- `EvidenceItem.values` may carry structured metrics and article records plus falsifiable catalyst, risk, conflict, unknown, and monitoring ledgers. Source quality and verification status must be declared from provenance; the portable layer does not infer publisher quality or invent scores.
-- Missing tools or data become explicit limitations or unknowns. The portable boundary never requests an API key or fabricates a substitute value.
-
-Concrete retrieval remains host-owned. A capable harness may use its internal web, filing, market-data, and research tools; a tools-only or single-agent harness follows the same manifest and records unavailable capabilities explicitly. Completeness means decision-relevant coverage, not maximizing article or data-point counts.
-
-### Backward-compatible atomic import
-
-The stateless plan/import seam remains supported for callers that already produce one complete payload:
+To inspect the CLI, coordination MCP, and isolated public research-data MCP:
 
 ```bash
-uv run tradingagents-portable host-plan ORCL --date 2026-08-01 --output ./plan.json
-uv run tradingagents-portable host-import --input ./orcl-host-run.json --output ./result.json
+uv run stock-research-agents --help
+uv run stock-research-agents-mcp
+uv run stock-research-data-mcp
 ```
 
-`host-import` validates the frozen `host-submission.v2` schema, provenance cutoff, evidence references, non-execution invariants, and credential-shaped keys before publishing anything. It does not provide partial checkpoints or live receipts; new Codex tasks should use the durable lifecycle above.
+`dashboard` remains a compatibility alias for the preferred `report` command. The original
+`tradingagents-portable*` command names remain additive compatibility aliases for saved scripts and integrations.
 
-Install the pinned official upstream runtime before delegated research:
+## Choose your path
+
+| Goal | Start here |
+| --- | --- |
+| See the product safely | [Getting started](docs/GETTING_STARTED.md) |
+| Use the Codex plugin | [Harness integration](docs/INTEGRATION.md#codex-plugin) |
+| Connect any MCP-capable harness | [Harness integration](docs/INTEGRATION.md#mcp) |
+| Build a durable host adapter | [Contract guide](docs/CONTRACTS.md) and [Architecture](docs/ARCHITECTURE.md) |
+| Improve source breadth and independence | [Source portfolio](docs/SOURCE_PORTFOLIO.md) |
+| Understand SOLID and ports/adapters boundaries | [Ports and adapters](docs/PORTS_AND_ADAPTERS.md) |
+| Operate, export, or troubleshoot runs | [Operations](docs/OPERATIONS.md) |
+| Understand product and UI decisions | [Design](DESIGN.md) |
+| Review forecast accountability | [Research Quality](docs/RESEARCH_QUALITY.md) |
+| Contribute safely | [Contributing](CONTRIBUTING.md) |
+
+The complete documentation map is in [docs/README.md](docs/README.md).
+
+## What exists today
+
+The implemented **Company Analytics** capability provides:
+
+- an exact, timezone-aware research cutoff;
+- first-class source, entitlement, timestamp, claim, calculation, peer, valuation, risk, monitoring, and coverage records;
+- a 26-stage host-executed workflow with a locally ready compatible sequential runner, a full native-agent adapter contract, a partial coordination/import tools-only mode, and a mandatory sequential fallback;
+- deterministic fundamentals, ratios, valuation cases, consensus, positioning, catalysts, point-in-time experiment receipts, hypotheses, forecasts, and reproducible outcome scorecards;
+- strict temporal, referential, numerical, debate, portfolio, licensing, and safety validation;
+- SQLite/WAL lifecycle checkpoints with optimistic revisions, pause/resume, cooperative cancellation, and recovery;
+- content-addressed completed results and atomic publication;
+- JSON/Markdown exports, MCP reads, and an automatically discovered, shared loopback-only Research Dossier Viewer with exact source identity/access states, deduplicated planned-versus-held coverage, publisher/host concentration, entitlement gaps, and claim-lineage analysis; and
+- a preserved TradingAgents compatibility workflow and optional upstream adapter.
+
+The separate `tradingagents-research-data` compatibility server key implements SourceBatch v1 and registers six public tools by default: SEC filings/fundamentals/statements, GDELT company/global news discovery metadata plus publisher links, and World Bank macro observations. The coordination MCP remains isolated from data retrieval. Prices and indicators require an entitled host `SourcePort`, Reddit requires host OAuth, and StockTwits is denied/unregistered. The World Bank API supplies current-vintage values and cannot reconstruct historical revision lineage. GDELT results are discovery records—not opened publisher evidence—and saturated result sets are reported as partial.
+
+Portable therefore has partial live public-source coverage, not complete live company research. Live correctness still depends on source availability, host entitlements, model behavior, exact-cutoff discipline, and the missing market-data/social provider coverage.
+The public `run_sequential_company_lifecycle` fallback is the locally ready execution path: it drives the same 26 durable stage contracts through one host executor and resumes at the first incomplete stage. Full native-agent execution remains host-adapter work, and tools-only execution remains partial because live research provider coverage is incomplete. Native multi-agent harnesses may schedule the same contracts differently without changing their observable meaning.
+
+## Company research from a host
+
+Plan the primary analytics flow from a v3-compatible company request:
+
+```bash
+uv run stock-research-agents analytics-plan \
+  --input examples/company-request.v3.json \
+  --output plan.json
+```
+
+A host executes the returned versioned roles, objectives, completion criteria, dependencies, capabilities, and output contracts with its own agents and tools. It may then import a complete, schema-valid terminal submission:
+
+```bash
+uv run stock-research-agents analytics-import \
+  --input submission.v4.json \
+  --output result.json
+```
+
+For a durable 26-stage run, use `analytics-init`, then the shared host/run lifecycle controls. Opaque nonterminal envelopes are recorded as `committed`, not independently verified stage completions. Commits advance one first-incomplete stage at a time, resume restarts there, and finalization validates the exact canonical 26-stage run card and v4 bundle before atomically publishing authoritative `RunResult` sidecars. The recoverable quality outcome index is reconstructed from those completed artifacts when necessary. `analytics-import` remains the stateless seam for an already-complete v4 payload. See [Integration](docs/INTEGRATION.md).
+
+## Stable product language
+
+| Human-facing name | Meaning | Stable technical identifier |
+| --- | --- | --- |
+| Company Analytics | Primary research capability | `company-analytics.v1` |
+| Completed Research Dossier | Immutable human-facing artifact | `research_dossier.v3` |
+| Research Dossier Viewer | Completed-only read projection | compatibility APIs still use `dashboard` |
+| TradingAgents Compatibility Workflow | Preserved upstream-shaped workflow | `financial-research.v1` |
+| Evidence-First Company Research | Frozen dossier foundation | `company-research.v2` |
+| Research Quality | Forecast, outcome, and evaluation capability | `research_quality.v1` sidecar in `company-analytics.v1` |
+| Research Quality Receipt | Immutable policy, provenance, forecast, and rule-evaluation artifact | `research-quality.v1` |
+
+Wire identifiers remain versioned and are never renamed cosmetically. See [Glossary](docs/GLOSSARY.md) and [Compatibility](docs/COMPATIBILITY.md).
+
+## Versioned compatibility
+
+| Surface | Status | Purpose |
+| --- | --- | --- |
+| `financial-research.v1` | Preserved | TradingAgents-compatible analyst/debate/trader/risk/portfolio workflow |
+| `host-submission.v2` | Preserved and frozen | Terminal format for the compatibility path |
+| `run-lifecycle.v1` | Preserved | Durable lifecycle protocol for the compatibility path |
+| `company-research.v2` | Implemented parallel extension | Fifteen-stage Evidence-First Company Research workflow |
+| `host-submission.v3` | Implemented and frozen | Strict request plus completed `research_dossier.v3` |
+| `company-analytics.v1` | Primary implemented profile | Twenty-six-stage dossier, analytics, research-lab, and quality workflow |
+| `host-submission.v4` | Implemented wrapper | Unchanged v3 submission plus typed analytics and quality sidecars |
+
+The analytics profile wraps rather than widens v3. Existing v3 readers remain valid while v4-aware readers consume typed sidecars.
+
+## Optional upstream TradingAgents compatibility adapter
+
+The `research` CLI and historical `tradingagents-portable-legacy-mcp` executable delegate to an installed upstream `TradingAgentsGraph`. The legacy MCP name remains frozen by the transition inventory rather than gaining a second branded alias. Neither is registered by the default credential-free plugin server.
 
 ```bash
 uv sync --extra upstream
-uv run tradingagents-portable research AAPL --date 2026-07-03
+uv run stock-research-agents research AAPL --date 2026-07-03
 ```
 
-The `upstream` extra is pinned to the official TradingAgents base commit used for this adapter. `--legacy-path` may point to another compatible checkout and takes precedence, while the pinned extra supplies the upstream runtime dependencies.
+This path may require provider credentials owned by the upstream runtime. Importability and exact revision identity do not prove provider access, behavioral parity, checkpoint resume, or a successful live run.
 
-Dependency-free fixture smoke check from a checkout:
+The host-native core is the target architecture, but the legacy executor is currently available and **not yet deprecated**. Removal remains blocked until complete research-data category coverage (including licensed market data and lawful social sources), scoped upstream dual-run conformance, representative live/failure coverage, full surface equivalence, saved-result migrations, and one published deprecation release are verified. Frozen readers and historical results remain supported after any later-major executor removal. See [Legacy transition](docs/LEGACY_TRANSITION.md) and [Research-data MCP](docs/RESEARCH_DATA_MCP.md).
 
-```bash
-PYTHONPATH=src python scripts/smoke_backend.py
-```
+The architecture direction is being discussed upstream in [TradingAgents RFC #1198](https://github.com/TauricResearch/TradingAgents/issues/1198). This independent implementation lives at [harshitagarwal2/StockResearchAgents](https://github.com/harshitagarwal2/StockResearchAgents). Upstream remains intact and pinned as a conformance oracle; its LangGraph runtime is not copied into the portable core.
 
-Start the MCP server directly:
+## Current proof boundary
 
-```bash
-uv run tradingagents-portable-mcp
-```
+Local tests prove deterministic contracts, lifecycle behavior, safety, and generic symbol handling for fixture submissions. They do not prove:
 
-The included `.mcp.json` starts the 27-tool credential-free server from the plugin root with `PYTHONPATH=src`. It covers discovery, fixture execution, legacy-compatible plan/import, durable lifecycle control, cursor receipts, decision memory, report export, conformance, completed-run reads, and final dashboard launch. It registers no legacy/provider executor and imports no legacy/upstream module.
+- that every future host retrieves complete or correct live evidence;
+- access to licensed providers or redistribution rights;
+- recommendation quality, investment performance, or forecast calibration;
+- token-level resume inside a model response or tool call; or
+- broker or order execution, which is prohibited.
 
-## Python API
-
-```python
-from tradingagents_portable import RunRequest, run_fixture
-
-result, events = run_fixture(RunRequest(debate_rounds=2, risk_rounds=2))
-assert len(result.research_debate) == 4
-assert len(result.risk_debate) == 6
-```
-
-For a durable host-owned run, use `HostRunCoordinator.create`, `start`, `append_receipts`, `commit_stage`, and `finalize`; `pause`, `resume`, `request_cancel`, and `acknowledge_cancel` provide stage-boundary control. `DecisionMemoryStore` recalls at most five same-symbol and three cross-symbol published decisions and can append later observed outcomes/reflections. `export_run_bundle` atomically creates a new upstream-compatible report tree; validated overwrite is journaled and crash-recoverable.
-
-For backward compatibility, `prepare_host_run(RunRequest(executor="host_native", ...))` plus `submit_host_run(payload)` still performs one atomic completed-run import. Neither path creates an LLM client or accepts an API key.
-
-For a harness with only one agent, implement `StageExecutor.execute_stage` and call `run_sequential_host_workflow`. The packaged reference runner applies the same manifest, context projections, tool-capability IDs, output schema, and atomic importer without any Codex or LangGraph dependency.
-
-## Upstream execution
-
-This section describes the optional legacy compatibility executor, not the default Codex path.
-
-Install TradingAgents so `tradingagents.graph.trading_graph` is importable, or set `TRADINGAGENTS_LEGACY_PATH` to an upstream repository root. Configure its provider and data-vendor credentials in the process environment. No portable CLI or MCP argument accepts credentials.
-
-The adapter maps portable, non-secret options into the upstream graph and projects its completed state into portable contracts. Checkpointing remains off by the upstream default unless an explicit argument or the upstream environment overlay enables it. Upstream's ordinary decision logs and report files are still written; that persistence is distinct from checkpoint resume. Credentialed execution and checkpoint resume remain runtime-unverified here.
-
-An explicit MCP compatibility server is also available as `uv run tradingagents-portable-legacy-mcp`. It is intentionally absent from `.mcp.json` and the Codex plugin because it may inherit provider credentials from its own environment.
-
-### Non-interactive research CLI
-
-`research` delegates the complete analysis to upstream `TradingAgentsGraph`; this repository does not recreate its business logic. It accepts Yahoo-style company and instrument symbols, including exchange-qualified stocks (`0700.HK`), indices (`^GSPC`), FX/futures (`EURUSD=X`, `GC=F`), and crypto (`BTC-USD`). `--asset-type auto` uses the upstream-compatible crypto suffix rule; all other instruments use the stock pipeline.
-
-```bash
-uv run tradingagents-portable research 0700.HK \
-  --date 2026-07-03 \
-  --analyst market --analyst news --analyst fundamentals \
-  --debate-rounds 2 --risk-rounds 2 \
-  --provider openai --quick-model gpt-5.4-mini --deep-model gpt-5.5 \
-  --reasoning-effort high \
-  --report-output ./results/0700-hk \
-  --output ./results/0700-hk.json \
-  --legacy-path ../tradingAgents
-```
-
-Omitting provider/model/round/checkpoint flags preserves upstream defaults after its normal `TRADINGAGENTS_*` environment overlay. `--checkpoint` and `--no-checkpoint` are explicit overrides. `--clear-checkpoints` delegates upstream's cache-scoped cleanup helper and exits. No CLI option accepts API keys or credentials; configure those only in the process environment as required by upstream providers and data vendors.
-
-The adapter also accepts `--provider openai_codex` when the selected upstream checkout contains [TradingAgents PR #1195](https://github.com/TauricResearch/TradingAgents/pull/1195). That provider reads Codex OAuth state through the upstream implementation (default `~/.codex/auth.json`, optionally `TRADINGAGENTS_CODEX_AUTH_PATH`); this portable layer never reads or serializes the token. The PR is currently unmerged and describes the endpoint as undocumented, unversioned, and not clearly sanctioned, so this path is supported at the boundary but is not enabled in the pinned official dependency or runtime-verified here.
-
-Add `--dashboard` to serve the completed, stored run from the same process after graph execution finishes:
-
-```bash
-uv run tradingagents-portable research AAPL --date 2026-07-03 \
-  --legacy-path ../tradingAgents --dashboard
-```
-
-This command requires a working upstream installation and its environment-based credentials. It is documentation for the delegated live path, not part of the credential-free proof.
-
-## Dashboard API
-
-The server rejects non-loopback bind addresses. Its read-only endpoints are:
-
-- `GET /api/health`
-- `GET /api/runs`
-- `GET /api/runs/{run_id}`
-- `GET /api/runs/{run_id}/events`
-- `GET /api/runs/{run_id}/result`
-- `GET /api/runs/{run_id}/view`
-- `GET /api/runs/current/view`
-
-The `/view` response is the merged, UI-ready post-run dossier. Its additive `intelligence` projection normalizes evidence coverage, source mix, freshness, metrics, news, catalysts, risks, conflicts, unknowns, and monitoring conditions while preserving the original evidence records. The browser presents this as an evidence-integrity chain from sources through analyst claims and debates to the final rating, with explicit conditions that would change the view. It does not infer missing attribution or turn a projected relationship into verified provenance.
-
-`current` resolves to the latest stored run and also works with the run, events, and result endpoints. A saved `/?run=<run_id>` URL stays pinned to that completed run even after a later run becomes current. Everything else is served from the packaged `tradingagents_portable/web/` assets, with SPA fallback to `index.html` and path traversal protection.
-
-Durable host-native runs use private SQLite/WAL lifecycle state plus canonical atomic result/event bundles and compatibility projections under the configured state directory. The browser still reads completed results only; lifecycle status and live cursor receipts remain on CLI/MCP surfaces. Preserve exported bundles when a portable, independently verifiable archive is required.
-
-## Incubation boundary
-
-This prototype deliberately stays separate from the sibling `tradingAgents` repository. The legacy adapter is the only integration seam. Validate contracts, UI behavior, and test expectations here first; decide later which pieces, if any, belong upstream.
+See [Feature parity](docs/FEATURE_PARITY.md) and [Validation](docs/VALIDATION.md) for the evidence ledger.

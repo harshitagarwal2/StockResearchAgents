@@ -1,0 +1,57 @@
+{
+  "schema_version": "synthetic-ratio-valuation-conformance.v1",
+  "provenance": "Original synthetic fixture authored for tradingagents-portable; no external company data.",
+  "calculated_at": "2026-08-01T12:00:00+00:00",
+  "period": {
+    "period_id": "synthetic-2026-q2",
+    "fiscal_year": 2026,
+    "fiscal_quarter": 2,
+    "start_date": "2026-04-01",
+    "end_date": "2026-06-30",
+    "period_type": "quarter"
+  },
+  "ratio": {
+    "observation_id": "ratio.synthetic.gross-margin",
+    "definition": {
+      "ratio_id": "ratio.synthetic.gross-margin",
+      "name": "Synthetic gross margin",
+      "category": "profitability",
+      "operation": "divide",
+      "numerator_concept": "gross_profit",
+      "denominator_concept": "revenue",
+      "output_unit": "ratio",
+      "formula_version": "synthetic-gross-margin.v1"
+    },
+    "numerator": "375",
+    "denominator": "1000",
+    "numerator_fact_ids": ["fact.synthetic.gross-profit"],
+    "denominator_fact_ids": ["fact.synthetic.revenue"],
+    "expected_value": "0.375",
+    "expected_receipt_sha256": "aa96dfbca8ee64437ddbc55729efe06a84982d4f6b88bf6e49e9a4170df6260a"
+  },
+  "dcf": {
+    "valuation_id": "valuation.synthetic",
+    "model": {
+      "model_id": "dcf.synthetic",
+      "currency": "USD",
+      "forecast_period_ids": ["fy1", "fy2", "fy3"],
+      "free_cash_flows": ["100", "110", "120"],
+      "discount_rate": "0.10",
+      "terminal_growth_rate": "0.03",
+      "capital_bridge": {
+        "cash": "50",
+        "debt": "100",
+        "preferred_equity": "0",
+        "minority_interest": "0",
+        "non_operating_assets": "0",
+        "diluted_shares": "10",
+        "currency": "USD"
+      },
+      "formula_version": "dcf.standard.v1"
+    },
+    "expected_enterprise_value": "1598.583234946871310507674144",
+    "expected_equity_value": "1548.583234946871310507674144",
+    "expected_fair_value_per_share": "154.8583234946871310507674144",
+    "expected_receipt_sha256": "0d6ffda15fb871abc364d74d3fddd603289b374c0675f19aaf3eb92fec66051e"
+  }
+}
