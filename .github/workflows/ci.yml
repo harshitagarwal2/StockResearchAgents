@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
-      STOCKRESEARCHAGENTS_STATE_DIR: ${{ runner.temp }}/stock-research-agents-state
+      STOCKRESEARCHAGENTS_STATE_DIR: /tmp/stock-research-agents-state
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -48,7 +48,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      STOCKRESEARCHAGENTS_STATE_DIR: ${{ runner.temp }}/stock-research-agents-upstream-state
+      STOCKRESEARCHAGENTS_STATE_DIR: /tmp/stock-research-agents-upstream-state
     steps:
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
