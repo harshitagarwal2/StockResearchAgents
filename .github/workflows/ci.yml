@@ -50,6 +50,10 @@ jobs:
           cache: pip
       - name: Install portable and pinned upstream
         run: python -m pip install -e ".[dev]" -e ./.upstream
+      - name: Run upstream-dependent tests
+        env:
+          TRADINGAGENTS_UPSTREAM_PATH: .upstream
+        run: pytest -q tests/test_conformance.py tests/test_upstream_semantic_differential.py
       - name: Compare scoped observable semantics
         run: >-
           python scripts/run_upstream_semantic_probe.py

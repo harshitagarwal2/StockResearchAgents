@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import hashlib
+import os
 from dataclasses import replace
 from pathlib import Path
+
+import pytest
 
 from tradingagents_portable.conformance import (
     PINNED_UPSTREAM_REVISION,
@@ -15,13 +18,19 @@ from tradingagents_portable.fixture import run_fixture
 from tradingagents_portable.store import RunStore
 
 ROOT = Path(__file__).resolve().parents[1]
-UPSTREAM = ROOT.parent / "tradingAgents"
+UPSTREAM = Path(os.environ.get("TRADINGAGENTS_UPSTREAM_PATH", ROOT.parent / "tradingAgents"))
+REQUIRES_UPSTREAM = pytest.mark.skipif(
+    not (UPSTREAM / "tradingagents" / "graph" / "trading_graph.py").is_file(),
+    reason="pinned upstream TradingAgents checkout is not available",
+)
 
 
+@REQUIRES_UPSTREAM
 def test_pinned_sibling_upstream_identity_is_verified_without_credentials() -> None:
     assert upstream_revision(UPSTREAM) == PINNED_UPSTREAM_REVISION
 
 
+@REQUIRES_UPSTREAM
 def test_fixture_satisfies_observable_upstream_contract() -> None:
     result, events = run_fixture(RunRequest(), store=RunStore())
     completed_ordinal = 0
@@ -105,6 +114,7 @@ def test_conformance_without_upstream_checkout_is_explicitly_unverified() -> Non
     assert report.to_dict()["verified"] is False
 
 
+@REQUIRES_UPSTREAM
 def test_bare_execution_observed_flags_are_not_safe_lifecycle_receipts() -> None:
     result, events = run_fixture(RunRequest(), store=RunStore())
     flagged_events = tuple(
