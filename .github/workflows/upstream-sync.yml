@@ -17,6 +17,8 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      STOCKRESEARCHAGENTS_STATE_DIR: /tmp/stock-research-agents-sync-state
     steps:
       - uses: actions/checkout@v4
         with:
@@ -67,7 +69,14 @@ jobs:
           pytest -q
           python scripts/smoke_backend.py
           python scripts/smoke_mcp.py
+          python scripts/run_upstream_semantic_probe.py --upstream-path ../tradingAgents --output upstream-semantic-differential.json
           python -m build
+      - name: Upload semantic differential
+        if: steps.upstream.outputs.changed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: proposed-upstream-semantic-differential
+          path: upstream-semantic-differential.json
       - name: Create or update review pull request
         if: steps.upstream.outputs.changed == 'true'
         env:
@@ -75,12 +84,12 @@ jobs:
         run: |
           branch="automation/upstream-tradingagents-main"
           title="chore: sync upstream TradingAgents"
-          body="Automated pinned update from ${{ steps.upstream.outputs.current }} to ${{ steps.upstream.outputs.latest }}. Full conformance, tests, smoke checks, formatting, and build passed before this PR was opened. This workflow never auto-merges upstream changes."
+          body="Automated pinned update from ${{ steps.upstream.outputs.current }} to ${{ steps.upstream.outputs.latest }}. Scoped semantic comparison, tests, smoke checks, formatting, and build passed before this PR was opened. This workflow never auto-merges upstream changes."
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git fetch origin "$branch" || true
           git checkout -B "$branch"
-          git add upstream.lock.json pyproject.toml uv.lock src/tradingagents_portable/conformance.py
+          git add upstream.lock.json pyproject.toml uv.lock .github/workflows/ci.yml src/tradingagents_portable/conformance.py src/tradingagents_portable/workflow/legacy-transition.v1.json evidence/parity-ledger.v1.json
           git commit -m "chore: sync upstream TradingAgents to ${{ steps.upstream.outputs.latest }}"
           git push --force-with-lease origin HEAD:"$branch"
           existing="$(gh pr list --head "$branch" --state open --json number --jq '.[0].number // empty')"

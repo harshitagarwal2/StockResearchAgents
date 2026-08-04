@@ -75,6 +75,7 @@
 - [x] Completed CLI and MCP responses carry a versioned presentation receipt; spawned-process tests prove one private loopback daemon is reused for multiple companies, observes later atomic publications and quality outcomes, survives the short-lived CLI command, recovers from killed or incompatible generations, and leaves publication-pending results hidden.
 - [x] Detached-viewer tests prove per-daemon capability authentication, hostile Host/Origin rejection, restrictive browser headers, private registry permissions, startup diagnostics, headless no-spawn behavior, and per-call MCP presentation policy.
 - [x] Documentation checks validate relative links, required canonical documents, Mermaid source/SVG pairs, poster HTML/PNG pairs, PNG dimensions, and SVG parseability.
+- [x] Test startup assigns an isolated temporary `STOCKRESEARCHAGENTS_STATE_DIR` when the caller does not provide one, so offline verification does not write to a developer's normal state directory.
 - [x] JSON metadata tests parse `.codex-plugin/plugin.json`, `.mcp.json`, workflow manifests, and terminal schemas.
 
 ## Legacy transition proof
