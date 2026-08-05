@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -8,7 +9,7 @@ def test_secret_scan_runs_for_pushes_and_pull_requests() -> None:
 
     assert "push:" in workflow
     assert "pull_request:" in workflow
-    assert "gitleaks/gitleaks-action@v2" in workflow
+    assert re.search(r"gitleaks/gitleaks-action@[0-9a-f]{40}\s+# v2\b", workflow)
     assert "fetch-depth: 0" in workflow
 
 

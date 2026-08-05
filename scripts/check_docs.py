@@ -139,9 +139,7 @@ def diagram_errors() -> list[str]:
                 errors.append(f"invalid technical PNG {preview.relative_to(ROOT)}: {exc}")
             else:
                 if width < 1200 or height < 250:
-                    errors.append(
-                        f"technical PNG is too small: {preview.relative_to(ROOT)} is {width}x{height}"
-                    )
+                    errors.append(f"technical PNG is too small: {preview.relative_to(ROOT)} is {width}x{height}")
                 if max(width / height, height / width) > 6:
                     errors.append(
                         f"technical PNG aspect ratio is not GitHub-legible: "
