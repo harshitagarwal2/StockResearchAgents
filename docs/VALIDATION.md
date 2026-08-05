@@ -63,7 +63,7 @@
 - [x] Staged decisions remain outside recall until final publication.
 - [x] `CompanyResearchCoordinator` tests cover all 15 stage boundaries, strict opaque reference descriptors, digest-bound receipts, optimistic revision conflicts, pause/resume, cooperative cancellation, cursor events, fresh-coordinator recovery, cutoff-safe memory recall, and completed publication.
 - [x] Existing `run-lifecycle.v1` tests continue to cover the compatibility workflow's checkpoints, resume, cancellation, memory gating, and atomic result/event publication.
-- [x] `CompanyAnalyticsCoordinator` tests cover all 26 ordered stage commits, rejection of out-of-order dependency-ready commits, first-incomplete resume, v4 terminal validation, report descriptor rebinding, quality-index staging/publication, and crash reconstruction.
+- [x] Analytics-profile `CompanyResearchCoordinator` tests cover all 26 ordered stage commits, rejection of out-of-order dependency-ready commits, first-incomplete resume, v4 terminal validation, report descriptor rebinding, quality-index staging/publication, and crash reconstruction.
 
 ## Plan/import, UI, and package surfaces
 
@@ -79,7 +79,7 @@
 - [x] `report`, `launch_research_report`, and `get_research_report_summary` provide preferred Research Dossier Viewer names while dashboard-named surfaces remain compatible.
 - [x] Completed CLI and MCP responses carry a versioned presentation receipt; spawned-process tests prove one private loopback daemon is reused for multiple companies, observes later atomic publications and quality outcomes, survives the short-lived CLI command, recovers from killed or incompatible generations, and leaves publication-pending results hidden.
 - [x] Detached-viewer tests prove per-daemon capability authentication, hostile Host/Origin rejection, restrictive browser headers, private registry permissions, startup diagnostics, headless no-spawn behavior, and per-call MCP presentation policy.
-- [x] Documentation checks validate relative links, required canonical documents, Mermaid source/SVG pairs, poster HTML/PNG pairs, PNG dimensions, and SVG parseability.
+- [x] Documentation checks validate relative links, required canonical documents, Mermaid source/SVG/PNG sets, GitHub preview references, poster HTML/PNG pairs, PNG dimensions, and accessible SVG structure.
 - [x] Test startup assigns an isolated temporary `STOCKRESEARCHAGENTS_STATE_DIR` when the caller does not provide one, so offline verification does not write to a developer's normal state directory.
 - [x] JSON metadata tests parse `.codex-plugin/plugin.json`, `.mcp.json`, workflow manifests, and terminal schemas.
 

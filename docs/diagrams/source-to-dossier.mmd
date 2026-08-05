@@ -1,0 +1,57 @@
+%%{init: {"theme":"base","fontFamily":"Avenir Next, Segoe UI, sans-serif","themeVariables":{"fontFamily":"Avenir Next, Segoe UI, sans-serif","primaryColor":"#eef3ff","primaryTextColor":"#071c26","primaryBorderColor":"#2257ff","lineColor":"#516a75","secondaryColor":"#e5f7f5","tertiaryColor":"#fff4df","background":"#f5f8f9","clusterBkg":"#ffffff","clusterBorder":"#96aab2"},"flowchart":{"curve":"basis","htmlLabels":true}}}%%
+flowchart TB
+  accTitle: Evidence-to-dossier flow
+  accDescr: A host-owned source adapter normalizes public or entitled evidence through a provider-neutral SourcePort boundary. The host derives portable terminal lineage fields from retained batches, while sanitized failed attempts and coverage gaps remain host receipts that must be declared as limitations when decision-relevant. Portable validates provenance, time, licensing, claims, and calculations before a completed dossier is atomically published; a rejected terminal submission is not published.
+
+  subgraph H["Host-owned retrieval"]
+    direction LR
+    SRC["Public or entitled source<br/><small>filing · market · publisher · macro</small>"]
+    ADAPTER["Host source adapter<br/><small>credentials · terms · pagination · retries</small>"]
+    PORT["SourcePort.fetch<br/><small>capability + typed query</small>"]
+    COLLECT["SourcePortfolioCollector<br/><small>validate routes · isolate failures</small>"]
+    BATCH["Retained SourceBatch<br/><small>bounded facts · provenance · entitlement</small>"]
+    ATTEMPT["Portfolio attempt receipt<br/><small>sanitized failures · coverage gaps</small>"]
+    SRC --> ADAPTER --> PORT --> COLLECT
+    COLLECT --> BATCH
+    COLLECT --> ATTEMPT
+  end
+
+  subgraph P["Portable evidence and research contracts"]
+    direction LR
+    LINEAGE["Source lineage crosswalk<br/><small>identity · digest scope · entitlement</small>"]
+    DOSSIER["Host research submission<br/><small>documents · claims · calculations</small>"]
+    LIMIT["Declared coverage limitation<br/><small>partial · stale · blocked · missing</small>"]
+    GATE{"Conformance gate<br/><small>time · references · licensing · safety</small>"}
+    DONE[["Completed Research Dossier<br/><small>immutable published artifact</small>"]]
+    LINEAGE --> DOSSIER --> GATE
+    LIMIT --> DOSSIER
+    GATE -->|accepted| DONE
+  end
+
+  subgraph R["Completed-only readers"]
+    direction LR
+    VIEW["RunView / Dossier Viewer"]
+    EXPORT["JSON / Markdown / MCP"]
+  end
+
+  REJECT["Typed terminal rejection<br/><small>no completed publication</small>"]
+
+  BATCH -->|host derives terminal lineage fields| LINEAGE
+  ATTEMPT -. host declares decision-relevant gap .-> LIMIT
+  GATE -->|rejected| REJECT
+  DONE --> VIEW
+  DONE --> EXPORT
+
+  classDef host fill:#fff4df,stroke:#ad6500,color:#071c26,stroke-width:2px;
+  classDef port fill:#eef3ff,stroke:#2257ff,color:#071c26,stroke-width:2px;
+  classDef validated fill:#e5f7f5,stroke:#00746e,color:#071c26,stroke-width:2px;
+  classDef artifact fill:#ffffff,stroke:#1231a6,color:#071c26,stroke-width:3px;
+  classDef rejected fill:#fff0ef,stroke:#b42318,color:#071c26,stroke-width:2px;
+  classDef read fill:#ffffff,stroke:#516a75,color:#071c26,stroke-width:2px;
+  class SRC,ADAPTER,BATCH host;
+  class PORT,DOSSIER,GATE port;
+  class LINEAGE validated;
+  class DONE artifact;
+  class LIMIT validated;
+  class REJECT rejected;
+  class VIEW,EXPORT read;

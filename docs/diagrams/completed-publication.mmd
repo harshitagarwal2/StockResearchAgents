@@ -1,24 +1,25 @@
-%%{init: {"theme":"base","themeVariables":{"fontFamily":"Avenir Next, Segoe UI, sans-serif","primaryColor":"#eef3ff","primaryTextColor":"#071c26","primaryBorderColor":"#2257ff","lineColor":"#516a75","secondaryColor":"#e5f7f5","tertiaryColor":"#fff4df","background":"#f5f8f9","actorBkg":"#ffffff","actorBorder":"#2257ff","actorTextColor":"#071c26","signalColor":"#28424f","signalTextColor":"#071c26","noteBkgColor":"#fff4df","noteBorderColor":"#ad6500"}}}%%
+%%{init: {"theme":"base","fontFamily":"Avenir Next, Segoe UI, sans-serif","themeVariables":{"fontFamily":"Avenir Next, Segoe UI, sans-serif","primaryColor":"#eef3ff","primaryTextColor":"#071c26","primaryBorderColor":"#2257ff","lineColor":"#516a75","secondaryColor":"#e5f7f5","tertiaryColor":"#fff4df","background":"#f5f8f9","actorBkg":"#ffffff","actorBorder":"#2257ff","actorTextColor":"#071c26","signalColor":"#28424f","signalTextColor":"#071c26","noteBkgColor":"#fff4df","noteBorderColor":"#ad6500"}}}%%
 sequenceDiagram
   accTitle: Completed-only publication sequence
-  accDescr: A host commits one ordered stage at a time. StockResearchAgents validates v4, atomically publishes authoritative RunResult artifacts, then publishes a recoverable quality index. The viewer remains empty until canonical completion.
+  accDescr: A host commits all 26 ordered stages, including the terminal v4 payload, before explicit finalization. StockResearchAgents stages authoritative RunResult artifacts, the recoverable quality index, and optional decision memory; it publishes quality before the canonical result and completes enabled memory publication before readers open. The viewer remains empty until every required publication is ready.
 
   participant H as Research host
   participant P as Portable core
   participant S as Durable storage
   participant Q as Quality outcome index
+  participant M as Decision memory (optional)
   participant V as Dossier Viewer
 
   H->>P: Prepare Research Request
   P-->>H: Ordered workflow + allowed capabilities
-  loop Each nonterminal stage
+  loop Each of 26 ordered stages
     H->>P: Opaque completed-stage envelope
-    P->>S: Persist revision + safe receipt
+    P->>S: Persist revision + bounded output references
     V-->>P: Query completed result
     P-->>V: No completed dossier
   end
-  H->>P: Terminal Completed Research Dossier
-  P->>P: Validate references, time, calculations, coverage, safety
+  H->>P: Finalize after terminal stage commit
+  P->>P: Revalidate committed v4 references, time, calculations, coverage, safety
   alt Rejected or incomplete
     P-->>H: Typed validation failure
     P-->>V: No completed dossier
@@ -26,11 +27,15 @@ sequenceDiagram
     P->>P: Rebind report descriptors to lifecycle run_id
     P->>S: Stage canonical RunResult, events, reports, artifacts
     P->>Q: Stage hidden derived index
-    P->>S: Atomic canonical publication commit
-    S-->>P: Completed publication receipt
+    P->>M: Stage decision memory when enabled
     P->>Q: Publish index, or reconstruct after recovery
+    Q-->>P: Quality publication acknowledged
+    P->>S: Atomic canonical result publication
+    S-->>P: Completed publication receipt
+    P->>M: Publish staged decision memory when enabled
+    M-->>P: Memory ready or disabled
     V->>P: Query completed result
     P-->>V: Read-only RunView
   end
 
-  Note over S,Q: Recoverable coordination, not a distributed transaction
+  Note over S,Q: Reader gate waits for result quality and enabled memory readiness through recoverable coordination

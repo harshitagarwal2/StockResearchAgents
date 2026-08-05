@@ -1,22 +1,25 @@
-%%{init: {"theme":"base","themeVariables":{"fontFamily":"Avenir Next, Segoe UI, sans-serif","primaryColor":"#eef3ff","primaryTextColor":"#071c26","primaryBorderColor":"#2257ff","lineColor":"#516a75","secondaryColor":"#e5f7f5","tertiaryColor":"#fff4df","background":"#f5f8f9","clusterBkg":"#ffffff","clusterBorder":"#96aab2"},"flowchart":{"curve":"linear","htmlLabels":true}}}%%
-flowchart LR
+%%{init: {"theme":"base","fontFamily":"Avenir Next, Segoe UI, sans-serif","themeVariables":{"fontFamily":"Avenir Next, Segoe UI, sans-serif","primaryColor":"#eef3ff","primaryTextColor":"#071c26","primaryBorderColor":"#2257ff","lineColor":"#516a75","secondaryColor":"#e5f7f5","tertiaryColor":"#fff4df","background":"#f5f8f9","clusterBkg":"#ffffff","clusterBorder":"#96aab2"},"flowchart":{"curve":"linear","htmlLabels":true}}}%%
+flowchart TB
   accTitle: SOLID ports-and-adapters architecture for Company Analytics
-  accDescr: Host-native harness adapters call portable application services. Planned provider-neutral research-data adapters normalize through SourcePort, while the pinned upstream executor remains a CI and development oracle until removal gates pass. Completed projections feed read-only clients.
+  accDescr: Host-native harness adapters call portable application services. Implemented provider-neutral public research-data adapters and future licensed adapters normalize through SourcePort, while the pinned upstream executor remains a CI and development oracle until removal gates pass. Completed projections feed read-only clients.
 
   subgraph H["Host-owned mechanisms"]
+    direction LR
     WEB["Web / browser / licensed providers"]
-    DATA["Research-data MCP adapters<br/>(planned, host-owned)"]
+    DATA["Research-data MCP adapters<br/><small>implemented public tools · host-owned</small>"]
     AGENT["Codex, generic agents,<br/>or sequential host"]
     ORACLE["Pinned upstream oracle<br/>(CI / development)"]
   end
 
   subgraph IN["Inbound adapters"]
+    direction LR
     SKILL["Codex skill"]
     MCP["MCP"]
     CLI["CLI / Python"]
   end
 
   subgraph APP["Application services"]
+    direction LR
     PREP["Prepare analytics"]
     LIFE["Profile-driven lifecycle"]
     IMPORT["Validate and publish"]
@@ -25,6 +28,7 @@ flowchart LR
   end
 
   subgraph DOMAIN["Domain and contracts"]
+    direction LR
     V3["Frozen v3 dossier"]
     V4["V4 composition"]
     ANALYTICS["Deterministic analytics"]
@@ -33,12 +37,14 @@ flowchart LR
   end
 
   subgraph PORTS["Narrow outbound ports"]
+    direction LR
     SOURCE["SourcePort.fetch(capability, typed query)"]
     RESULTS["Publication / result store"]
     QSTORE["Recoverable quality index"]
   end
 
   subgraph READ["Completed-only read side"]
+    direction LR
     VIEW["RunView projection"]
     UI["CLI, MCP, exports, loopback viewer"]
   end

@@ -5,7 +5,7 @@
 - **Canonical for:** component responsibility and extension rules.
 - **Not canonical for:** wire-field definitions or feature proof.
 
-[![SOLID ports-and-adapters architecture for Company Analytics](../assets/architecture/solid-ports-adapters.svg)](../assets/architecture/solid-ports-adapters.svg)
+[![SOLID ports-and-adapters architecture for Company Analytics](../assets/architecture/solid-ports-adapters.png)](../assets/architecture/solid-ports-adapters.svg)
 
 ## Dependency rule
 

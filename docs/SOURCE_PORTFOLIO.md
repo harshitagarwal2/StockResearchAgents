@@ -32,6 +32,8 @@ Normal initiating coverage targets the latest available evidence, at least five 
 
 ```mermaid
 flowchart LR
+  accTitle: Research source retrieval sequence
+  accDescr: A resolved instrument and exact cutoff drive discovery, attributable source opening, bounded normalization, deduplication, coverage checks, synthesis, and atomic completed-dossier publication.
   Q["Resolved instrument and exact cutoff"] --> D["Discovery batches"]
   D --> O["Open regulator, issuer, and publisher records"]
   O --> N["Normalize bounded observations and entitlement receipts"]

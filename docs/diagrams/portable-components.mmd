@@ -1,9 +1,10 @@
-%%{init: {"theme":"base","themeVariables":{"fontFamily":"Avenir Next, Segoe UI, sans-serif","primaryColor":"#eef3ff","primaryTextColor":"#071c26","primaryBorderColor":"#2257ff","lineColor":"#516a75","secondaryColor":"#e5f7f5","tertiaryColor":"#fff4df","background":"#f5f8f9","clusterBkg":"#ffffff","clusterBorder":"#96aab2"},"flowchart":{"curve":"linear","htmlLabels":true}}}%%
-flowchart LR
+%%{init: {"theme":"base","fontFamily":"Avenir Next, Segoe UI, sans-serif","themeVariables":{"fontFamily":"Avenir Next, Segoe UI, sans-serif","primaryColor":"#eef3ff","primaryTextColor":"#071c26","primaryBorderColor":"#2257ff","lineColor":"#516a75","secondaryColor":"#e5f7f5","tertiaryColor":"#fff4df","background":"#f5f8f9","clusterBkg":"#ffffff","clusterBorder":"#96aab2"},"flowchart":{"curve":"linear","htmlLabels":true}}}%%
+flowchart TB
   accTitle: StockResearchAgents component architecture
   accDescr: Inbound adapters call application coordinators. Strict domain contracts and specifications validate work. Outbound adapters persist completed state and present read-only projections.
 
   subgraph I["Inbound adapters"]
+    direction LR
     CLI["CLI"]
     MCP["MCP server"]
     PY["Python API"]
@@ -11,18 +12,21 @@ flowchart LR
   end
 
   subgraph A["Application core"]
+    direction LR
     COORD["Research coordinators"]
     LIFE["Lifecycle state machine"]
     PUB["Publication service"]
   end
 
   subgraph D["Domain rules"]
+    direction LR
     CONTRACT["Strict contracts"]
     SPEC["Conformance specifications"]
     QUALITY["Research Quality"]
   end
 
   subgraph O["Outbound adapters"]
+    direction LR
     STORE["SQLite / WAL"]
     BUNDLE[["Atomic result bundles"]]
     VIEW["RunView projection"]
