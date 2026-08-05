@@ -37,7 +37,7 @@ tradingagents-portable-legacy-mcp = "tradingagents_portable.legacy_mcp_server:ma
 tradingagents-research-data-mcp = "tradingagents_host.research_data_mcp:main"
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "ruff>=0.9"]
+dev = ["mypy>=1.13", "pytest>=8", "ruff>=0.9"]
 upstream = [
     "tradingagents @ git+https://github.com/TauricResearch/TradingAgents.git@a33fd4c0f134485a43553a2c23a63cb14adbd88f",
 ]
