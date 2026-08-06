@@ -29,9 +29,9 @@ def test_browser_smoke_workflow_uses_locked_browser_dependencies() -> None:
 def test_browser_smoke_workflow_uses_pinned_actions_and_read_only_permissions() -> None:
     workflow = WORKFLOW.read_text(encoding="utf-8")
 
-    assert re.search(r"actions/checkout@[0-9a-f]{40}\s+# v5\b", workflow)
-    assert re.search(r"actions/setup-python@[0-9a-f]{40}\s+# v5\.6\.0\b", workflow)
-    assert re.search(r"actions/setup-node@[0-9a-f]{40}\s+# v4\.4\.0\b", workflow)
+    assert re.search(r"actions/checkout@[0-9a-f]{40}\s+# v7\.0\.1\b", workflow)
+    assert re.search(r"actions/setup-python@[0-9a-f]{40}\s+# v7\.0\.0\b", workflow)
+    assert re.search(r"actions/setup-node@[0-9a-f]{40}\s+# v7\.0\.0\b", workflow)
     assert "permissions:\n  contents: read" in workflow
 
 
