@@ -1,0 +1,71 @@
+name: Bug report
+description: Report reproducible incorrect behavior in a supported StockResearchAgents surface.
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        Do not include credentials, authorization headers, private portfolio data,
+        raw licensed content, or unpublished security details. Use SECURITY.md for vulnerabilities.
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Affected surface
+      options:
+        - Python API
+        - CLI
+        - Coordination MCP
+        - Research-data MCP
+        - Durable lifecycle or storage
+        - Research Dossier Viewer or export
+        - Documentation or packaging
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Include the expected behavior and the actual behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: Provide sanitized commands, inputs, and the smallest reproducible sequence.
+      render: shell
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      placeholder: commit SHA or published vX.Y.Z tag
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: Python 3.12, macOS 15, uv 0.x
+    validations:
+      required: true
+  - type: dropdown
+    id: research_mode
+    attributes:
+      label: Research mode
+      options:
+        - fixture
+        - historical_replay
+        - live
+        - not applicable
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Sanitized diagnostics
+      description: Remove secrets, signed URLs, raw source bodies, and private data.
+      render: text

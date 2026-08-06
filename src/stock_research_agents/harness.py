@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any, Protocol
 
+from .bootstrap import create_company_analytics_coordinator
 from .company_analytics_v1 import CompanyAnalyticsResultV1
 from .company_lifecycle import CompanyAnalyticsCoordinator
 from .contracts import RunEvent, reject_secret_shaped_keys
@@ -44,7 +45,11 @@ def run_sequential_company_lifecycle(
     """Execute or resume the durable company analytics lifecycle sequentially."""
 
     if coordinator is None:
-        coordinator = CompanyAnalyticsCoordinator(LifecycleStore(), RunStore())
+        coordinator = create_company_analytics_coordinator(
+            lifecycle_store=LifecycleStore(),
+            result_store=RunStore(),
+            use_default_memory=False,
+        )
 
     if run_id is None:
         if request is None:

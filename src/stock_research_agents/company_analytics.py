@@ -4,10 +4,15 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
-from .application_ports import QualitySidecarPort, ResultPublicationPort
-from .company_analytics_v1 import CompanyAnalyticsResultV1, CompanyAnalyticsV1Provider
+from .application_ports import (
+    CompletedResultReader,
+    ForecastOutcomeRecorder,
+    QualityProjectionReader,
+    QualityRegistrationWriter,
+    ResultPublicationPort,
+)
+from .company_analytics_v1 import CompanyAnalyticsResultV1, CompanyAnalyticsWorkflowDefinition
 from .contracts import RunEvent
-from .profiles import ProfileRegistry
 from .publication import PublicationDraft, PublicationService
 from .research_contracts import CompanyResearchRequest
 from .research_lab_v1 import research_pack_catalog
@@ -21,8 +26,7 @@ from .research_quality_v1 import (
 )
 from .store import RUN_STORE
 
-_PROVIDER = CompanyAnalyticsV1Provider()
-PROFILE_REGISTRY = ProfileRegistry((_PROVIDER,))
+_WORKFLOW = CompanyAnalyticsWorkflowDefinition()
 
 
 class AnalyticsPublicationService:
@@ -34,9 +38,9 @@ class AnalyticsPublicationService:
         draft: PublicationDraft,
         *,
         store: ResultPublicationPort,
-        quality_store: QualitySidecarPort,
+        quality_store: QualityRegistrationWriter,
     ) -> CompanyAnalyticsResultV1:
-        parsed = _PROVIDER.parse_submission(submission)
+        parsed = _WORKFLOW.parse_submission(submission)
         quality_store.stage_registration(parsed.quality_receipt, parsed.forecasts)
         result = PublicationService().publish(draft, store)
         if not isinstance(result, CompanyAnalyticsResultV1):
@@ -53,7 +57,7 @@ def prepare_company_analytics(
 ) -> dict[str, object]:
     """Return a caller-executable plan; StockResearchAgents performs no retrieval."""
     request = value if isinstance(value, CompanyResearchRequest) else CompanyResearchRequest.from_dict(value)
-    manifest = _PROVIDER.load_manifest()
+    manifest = _WORKFLOW.load_manifest()
     packs = {item["pack_id"]: item for item in research_pack_catalog()}
     if research_pack_id not in packs:
         raise ValueError(f"unknown research_pack_id: {research_pack_id}")
@@ -65,8 +69,8 @@ def prepare_company_analytics(
         raise ValueError(f"invalid capability negotiation contract for {execution_mode}")
     return {
         "ok": True,
-        "workflow_profile": _PROVIDER.descriptor.profile,
-        "workflow_id": _PROVIDER.descriptor.workflow_id,
+        "workflow_profile": _WORKFLOW.descriptor.profile,
+        "workflow_id": _WORKFLOW.descriptor.workflow_id,
         "request": request.to_dict(),
         "research_pack": packs[research_pack_id],
         "research_pack_catalog": tuple(packs.values()),
@@ -81,7 +85,7 @@ def prepare_company_analytics(
         "system_boundary": manifest["system_boundary"],
         "fallback": manifest["fallback"],
         "terminal_artifact_kinds": manifest["terminal_artifact_kinds"],
-        "submission_schema": _PROVIDER.load_schema(),
+        "submission_schema": _WORKFLOW.load_schema(),
         "execution_owner": "caller",
         "external_model_api_keys_accepted": False,
         "publication": "atomic_after_complete_validation",
@@ -89,19 +93,19 @@ def prepare_company_analytics(
 
 
 def build_company_analytics_draft(payload: object) -> PublicationDraft:
-    submission = _PROVIDER.parse_submission(payload)
-    return _PROVIDER.build_publication(submission)
+    submission = _WORKFLOW.parse_submission(payload)
+    return _WORKFLOW.build_publication(submission)
 
 
 def submit_company_analytics(
     payload: object,
     *,
     store: ResultPublicationPort = RUN_STORE,
-    quality_store: QualitySidecarPort = QUALITY_STORE,
+    quality_store: QualityRegistrationWriter = QUALITY_STORE,
 ) -> tuple[CompanyAnalyticsResultV1, tuple[RunEvent, ...]]:
     """Validate and atomically publish one completed analytics bundle."""
-    submission = _PROVIDER.parse_submission(payload)
-    draft = _PROVIDER.build_publication(submission)
+    submission = _WORKFLOW.parse_submission(payload)
+    draft = _WORKFLOW.build_publication(submission)
     result = AnalyticsPublicationService().publish(
         submission,
         draft,
@@ -114,7 +118,7 @@ def submit_company_analytics(
 def record_company_forecast_outcome(
     payload: object,
     *,
-    quality_store: QualitySidecarPort = QUALITY_STORE,
+    quality_store: ForecastOutcomeRecorder = QUALITY_STORE,
 ) -> dict[str, object]:
     """Append one outcome/correction and return its deterministic scorecard."""
     observation = payload if isinstance(payload, OutcomeObservation) else OutcomeObservation.from_dict(payload)
@@ -125,8 +129,8 @@ def record_company_forecast_outcome(
 def get_company_research_quality(
     run_id: str,
     *,
-    quality_store: QualitySidecarPort = QUALITY_STORE,
-    run_store: ResultPublicationPort = RUN_STORE,
+    quality_store: QualityProjectionReader = QUALITY_STORE,
+    run_store: CompletedResultReader = RUN_STORE,
 ) -> dict[str, object]:
     """Return the immutable forecast registration, outcome ledgers, and scorecards."""
     quality_run_id = run_id
@@ -151,7 +155,7 @@ def get_company_research_quality(
 def quality_projection_for_result(
     result: CompanyAnalyticsResultV1,
     *,
-    quality_store: QualitySidecarPort = QUALITY_STORE,
+    quality_store: QualityProjectionReader = QUALITY_STORE,
 ) -> Mapping[str, object] | None:
     """Resolve lifecycle aliases to the immutable quality sidecar run ID."""
     direct = quality_store.projection(result.run_id)

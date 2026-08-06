@@ -17,14 +17,18 @@ from threading import Thread
 from typing import Any, Protocol, cast
 from urllib.parse import parse_qs, quote, unquote, urlparse, urlsplit
 
+from .bootstrap import DEFAULT_RUNTIME
 from .company_analytics import quality_projection_for_result
 from .company_analytics_v1 import CompanyAnalyticsResultV1
-from .company_lifecycle import COMPANY_ANALYTICS_COORDINATOR, require_completed_publication
+from .company_lifecycle import require_completed_publication
 from .contracts import PROTOTYPE_NOTICE
 from .research_quality_v1.store import QualityStore
 from .semantics import build_completed_run_semantics
-from .store import RUN_STORE, RunStore
+from .store import RunStore
 from .view import build_run_view
+
+RUN_STORE: RunStore = cast(RunStore, DEFAULT_RUNTIME.result_store)
+COMPANY_ANALYTICS_COORDINATOR = DEFAULT_RUNTIME.coordinator
 
 _SERVERS: list[ThreadingHTTPServer] = []
 _VIEWER_COOKIE = "stockresearchagents_viewer"

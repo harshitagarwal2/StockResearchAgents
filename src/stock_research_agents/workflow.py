@@ -301,9 +301,9 @@ def integration_contract_catalog() -> dict[str, dict[str, Any]]:
 
 def workflow_profile_catalog() -> tuple[dict[str, Any], ...]:
     """Advertise the standalone active workflow profile."""
-    from .company_analytics_v1 import CompanyAnalyticsV1Provider
+    from .company_analytics_v1 import CompanyAnalyticsWorkflowDefinition
 
-    return (CompanyAnalyticsV1Provider().descriptor.to_dict(),)
+    return (CompanyAnalyticsWorkflowDefinition().descriptor.to_dict(),)
 
 
 def load_run_control_schema(path: str | Path = RUN_CONTROL_SCHEMA) -> dict[str, Any]:

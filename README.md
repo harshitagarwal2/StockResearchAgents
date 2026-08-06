@@ -2,99 +2,37 @@
 
 <!-- mcp-name: io.github.harshitagarwal2/stock-research-agents -->
 
-Evidence-first company research for agent harnesses, with versioned contracts, deterministic analytics, durable lifecycle controls, and completed-only dossiers.
+[![CI](https://github.com/harshitagarwal2/StockResearchAgents/actions/workflows/ci.yml/badge.svg)](https://github.com/harshitagarwal2/StockResearchAgents/actions/workflows/ci.yml)
+[![Python 3.11–3.13](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-3776AB.svg?logo=python&logoColor=white)](pyproject.toml)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![MCP](https://img.shields.io/badge/interface-MCP-6f42c1.svg)](docs/INTEGRATION.md#mcp)
 
-> **Prototype research only. Not financial advice.** StockResearchAgents has no broker integration and cannot submit, modify, approve, cancel, or fill an order.
+Evidence-first company research for agent harnesses, with versioned contracts, deterministic validation and analytics, durable lifecycle controls, and completed-only dossiers.
 
-## Harness-neutral research capability
+> **Prototype research only. Not financial advice.** StockResearchAgents has no broker integration and cannot submit, modify, approve, cancel, or fill an order. Investment-style output is explicitly non-executable (`non_executable: true`); it is an analytical scenario, never an action.
 
-StockResearchAgents is an independent capability bundle for MCP-capable agent harnesses and custom applications. The **caller runtime** retrieves evidence, runs models, invokes tools, and schedules agents. The StockResearchAgents core supplies the harness-neutral workflow contracts, deterministic validation and analytics, durable `run-control.v1` lifecycle, atomic publication, typed exports, and completed-only presentation. It does not prescribe a model provider, prompt runtime, or agent scheduler. Codex is an optional thin adapter, not a platform dependency.
+StockResearchAgents gives an MCP-capable harness or custom application a strict research workflow without choosing its model provider, prompt runtime, retrieval stack, or agent scheduler. The caller supplies evidence and reasoning; the core validates the typed result, preserves provenance and limitations, and publishes only a completed dossier.
 
-[![StockResearchAgents system overview: the public Company Analytics profile wraps an embedded research dossier and publishes only completed results](assets/architecture/system-overview.png)](assets/architecture/system-overview.png)
+[![StockResearchAgents system overview: caller-owned evidence and execution pass through versioned validation before completed-only publication](assets/architecture/system-overview.png)](assets/architecture/system-overview.svg)
 
-[Open the full-resolution system overview.](assets/architecture/system-overview.png)
+## Verify it locally
 
-The public product profile is `company-analytics.v1`. Its outer `CompanyAnalyticsSubmissionV1` adds deterministic fundamentals, valuation, consensus, positioning, catalysts, experiments, falsifiable hypotheses, forecasts, and outcome scoring around an embedded `CompanyResearchSubmissionV1` / `ResearchDossierV1` foundation. The StockResearchAgents core validates the exact outer submission and publishes one strict `CompanyAnalyticsResultV1` containing that submission plus seven authoritative artifacts: dossier, analytics bundle, run card, hypothesis ledger, research iterations, quality receipt, and forecast set. The read-only **Research Dossier Viewer** is a projection of that completed result.
-
-The boundary is deliberate:
-
-- **The caller owns** retrieval, reasoning, credentials, entitlements, tool invocation, exact prompt wording, and agent scheduling. Plans encode this boundary in `system_boundary.caller_owns`, while `execution_contract.global_policy.caller_ownership` states the runtime rule.
-- **The StockResearchAgents core owns** versioned stage roles/objectives/completion-criteria declarations, contracts, deterministic validation, `run-control.v1` stage boundaries and recovery, terminal validation, publication, exports, and completed read models. Plans enumerate these responsibilities in `system_boundary.core_owns`. A caller attests intermediate criterion satisfaction; opaque nonterminal content remains caller-owned and is not independently verified by the core.
-- **The viewer owns no research logic.** It remains empty until a completed result is published.
-
-## Install a released version
-
-When a tagged version has been published to PyPI, install the CLI in an isolated tool environment:
-
-```bash
-uv tool install "stock-research-agents==<VERSION>"
-stock-research-agents --help
-```
-
-`pipx install "stock-research-agents==<VERSION>"` is equivalent. Applications can use `python -m pip install "stock-research-agents==<VERSION>"`, and an MCP host can launch the same package with:
-
-```bash
-uvx --from "stock-research-agents==<VERSION>" stock-research-agents-mcp
-```
-
-Use a full release tag for direct Git installs, never a moving branch. The release and host-adapter guide documents source, Python, MCP, TestPyPI, and GitHub Release paths: [Harnesses](docs/HOSTS.md) and [Releasing](docs/RELEASING.md).
-
-## Five-minute deterministic test proof
-
-Python 3.11+ and [`uv`](https://docs.astral.sh/uv/) are recommended.
+Python 3.11+ and [`uv`](https://docs.astral.sh/uv/) are recommended. From a source checkout:
 
 ```bash
 uv sync
-uv run stock-research-agents fixture --events
+uv run python scripts/smoke_backend.py
 ```
 
-This command exercises the deterministic ORCL fixture used by tests and local verification. The fixture is not a public research profile and never represents live research. It proves contract validation and the completed-result path; open the returned `presentation.url` only to inspect that test result in the shared loopback viewer.
+Expected output has this shape:
 
-For normal research, start from a host integration. Codex can use the packaged skill and MCP servers; other harnesses can use MCP, Python, or their own adapter over the same contracts. See [Harness integration](docs/INTEGRATION.md).
+```text
+ok run=analytics-… stages=26 events=34
+```
 
-## Choose your path
+This CI-backed smoke check publishes the deterministic, credential-free ORCL test submission through the completed-result path. It proves contract and publication behavior—not live retrieval, research quality, forecast calibration, or investment performance.
 
-| Goal | Start here |
-| --- | --- |
-| Connect any MCP-capable harness | [Harnesses](docs/HOSTS.md) and [integration](docs/INTEGRATION.md#mcp) |
-| Use Claude Code, OpenCode, or Hermes | [Host adapters](docs/INTEGRATION.md#host-adapters) |
-| Use the optional Codex plugin | [Harness integration](docs/INTEGRATION.md#optional-codex-adapter) |
-| Embed the StockResearchAgents API in an application | [Harness integration](docs/INTEGRATION.md#python) |
-| Run the deterministic test proof | [Getting started](docs/GETTING_STARTED.md) |
-| Build a durable host adapter | [Contract guide](docs/CONTRACTS.md) and [Architecture](docs/ARCHITECTURE.md) |
-| Improve source breadth and independence | [Source portfolio](docs/SOURCE_PORTFOLIO.md) |
-| Understand SOLID and ports/adapters boundaries | [Ports and adapters](docs/PORTS_AND_ADAPTERS.md) |
-| Operate, export, or troubleshoot runs | [Operations](docs/OPERATIONS.md) |
-| Understand product and UI decisions | [Design](DESIGN.md) |
-| Review forecast accountability | [Research Quality](docs/RESEARCH_QUALITY.md) |
-| Publish or verify a release | [Releasing](docs/RELEASING.md) |
-| Contribute safely | [Contributing](CONTRIBUTING.md) |
-
-The complete documentation map is in [docs/README.md](docs/README.md).
-
-## What exists today
-
-The implemented **Company Analytics** capability provides:
-
-- an exact, timezone-aware research cutoff;
-- first-class source, entitlement, timestamp, claim, calculation, peer, valuation, risk, monitoring, and coverage records;
-- a 26-stage caller-executed workflow whose `sequential` coordinator/runner reports `executor_required` until the caller supplies a `LifecycleStageExecutor`, plus a caller-adapter-dependent `native` mode, an implemented but live-coverage-dependent `import` mode, and a mandatory sequential fallback;
-- deterministic fundamentals, ratios, valuation cases, consensus, positioning, catalysts, point-in-time experiment receipts, hypotheses, forecasts, and reproducible outcome scorecards;
-- strict temporal, referential, numerical, structured-challenge, sanitized-context, licensing, and safety validation of the complete outer submission;
-- SQLite/WAL lifecycle checkpoints with optimistic revisions, pause/resume, cooperative cancellation, and recovery;
-- content-addressed `CompanyAnalyticsResultV1` publication with an exact `CompanyAnalyticsSubmissionV1` and seven authoritative artifacts;
-- five deterministic report groups—Executive Summary, Evidence and Claims, Analytics and Valuation, Risks and Counterevidence, and Monitoring and Quality—plus JSON/Markdown exports, harness-neutral MCP reads, and an automatically discovered, shared loopback-only Research Dossier Viewer with exact source identity/access states, deduplicated planned-versus-held coverage, publisher/host concentration, entitlement gaps, and claim-lineage analysis.
-
-The product exposes two separate MCP servers. The coordination MCP (`stock-research-agents-mcp`) owns Company Analytics planning, `run-control.v1`, validation, publication, and completed-result reads; it registers no research-data tools. The research-data MCP (`stock-research-data-mcp`) implements `SourceBatch.v1` and registers seven public tools by default: SEC filings/fundamentals/statements, GDELT company/global news discovery metadata plus publisher links, World Bank macro observations, and credential-free `prediction_markets` search through Polymarket Gamma. The Gamma adapter returns public, read-only market metadata; it does not expose wallet, CLOB, or order endpoints. Treat its probabilities only as current market-implied observations when they are decision-relevant—not as truth, forecasts, or executable signals—and do not use current search results to reconstruct a historical snapshot. Prices and indicators require an entitled caller `SourcePort`; Yahoo Finance/`yfinance` remains caller-owned and terms-permitting rather than a default. Reddit requires approved caller OAuth, StockTwits is denied/unregistered, and FRED and Alpha Vantage are not default providers. The World Bank API supplies current-vintage values and cannot reconstruct historical revision lineage. GDELT results are discovery records—not opened publisher evidence—and saturated result sets are reported as partial.
-
-StockResearchAgents therefore has partial live public-source coverage, not complete live company research. The prediction-market adapter does not close the licensed market-data or lawful social-provider gaps. Live correctness still depends on source availability, caller entitlements, model behavior, and exact-cutoff discipline.
-The public `run_sequential_company_lifecycle` fallback reports `executor_required` until a caller supplies the `LifecycleStageExecutor` that performs each stage. It drives the same 26 durable stage contracts and resumes at the first incomplete stage. `native` execution remains caller-adapter work, and `import` remains partial for live research because provider coverage is incomplete. Native multi-agent runtimes may schedule the same contracts differently without changing their observable meaning.
-
-## Company research from a caller runtime
-
-Plan the public analytics flow from a schema-valid company request:
-
-The example below uses the CLI as a thin local adapter. Codex, MCP, Python, and custom harness adapters consume the same plan and terminal contract without inheriting CLI orchestration.
+To inspect the public workflow contract without running a model or retrieving data:
 
 ```bash
 uv run stock-research-agents analytics-plan \
@@ -102,49 +40,104 @@ uv run stock-research-agents analytics-plan \
   --output plan.json
 ```
 
-A caller executes the returned versioned roles, objectives, completion criteria, dependencies, capabilities, and output contracts with its own agents and tools. It may then import a complete, schema-valid terminal submission:
+The example request is explicitly fixture-mode. Changing its symbol does not make it live. See [Getting started](docs/GETTING_STARTED.md) for the complete first-run explanation.
 
-```bash
-uv run stock-research-agents analytics-import \
-  --input submission.analytics.json \
-  --output result.json
+## What you get
+
+| Capability | What StockResearchAgents guarantees |
+| --- | --- |
+| Evidence and claims | Typed source identity, timestamps, entitlements, lineage, coverage gaps, claims, counterclaims, and limitations |
+| Analytics and valuation | Deterministic fundamentals, ratios, valuation cases, sensitivities, consensus, positioning, and catalyst records |
+| Risks and counterevidence | Structured challenge, risk scenarios, unresolved evidence, and falsifiable hypotheses |
+| Monitoring and quality | Forecasts, later outcome observations, deterministic scorecards, and research-change records |
+| Durable lifecycle | A 26-stage `run-control.v1` flow with checkpoints, optimistic revisions, pause/resume, cancellation, recovery, and atomic finalization |
+| Completed presentation | Five report groups, JSON/Markdown exports, MCP reads, and a loopback-only Research Dossier Viewer that never sees partial stage output |
+
+The one public product profile is `company-analytics.v1`. Its strict terminal result, `CompanyAnalyticsResultV1`, retains the exact submission and seven authoritative artifacts: dossier, analytics bundle, run card, hypothesis ledger, research iterations, quality receipt, and forecast set.
+
+## How it works
+
+```mermaid
+flowchart LR
+    C["Caller runtime<br/>models, tools, retrieval, credentials"]
+    P["company-analytics.v1<br/>26-stage workflow contract"]
+    V["Deterministic validation<br/>temporal, lineage, numerical, safety"]
+    G{"Publication gate"}
+    R["Completed CompanyAnalyticsResultV1"]
+    O["MCP reads, exports,<br/>Research Dossier Viewer"]
+
+    C --> P --> V --> G
+    G -->|accepted| R --> O
+    G -->|rejected| X["Explicit validation errors<br/>no published dossier"]
 ```
 
-For a durable 26-stage run, use `analytics-init`, then the shared caller/runtime lifecycle controls. Opaque nonterminal envelopes are recorded as `committed`, not independently verified stage completions. Commits advance one first-incomplete stage at a time and resume restarts there. Finalization validates the exact 26-stage run card, publishes the canonical content-derived `CompanyAnalyticsResultV1.run_id`, and records that ID in the separate lifecycle control as `result_run_id`; the lifecycle `run_id` remains the control handle. The recoverable quality outcome index is reconstructed from the result's seven authoritative artifacts when necessary. `analytics-import` remains the stateless seam for an already-complete analytics payload. See [Integration](docs/INTEGRATION.md).
+1. A caller validates a request and receives versioned roles, dependencies, capabilities, completion criteria, and output schemas.
+2. The caller retrieves cutoff-valid evidence and executes the stages with its own agents and tools.
+3. StockResearchAgents validates the complete terminal submission and its cross-references.
+4. Only an accepted, atomically published result becomes readable through MCP, exports, or the viewer.
+
+[Architecture](docs/ARCHITECTURE.md) explains the ports-and-adapters boundaries, lifecycle state machine, repositories, projections, and security invariants.
+
+## Interfaces
+
+| Interface | Entry point | Use it for |
+| --- | --- | --- |
+| CLI | `stock-research-agents` | Plans, imports, durable run control, validation, exports, memory, quality, and viewer serving |
+| Coordination MCP | `stock-research-agents-mcp` | Capability discovery, planning, lifecycle mutation, publication, and completed-result reads |
+| Research-data MCP | `stock-research-data-mcp` | Typed SEC, GDELT, World Bank, and read-only Polymarket source routes |
+| Python | `stock_research_agents` | Embedding contracts, application services, lifecycle control, and projections |
+| Host adapters | `stock_research_agents_host` | Caller-owned source collection, entitlements, and provider normalization |
+
+The coordination MCP intentionally registers no research-data tools. Credentials, raw licensed bodies, provider sessions, prompt text, model execution, and agent scheduling remain outside the core boundary.
+
+## Source and proof status
+
+| Source route | Default status | Important limitation |
+| --- | --- | --- |
+| SEC filings, fundamentals, statements | Public typed route | Availability and point-in-time validity still require exact-cutoff checks |
+| GDELT company/global news | Public discovery route | Publisher links are discovery metadata, not opened publisher evidence |
+| World Bank macro observations | Public typed route | Current-vintage values do not reconstruct historical revision lineage |
+| Polymarket Gamma | Public read-only context | Market-implied observations are neither forecast truth nor executable signals |
+| Prices and indicators | Caller-entitled port | No bundled default licensed market-data provider |
+| Reddit | Caller OAuth port | Requires approved caller credentials and rights |
+| StockTwits | Not registered | No silent fallback |
+
+StockResearchAgents therefore has partial live public-source coverage, not complete live company research. Missing, stale, conflicting, or entitlement-blocked evidence remains visible. See the [source portfolio](docs/SOURCE_PORTFOLIO.md), [research-data MCP](docs/RESEARCH_DATA_MCP.md), and [proof ledger](docs/FEATURE_PARITY.md).
+
+## Install and integrate
+
+No public release is claimed until a tagged version has been published. For development, use the source-checkout commands above. Once a release exists, the supported PyPI, GitHub Release, MCP, and host-specific commands will be listed in [Harnesses](docs/HOSTS.md) and verified through the [release process](docs/RELEASING.md).
+
+| Goal | Start here |
+| --- | --- |
+| Connect an MCP-capable harness | [Integration](docs/INTEGRATION.md#mcp) |
+| Use Claude Code, OpenCode, Hermes, or the optional Codex adapter | [Host adapters](docs/INTEGRATION.md#host-adapters) |
+| Embed the Python API | [Python integration](docs/INTEGRATION.md#python) |
+| Build a source adapter | [Ports and adapters](docs/PORTS_AND_ADAPTERS.md) |
+| Operate or recover durable runs | [Operations](docs/OPERATIONS.md) |
+| Review contracts and compatibility | [Contracts](docs/CONTRACTS.md) and [compatibility](docs/COMPATIBILITY.md) |
+| Understand product and UI decisions | [Design](DESIGN.md) |
+
+The complete documentation index is in [docs/README.md](docs/README.md).
 
 ## Stable product language
 
-| Human-facing name | Meaning | Stable technical identifier |
-| --- | --- | --- |
-| Company Analytics | Primary research capability | `company-analytics.v1` |
-| Completed Research Dossier | Immutable human-facing artifact | `research_dossier.v1` |
-| Research Dossier Viewer | Completed-only read projection | `run-view.v1` |
-| Evidence-First Company Research | Embedded dossier foundation | `company-research.v1` |
-| Research Quality | Forecast, outcome, and evaluation capability | `research_quality.v1` sidecar in `company-analytics.v1` |
-| Research Quality Receipt | Immutable policy, provenance, forecast, and rule-evaluation artifact | `research-quality.v1` |
+| Human-facing name | Stable technical identifier |
+| --- | --- |
+| Company Analytics | `company-analytics.v1` |
+| Completed Research Dossier | `research_dossier.v1` |
+| Research Dossier Viewer | `run-view.v1` |
+| Evidence-First Company Research foundation | `company-research.v1` |
+| Research Quality sidecar | `research_quality.v1` |
+| Research Quality Receipt | `research-quality.v1` |
 
-Wire identifiers remain versioned and are never renamed cosmetically. See [Glossary](docs/GLOSSARY.md) and [active contract set](docs/COMPATIBILITY.md).
+Wire identifiers are versioned and are not cosmetically renamed. See the [glossary](docs/GLOSSARY.md).
 
-## Versioned contracts
+## Contributing, support, and security
 
-| Surface | Status | Purpose |
-| --- | --- | --- |
-| `company-analytics.v1` | One public product profile | Twenty-six-stage dossier, analytics, research-lab, and quality workflow |
-| `CompanyAnalyticsSubmissionV1` | Outer terminal submission | Embedded research submission plus typed analytics and quality sidecars |
-| `company-research.v1` | Embedded foundation | Fifteen-stage Evidence-First Company Research workflow inside Company Analytics |
-| `CompanyResearchSubmissionV1` / `ResearchDossierV1` | Embedded terminal foundation | Strict request plus completed dossier |
-| `run-control.v1` | Public lifecycle contract | Ordered commits, optimistic revisions, pause/resume, cancellation, recovery, and finalization |
+- Read [CONTRIBUTING.md](CONTRIBUTING.md) before changing a contract, workflow, source adapter, or presentation boundary.
+- Use [SUPPORT.md](SUPPORT.md) for usage questions and troubleshooting routes.
+- Report vulnerabilities through the private process in [SECURITY.md](SECURITY.md), not a public issue.
+- Review user-visible changes in [CHANGELOG.md](CHANGELOG.md).
 
-The analytics profile wraps rather than widens research. Existing research readers remain valid while analytics-aware readers consume typed sidecars.
-
-## Current proof boundary
-
-Local tests prove deterministic contracts, lifecycle behavior, safety, and generic symbol handling for fixture submissions. They do not prove:
-
-- that every future host retrieves complete or correct live evidence;
-- access to licensed providers or redistribution rights;
-- recommendation quality, investment performance, or forecast calibration;
-- token-level resume inside a model response or tool call; or
-- broker or order execution, which is prohibited.
-
-See [Capability and proof status](docs/FEATURE_PARITY.md) and [Validation](docs/VALIDATION.md) for the evidence ledger.
+Licensed under the [Apache License 2.0](LICENSE).

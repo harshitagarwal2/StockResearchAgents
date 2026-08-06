@@ -13,15 +13,11 @@ from .research_contracts import CompanyResearchRequest
 from .research_quality_v1 import QUALITY_STORE
 
 
-class LifecycleProfileStrategy(Protocol):
-    """Strategy interface consumed by the analytics lifecycle coordinator."""
+class WorkflowPlanner(Protocol):
+    """Prepare the caller-owned execution plan for a workflow."""
 
     workflow_profile: str
     workflow_id: str
-    terminal_stage_id: str
-    terminal_output_ref: str
-    terminal_kind: str
-    persistence_outputs: tuple[str, ...]
 
     def prepare(
         self,
@@ -31,11 +27,19 @@ class LifecycleProfileStrategy(Protocol):
         execution_mode: str | None,
     ) -> Mapping[str, object]: ...
 
+
+class TerminalSubmissionCodec(Protocol):
+    """Parse a terminal submission and expose its originating request."""
+
     def parse_terminal(self, payload: object) -> CompanyAnalyticsSubmissionV1: ...
 
     def request_from_submission(self, submission: CompanyAnalyticsSubmissionV1) -> CompanyResearchRequest: ...
 
     def build_publication(self, payload: object) -> PublicationDraft: ...
+
+
+class SidecarPublisher(Protocol):
+    """Stage, publish, and query workflow-specific sidecars."""
 
     def stage_sidecars(self, payload: object) -> None: ...
 
@@ -44,8 +48,21 @@ class LifecycleProfileStrategy(Protocol):
     def sidecars_ready(self, payload: object | None) -> bool: ...
 
 
+class WorkflowDefinition(WorkflowPlanner, TerminalSubmissionCodec, SidecarPublisher, Protocol):
+    """Complete workflow definition consumed by the lifecycle coordinator."""
+
+    terminal_stage_id: str
+    terminal_output_ref: str
+    terminal_kind: str
+    persistence_outputs: tuple[str, ...]
+
+
+# Compatibility name for callers that imported the original broad strategy.
+LifecycleProfileStrategy = WorkflowDefinition
+
+
 class CompanyAnalyticsLifecycleProfile:
-    """Company analytics strategy with an injectable immutable quality store."""
+    """Company analytics workflow definition with an injectable quality index."""
 
     workflow_profile = "company-analytics.v1"
     workflow_id = "stockresearchagents.company-analytics.v1"

@@ -5,6 +5,8 @@ from __future__ import annotations
 from typing import Any, Literal
 
 from ._version import __version__
+from .application import CompletedPublicationService, CompletedRunQueryService
+from .bootstrap import DEFAULT_RUNTIME
 from .capabilities import discovery, feature_matrix
 from .company_analytics import get_company_research_quality as execute_quality_query
 from .company_analytics import prepare_company_analytics as prepare_company_analytics_request
@@ -13,7 +15,6 @@ from .company_analytics import record_company_forecast_outcome as execute_outcom
 from .company_analytics import submit_company_analytics as execute_company_analytics_import
 from .company_analytics_v1 import CompanyAnalyticsResultV1
 from .company_lifecycle import (
-    COMPANY_ANALYTICS_COORDINATOR,
     publication_lifecycle_run_id,
     require_completed_publication,
 )
@@ -22,9 +23,11 @@ from .export import export_run_bundle
 from .report_server import ensure_report_viewer, launch_report, present_completed_run, report_summary
 from .research_quality_v1 import OutcomeObservation
 from .semantics import build_completed_run_semantics
-from .store import RUN_STORE
 from .view import build_run_view
 from .viewer_server import viewer_report
+
+RUN_STORE = DEFAULT_RUNTIME.result_store
+COMPANY_ANALYTICS_COORDINATOR = DEFAULT_RUNTIME.coordinator
 
 try:
     from mcp.server import MCPServer
@@ -58,19 +61,25 @@ def _completed_publication_response(
     reports viewer failures as data and cannot roll back the saved result.
     """
     publication_store = RUN_STORE if store is None else store
-    presentation = present_completed_run(
-        result.run_id,
-        publication_store,
+    return CompletedPublicationService(
+        result_store=publication_store,
+        presenter=present_completed_run,
+        view_builder=build_run_view,
         coordinator=coordinator,
-        mode=presentation_mode,
+    ).response(
+        result,
+        events,
+        presentation_mode=presentation_mode,
+        view_before_events=False,
     )
-    return {
-        "ok": True,
-        "result": result.to_dict(),
-        "events": [event.to_dict() for event in events],
-        "view": build_run_view(result, events).to_dict(),
-        "presentation": presentation,
-    }
+
+
+def _completed_run_query(coordinator: Any = None) -> CompletedRunQueryService:
+    return CompletedRunQueryService(
+        RUN_STORE,
+        coordinator=COMPANY_ANALYTICS_COORDINATOR if coordinator is None else coordinator,
+        publication_gate=require_completed_publication,
+    )
 
 
 def discover_capability() -> dict[str, object]:
@@ -233,11 +242,7 @@ def finalize_run(
 
 def export_completed_run(run_id: str, destination: str, overwrite: bool = False) -> dict[str, Any]:
     """Publish a new bundle atomically or replace a validated prior bundle with crash recovery."""
-    run_id = _completed_run_id(run_id)
-    result = RUN_STORE.get_result(run_id)
-    events = RUN_STORE.get_events(run_id)
-    if result is None or events is None:
-        raise ValueError(f"completed run not found: {run_id}")
+    run_id, result, events = _completed_run_query().require(run_id)
     lifecycle_run_id = publication_lifecycle_run_id(events)
     if lifecycle_run_id is not None:
         try:
@@ -292,9 +297,7 @@ def record_decision_outcome(
 
 def get_validation_report(run_id: str) -> dict[str, Any]:
     """Validate the completed run against repository-owned invariants."""
-    run_id = _completed_run_id(run_id)
-    result = RUN_STORE.get_result(run_id)
-    events = RUN_STORE.get_events(run_id)
+    run_id, result, events = _completed_run_query().require(run_id)
     if not isinstance(result, CompanyAnalyticsResultV1) or events is None:
         raise ValueError(f"completed run not found: {run_id}")
     report = evaluate_validation(result, events)
@@ -308,7 +311,7 @@ def get_run(run_id: str) -> dict[str, Any]:
 
 
 def _completed_run_id(run_id: str) -> str:
-    return require_completed_publication(run_id, RUN_STORE, COMPANY_ANALYTICS_COORDINATOR)
+    return _completed_run_query().resolve(run_id)
 
 
 def get_run_events(run_id: str) -> dict[str, Any]:
@@ -327,9 +330,7 @@ def get_run_result(run_id: str) -> dict[str, Any]:
 
 def get_run_semantics(run_id: str) -> dict[str, Any]:
     """Return canonical transport-neutral semantics for a completed run."""
-    run_id = _completed_run_id(run_id)
-    result = RUN_STORE.get_result(run_id)
-    events = RUN_STORE.get_events(run_id)
+    run_id, result, events = _completed_run_query().require(run_id)
     if not isinstance(result, CompanyAnalyticsResultV1) or events is None:
         raise ValueError(f"completed run not found: {run_id}")
     return build_completed_run_semantics(result, events).to_dict()

@@ -11,9 +11,9 @@ import time
 from pathlib import Path
 from typing import Any
 
-from .company_lifecycle import CompanyAnalyticsCoordinator
+from .bootstrap import create_company_analytics_coordinator
 from .lifecycle import LifecycleStore
-from .memory import DecisionMemoryStore
+from .memory import ResearchHistoryRepository
 from .presentation import (
     _VIEWER_REGISTRY_SCHEMA,
     _atomic_write_registry,
@@ -36,12 +36,12 @@ class _DurablePublicationCoordinator:
         lifecycle_store = LifecycleStore(self.state_dir)
         result_store = RunStore(self.state_dir)
 
-        def memory_store_factory() -> DecisionMemoryStore:
-            return DecisionMemoryStore(self.state_dir / "decision-memory.sqlite3")
+        def memory_store_factory() -> ResearchHistoryRepository:
+            return ResearchHistoryRepository(self.state_dir / "decision-memory.sqlite3")
 
-        analytics = CompanyAnalyticsCoordinator(
-            lifecycle_store,
-            result_store,
+        analytics = create_company_analytics_coordinator(
+            lifecycle_store=lifecycle_store,
+            result_store=result_store,
             memory_store_factory=memory_store_factory,
         )
         try:

@@ -189,8 +189,8 @@ class DecisionMemoryRecall:
         }
 
 
-class DecisionMemoryStore:
-    """Append-only decision and outcome memory with bounded retrieval."""
+class ResearchHistoryRepository:
+    """Append-only research decisions and outcomes with bounded retrieval."""
 
     def __init__(self, path: str | os.PathLike[str]) -> None:
         raw_path = os.fspath(path)
@@ -294,7 +294,7 @@ class DecisionMemoryStore:
         with self._lock:
             self._connection.close()
 
-    def __enter__(self) -> DecisionMemoryStore:
+    def __enter__(self) -> ResearchHistoryRepository:
         return self
 
     def __exit__(self, *_: object) -> None:
@@ -619,5 +619,5 @@ class DecisionMemoryStore:
         )
 
 
-# Concise alias for integration surfaces that do not need to expose storage details.
-DecisionMemory = DecisionMemoryStore
+# Compatibility export for integrations using the original storage-oriented name.
+DecisionMemoryStore = ResearchHistoryRepository

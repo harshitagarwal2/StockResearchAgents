@@ -42,7 +42,10 @@ The caller may retrieve public or entitled data through its `SourcePort`; `Sourc
 | Pattern | Concrete use | Why it exists |
 | --- | --- | --- |
 | Ports and adapters | CLI, MCP, Python, Codex, caller submissions | Keeps harness and transport APIs replaceable |
+| Composition root | `bootstrap.py` default runtime and coordinator factory | Keeps infrastructure construction out of lifecycle and transport modules |
+| Application service | Completed-publication response and query services in `application.py` | Keeps CLI and MCP behavior equivalent without duplicating orchestration |
 | Anti-corruption layer | Strict analytics submission and `SourceBatch` parsing | Prevents caller and provider semantics from leaking into the domain |
+| Provider strategy/router | Capability-specific source providers behind `PublicResearchDataAdapter` | Adds or replaces providers without expanding one capability switch |
 | State machine | Lifecycle statuses, optimistic revisions, pause/resume, cancellation, finalization | Makes legal transitions and recovery boundaries explicit |
 | Specification pattern | Temporal, numerical, referential, completeness, entitlement, and safety checks | Keeps validation deterministic and composable |
 | Repository pattern | SQLite/WAL lifecycle, decision memory, atomic result store | Separates durable storage from domain rules |
@@ -143,7 +146,7 @@ All IDs are local to the dossier and cross-references must resolve. Documents re
 
 For a stateless plan, the caller may execute dependency-ready work with native subagents and parallel tools before importing one complete payload. A durable `native` run still commits one current first-incomplete stage at a time; parallel retrieval does not relax coordinator ordering. Every primary stage carries a versioned role, objective, completion criteria, semantic capabilities, dependencies, and output references. The sequential runner drives those same coordinator boundaries for a one-agent caller and resumes from the first incomplete stage. Contract semantics and terminal information remain the same; exact prompt wording, agent spawning, and scheduling do not.
 
-The analytics-profile `CompanyAnalyticsCoordinator` (`COMPANY_ANALYTICS_COORDINATOR`) provides the public 26-stage lifecycle through `analytics-init` / `create_company_analytics_run` and shared lifecycle controls. It checkpoints bounded stage descriptors and optional safe receipts, accepts only the current first-incomplete stage, validates the terminal analytics payload, and binds the final run card to coordinator-owned envelope and commit-receipt digests for all 26 stages. The terminal commitment uses a normalized publication-candidate digest so the contract is not circular. It also rejects a terminal run card whose execution mode differs from the mode fixed at run creation. The atomically published source of truth is `CompanyAnalyticsResultV1`, containing the exact `CompanyAnalyticsSubmissionV1` and seven authoritative artifacts. The separate quality outcome index uses hidden stage/publish steps and can be reconstructed from completed artifacts after a crash; the design does not claim a distributed transaction. Atomic complete import remains available when lifecycle state is unnecessary.
+The analytics-profile `CompanyAnalyticsCoordinator` provides the public 26-stage lifecycle through `analytics-init` / `create_company_analytics_run` and shared lifecycle controls. The default coordinator is assembled in `bootstrap.py`; lifecycle code itself depends only on application ports and a workflow definition. It checkpoints bounded stage descriptors and optional safe receipts, accepts only the current first-incomplete stage, validates the terminal analytics payload, and binds the final run card to coordinator-owned envelope and commit-receipt digests for all 26 stages. The terminal commitment uses a normalized publication-candidate digest so the contract is not circular. It also rejects a terminal run card whose execution mode differs from the mode fixed at run creation. The atomically published source of truth is `CompanyAnalyticsResultV1`, containing the exact `CompanyAnalyticsSubmissionV1` and seven authoritative artifacts. The separate quality outcome index uses hidden stage/publish steps and can be reconstructed from completed artifacts after a crash; the design does not claim a distributed transaction. Atomic complete import remains available when lifecycle state is unnecessary.
 
 [![Durable Company Analytics lifecycle showing ordered stage commits, checkpoints, pause and recovery, terminal cancellation, finalizing, and completed-only publication](../assets/architecture/company-analytics-lifecycle.png)](../assets/architecture/company-analytics-lifecycle.svg)
 
@@ -231,13 +234,14 @@ It does not own retrieval, provider health workers, prompts, execution, portfoli
 | Company-research contracts | `src/stock_research_agents/research_contracts.py` |
 | Company-research validation | `src/stock_research_agents/research_conformance.py` |
 | Workflow manifests and schemas | `src/stock_research_agents/workflow/` |
-| Embedded research foundation | `src/stock_research_agents/company_research.py` |
+| Embedded research foundation | `src/stock_research_agents/research_contracts.py`, `research_conformance.py`, `workflow/company-research.v1.json` |
 | `run-control.v1` lifecycle | `src/stock_research_agents/company_lifecycle.py` |
+| Application services and composition | `src/stock_research_agents/application.py`, `bootstrap.py`, `application_ports.py` |
 | Company analytics profile | `src/stock_research_agents/company_analytics_v1/`, `company_analytics.py` |
 | Deterministic analytics | `src/stock_research_agents/analytics_v1/` |
 | Research lab and packs | `src/stock_research_agents/research_lab_v1/` |
 | Research Quality | `src/stock_research_agents/research_quality_v1/` |
-| Host source ports/adapters | `src/stock_research_agents_host/` |
+| Host source ports/adapters | `src/stock_research_agents_host/`, including `adapters/providers/` and `source_router.py` |
 | Generic lifecycle/store/memory | `lifecycle.py`, `store.py`, `memory.py` |
 | Completed projection | `view.py`, `report_server.py`, packaged `web/` |
 | Automatic presentation | `presentation.py`, `viewer_daemon.py` |

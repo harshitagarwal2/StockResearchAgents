@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 import tomllib
@@ -38,6 +39,28 @@ def test_project_metadata_describes_the_public_distribution() -> None:
     assert project["urls"]["Repository"] == "https://github.com/harshitagarwal2/StockResearchAgents"
     assert "mcp" in project["keywords"]
     assert "Programming Language :: Python :: 3.11" in project["classifiers"]
+
+
+def test_ci_exercises_every_declared_python_minor() -> None:
+    pyproject = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    declared = {
+        match.group(1)
+        for classifier in pyproject["project"]["classifiers"]
+        if (match := re.fullmatch(r"Programming Language :: Python :: (\d+\.\d+)", classifier))
+    }
+    workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    exercised = set(re.findall(r'["\x27](\d+\.\d+)["\x27]', workflow))
+
+    assert declared == exercised
+
+
+def test_readme_quickstart_uses_current_cli_surfaces() -> None:
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+
+    assert "fixture --events" not in readme
+    assert "scripts/smoke_backend.py" in readme
+    assert "stock-research-agents analytics-plan" in readme
+    assert (ROOT / "examples" / "company-request.v1.json").is_file()
 
 
 def test_source_checkout_launchers_and_host_adapters_stay_thin() -> None:

@@ -19,13 +19,15 @@ class WireReceipt(Protocol):
     def to_dict(self) -> dict[str, Any]: ...
 
 
-class LifecycleRepository(Protocol):
+class LifecycleReader(Protocol):
     @property
     def state_dir(self) -> Path | None: ...
 
-    def create(self, record: Mapping[str, Any]) -> dict[str, Any]: ...
-
     def get(self, run_id: str) -> dict[str, Any] | None: ...
+
+
+class LifecycleWriter(Protocol):
+    def create(self, record: Mapping[str, Any]) -> dict[str, Any]: ...
 
     def update(
         self,
@@ -35,7 +37,11 @@ class LifecycleRepository(Protocol):
     ) -> dict[str, Any]: ...
 
 
-class ResultPublicationPort(Protocol):
+class LifecycleRepository(LifecycleReader, LifecycleWriter, Protocol):
+    """Read and mutate optimistic-revision lifecycle records."""
+
+
+class CompletedResultReader(Protocol):
     @property
     def state_dir(self) -> Path | None: ...
 
@@ -43,6 +49,8 @@ class ResultPublicationPort(Protocol):
 
     def get_events(self, run_id: str) -> tuple[RunEvent, ...] | None: ...
 
+
+class CompletedResultPublisher(Protocol):
     def get_staged(self, run_id: str) -> tuple[StoredResult, tuple[RunEvent, ...]] | None: ...
 
     def stage(self, result: StoredResult, events: tuple[RunEvent, ...]) -> None: ...
@@ -50,7 +58,11 @@ class ResultPublicationPort(Protocol):
     def publish_staged(self, run_id: str) -> tuple[StoredResult, tuple[RunEvent, ...]]: ...
 
 
-class DecisionMemoryPort(Protocol):
+class ResultPublicationPort(CompletedResultReader, CompletedResultPublisher, Protocol):
+    """Compatibility port for callers that both query and publish results."""
+
+
+class ResearchHistoryReader(Protocol):
     def close(self) -> None: ...
 
     def recall(
@@ -62,6 +74,12 @@ class DecisionMemoryPort(Protocol):
         cutoff_at: str | None = None,
     ) -> WireReceipt: ...
 
+    def is_published(self, run_id: str) -> bool: ...
+
+
+class ResearchHistoryWriter(Protocol):
+    def close(self) -> None: ...
+
     def stage_final_decision(
         self,
         result: CompanyAnalyticsResultV1,
@@ -70,8 +88,6 @@ class DecisionMemoryPort(Protocol):
     ) -> WireReceipt: ...
 
     def publish_decision(self, run_id: str) -> WireReceipt: ...
-
-    def is_published(self, run_id: str) -> bool: ...
 
     def append_outcome(
         self,
@@ -84,7 +100,15 @@ class DecisionMemoryPort(Protocol):
     ) -> WireReceipt: ...
 
 
-class QualityIndexPort(Protocol):
+class ResearchHistoryPort(ResearchHistoryReader, ResearchHistoryWriter, Protocol):
+    """Read/write boundary for durable research decisions and outcomes."""
+
+
+# Compatibility type name retained for existing integrations.
+DecisionMemoryPort = ResearchHistoryPort
+
+
+class QualityRegistrationWriter(Protocol):
     def stage_registration(
         self,
         receipt: ResearchQualityReceipt,
@@ -96,7 +120,22 @@ class QualityIndexPort(Protocol):
     def is_published(self, run_id: str) -> bool: ...
 
 
-class QualitySidecarPort(QualityIndexPort, Protocol):
+class ForecastOutcomeRecorder(Protocol):
     def append_outcome(self, observation: OutcomeObservation) -> QualityScorecard: ...
 
+
+class QualityProjectionReader(Protocol):
     def projection(self, run_id: str) -> dict[str, object] | None: ...
+
+
+class QualityIndexPort(QualityRegistrationWriter, Protocol):
+    """Write-only publication boundary used by lifecycle profiles."""
+
+
+class QualitySidecarPort(
+    QualityRegistrationWriter,
+    ForecastOutcomeRecorder,
+    QualityProjectionReader,
+    Protocol,
+):
+    """Compatibility port for the complete research-quality sidecar."""

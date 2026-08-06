@@ -17,23 +17,20 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
-from .application_ports import DecisionMemoryPort, LifecycleRepository, ResultPublicationPort
+from .application_ports import CompletedResultReader, LifecycleRepository, ResearchHistoryPort, ResultPublicationPort
 from .company_analytics_v1 import CompanyAnalyticsResultV1, analytics_run_id
 from .contracts import EventKind, RunEvent, reject_secret_shaped_keys
 from .lifecycle import (
-    LIFECYCLE_STORE,
     LifecycleStatus,
     RevisionConflict,
-    default_decision_memory_store,
     is_lifecycle_run_id,
 )
 from .lifecycle_profiles import (
     COMPANY_ANALYTICS_LIFECYCLE_PROFILE,
-    LifecycleProfileStrategy,
+    WorkflowDefinition,
 )
 from .research_contracts import CompanyResearchRequest, StrictModel
 from .research_lab_v1 import StageCommitmentV1
-from .store import RUN_STORE
 
 COMPANY_LIFECYCLE_SCHEMA_VERSION = "1.0.0"
 STAGE_ENVELOPE_SCHEMA_VERSION = "1.0.0"
@@ -190,7 +187,7 @@ def publication_lifecycle_run_id(events: Sequence[RunEvent]) -> str | None:
 
 def require_completed_publication(
     run_id: str,
-    result_store: ResultPublicationPort,
+    result_store: CompletedResultReader,
     coordinator: Any,
 ) -> str:
     """Resolve aliases and require every lifecycle publication side effect.
@@ -374,9 +371,9 @@ class CompanyAnalyticsCoordinator:
         lifecycle_store: LifecycleRepository,
         result_store: ResultPublicationPort,
         *,
-        memory_store: DecisionMemoryPort | None = None,
-        memory_store_factory: Callable[[], DecisionMemoryPort] | None = None,
-        profile: LifecycleProfileStrategy = _DEFAULT_LIFECYCLE_PROFILE,
+        memory_store: ResearchHistoryPort | None = None,
+        memory_store_factory: Callable[[], ResearchHistoryPort] | None = None,
+        profile: WorkflowDefinition = _DEFAULT_LIFECYCLE_PROFILE,
     ) -> None:
         if memory_store is not None and memory_store_factory is not None:
             raise ValueError("memory_store and memory_store_factory are mutually exclusive")
@@ -386,12 +383,12 @@ class CompanyAnalyticsCoordinator:
         self._memory_store_factory = memory_store_factory
         self.profile = profile
 
-    def _memory(self) -> DecisionMemoryPort | None:
+    def _memory(self) -> ResearchHistoryPort | None:
         if self.memory_store is None and self._memory_store_factory is not None:
             self.memory_store = self._memory_store_factory()
         return self.memory_store
 
-    def decision_memory(self) -> DecisionMemoryPort:
+    def decision_memory(self) -> ResearchHistoryPort:
         memory = self._memory()
         if memory is None:
             raise RuntimeError("this coordinator has no decision memory store")
@@ -1115,8 +1112,10 @@ class CompanyAnalyticsCoordinator:
         return tuple(deepcopy(self._get(run_id)["receipts"]))
 
 
-COMPANY_ANALYTICS_COORDINATOR = CompanyAnalyticsCoordinator(
-    LIFECYCLE_STORE,
-    RUN_STORE,
-    memory_store_factory=default_decision_memory_store,
-)
+def __getattr__(name: str) -> object:
+    """Keep the former coordinator import available without composing it here."""
+    if name == "COMPANY_ANALYTICS_COORDINATOR":
+        from .bootstrap import COMPANY_ANALYTICS_COORDINATOR
+
+        return COMPANY_ANALYTICS_COORDINATOR
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

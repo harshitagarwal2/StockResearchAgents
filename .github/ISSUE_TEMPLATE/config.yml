@@ -1,0 +1,9 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Usage and integration support
+    url: https://github.com/harshitagarwal2/StockResearchAgents/blob/main/SUPPORT.md
+    about: Read the support guide before filing a usage question.
+  - name: Security vulnerability
+    url: https://github.com/harshitagarwal2/StockResearchAgents/security/policy
+    about: Follow the private reporting instructions; do not open a public issue.
+

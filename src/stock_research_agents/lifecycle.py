@@ -14,7 +14,7 @@ from pathlib import Path
 from threading import RLock
 from typing import Any
 
-from .memory import DecisionMemoryStore
+from .memory import ResearchHistoryRepository
 
 LIFECYCLE_SCHEMA_VERSION = "1.0.0"
 _RUN_ID_PATTERN = re.compile(r"analytics-[a-f0-9]{12}\Z")
@@ -239,7 +239,7 @@ class LifecycleStore:
 LIFECYCLE_STORE = LifecycleStore(_state_dir_factory=_default_state_dir)
 
 
-def default_decision_memory_store() -> DecisionMemoryStore:
+def default_decision_memory_store() -> ResearchHistoryRepository:
     """Return the shared durable memory store used by analytics lifecycle adapters."""
 
-    return DecisionMemoryStore(_default_state_dir() / "decision-memory.sqlite3")
+    return ResearchHistoryRepository(_default_state_dir() / "decision-memory.sqlite3")

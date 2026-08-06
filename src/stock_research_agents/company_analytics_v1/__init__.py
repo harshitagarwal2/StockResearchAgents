@@ -14,7 +14,7 @@ from .contracts import (
     parse_company_analytics_result_v1,
     parse_company_analytics_submission_v1,
 )
-from .provider import CompanyAnalyticsV1Provider
+from .provider import CompanyAnalyticsV1Provider, CompanyAnalyticsWorkflowDefinition
 from .source_lineage import (
     SOURCE_LINEAGE_SCHEMA_VERSION,
     SourceLineageBindingV1,
@@ -27,6 +27,7 @@ __all__ = [
     "COMPANY_ANALYTICS_WORKFLOW_ID",
     "CompanyAnalyticsResultV1",
     "CompanyAnalyticsV1Provider",
+    "CompanyAnalyticsWorkflowDefinition",
     "CompanyAnalyticsSubmissionV1",
     "SOURCE_LINEAGE_SCHEMA_VERSION",
     "SourceLineageBindingV1",

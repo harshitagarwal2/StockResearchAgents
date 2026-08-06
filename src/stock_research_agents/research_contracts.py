@@ -625,9 +625,6 @@ class FactorSnapshot(StrictModel):
             raise ValueError("factor snapshots require evidence")
 
 
-FactorExposure = FactorSnapshot
-
-
 @dataclass(frozen=True, slots=True)
 class ValuationAssumption(StrictModel):
     id: str
@@ -1295,9 +1292,6 @@ class ResearchDossierV1(StrictModel):
 
     def digest(self) -> str:
         return sha256(self.to_json().encode()).hexdigest()
-
-
-ResearchDossier = ResearchDossierV1
 
 
 @dataclass(frozen=True, slots=True)
