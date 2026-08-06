@@ -181,7 +181,9 @@ def _validate_manifest(value: object) -> dict[str, Any]:
     return value
 
 
-class CompanyAnalyticsV1Provider:
+class CompanyAnalyticsWorkflowDefinition:
+    """Versioned workflow definition and terminal publication builder."""
+
     descriptor = ProfileDescriptor(
         profile="company-analytics.v1",
         workflow_id="stockresearchagents.company-analytics.v1",
@@ -334,3 +336,7 @@ class CompanyAnalyticsV1Provider:
             data={"workflow_profile": result.profile, "schema_version": result.schema_version},
         )
         return PublicationDraft(result=result, events=(*stage_events, *sidecar_events, final))
+
+
+# Compatibility name retained for callers that imported the pre-refactor class.
+CompanyAnalyticsV1Provider = CompanyAnalyticsWorkflowDefinition

@@ -7,7 +7,7 @@
 
 ## Use the product
 
-1. [Getting started](GETTING_STARTED.md) — run the safe fixture and open the Research Dossier Viewer.
+1. [Getting started](GETTING_STARTED.md) — verify the public workflow and completed-result boundary, then serve an already-published dossier.
 2. [Operations](OPERATIONS.md) — state directories, exports, recovery, and troubleshooting.
 3. [Glossary](GLOSSARY.md) — human-facing terms and strict identifiers.
 

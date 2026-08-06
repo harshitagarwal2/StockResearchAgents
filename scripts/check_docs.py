@@ -9,6 +9,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 LINK_PATTERN = re.compile(r"!?\[[^\]]*\]\(([^)]+)\)")
+NESTED_IMAGE_LINK_PATTERN = re.compile(r"\[!\[[^\]]*\]\([^)]+\)\]\(([^)]+)\)")
 REMOTE_PREFIXES = ("http://", "https://", "mailto:", "plugin://", "subagent://")
 STALE_VOCABULARY = (
     (re.compile(r"\bRunResult\b"), "retired RunResult contract"),
@@ -95,16 +96,17 @@ def _link_target(raw_target: str) -> str:
 def broken_links(path: Path) -> list[str]:
     errors: list[str] = []
     text = path.read_text(encoding="utf-8")
-    for match in LINK_PATTERN.finditer(text):
-        target = _link_target(match.group(1))
-        if not target or target.startswith("#") or target.startswith(REMOTE_PREFIXES):
-            continue
-        relative_path = target.split("#", 1)[0]
-        if not relative_path:
-            continue
-        resolved = (path.parent / relative_path).resolve()
-        if not resolved.exists():
-            errors.append(f"{path.relative_to(ROOT)}: missing link target {target}")
+    for pattern in (LINK_PATTERN, NESTED_IMAGE_LINK_PATTERN):
+        for match in pattern.finditer(text):
+            target = _link_target(match.group(1))
+            if not target or target.startswith("#") or target.startswith(REMOTE_PREFIXES):
+                continue
+            relative_path = target.split("#", 1)[0]
+            if not relative_path:
+                continue
+            resolved = (path.parent / relative_path).resolve()
+            if not resolved.exists():
+                errors.append(f"{path.relative_to(ROOT)}: missing link target {target}")
     return errors
 
 

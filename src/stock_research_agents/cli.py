@@ -6,8 +6,10 @@ import argparse
 import json
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
+from .application import CompletedPublicationService, CompletedRunQueryService
+from .bootstrap import DEFAULT_RUNTIME
 from .company_analytics import (
     get_company_research_quality,
     prepare_company_analytics,
@@ -16,7 +18,6 @@ from .company_analytics import (
 )
 from .company_analytics_v1 import CompanyAnalyticsResultV1
 from .company_lifecycle import (
-    COMPANY_ANALYTICS_COORDINATOR,
     publication_lifecycle_run_id,
     require_completed_publication,
 )
@@ -25,8 +26,11 @@ from .export import export_run_bundle
 from .report_server import create_report_server, present_completed_run
 from .research_quality_v1 import OutcomeObservation
 from .semantics import build_completed_run_semantics
-from .store import RUN_STORE, RunStore
+from .store import RunStore
 from .view import build_run_view
+
+RUN_STORE: RunStore = cast(RunStore, DEFAULT_RUNTIME.result_store)
+COMPANY_ANALYTICS_COORDINATOR = DEFAULT_RUNTIME.coordinator
 
 
 def _add_commands(commands: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
@@ -179,19 +183,24 @@ def _completed_publication_payload(
 ) -> dict[str, object]:
     """Return one generic completed result plus its presentation receipt."""
     publication_store = RUN_STORE if store is None else store
-    presentation = present_completed_run(
-        result.run_id,
-        publication_store,
+    return CompletedPublicationService(
+        result_store=publication_store,
+        presenter=present_completed_run,
+        view_builder=build_run_view,
         coordinator=coordinator,
-        mode="path_only" if foreground_report else None,
+    ).response(
+        result,
+        events,
+        presentation_mode="path_only" if foreground_report else None,
     )
-    return {
-        "ok": True,
-        "result": result.to_dict(),
-        "view": build_run_view(result, events).to_dict(),
-        "events": [event.to_dict() for event in events],
-        "presentation": presentation,
-    }
+
+
+def _completed_run_query(coordinator: Any = None) -> CompletedRunQueryService:
+    return CompletedRunQueryService(
+        RUN_STORE,
+        coordinator=COMPANY_ANALYTICS_COORDINATOR if coordinator is None else coordinator,
+        publication_gate=require_completed_publication,
+    )
 
 
 def _serve_report(host: str, port: int, run_id: str | None = None) -> None:
@@ -276,14 +285,10 @@ def _quality_command(args: argparse.Namespace) -> int:
     try:
         if args.command == "quality-outcome":
             observation = OutcomeObservation.from_dict(_read_json(args.input))
-            require_completed_publication(
-                observation.forecast_id.split(".", 1)[0],
-                RUN_STORE,
-                COMPANY_ANALYTICS_COORDINATOR,
-            )
+            _completed_run_query().resolve(observation.forecast_id.split(".", 1)[0])
             response = record_company_forecast_outcome(observation)
         else:
-            run_id = require_completed_publication(args.run_id, RUN_STORE, COMPANY_ANALYTICS_COORDINATOR)
+            run_id = _completed_run_query().resolve(args.run_id)
             response = get_company_research_quality(run_id)
         _emit(response, args.output)
         return 0
@@ -396,9 +401,7 @@ def _lifecycle_command(args: argparse.Namespace) -> int:
                 ),
             }
         elif args.command == "run-export":
-            run_id = require_completed_publication(args.run_id, RUN_STORE, coordinator)
-            export_result = RUN_STORE.get_result(run_id)
-            export_events = RUN_STORE.get_events(run_id)
+            run_id, export_result, export_events = _completed_run_query(coordinator).require(args.run_id)
             if not isinstance(export_result, CompanyAnalyticsResultV1) or export_events is None:
                 raise ValueError(f"completed run not found: {run_id}")
             lifecycle_run_id = publication_lifecycle_run_id(export_events)
@@ -418,9 +421,7 @@ def _lifecycle_command(args: argparse.Namespace) -> int:
             )
             response = {"ok": True, "export": export_receipt.to_dict()}
         elif args.command == "run-validate":
-            run_id = require_completed_publication(args.run_id, RUN_STORE, coordinator)
-            validation_result = RUN_STORE.get_result(run_id)
-            validation_events = RUN_STORE.get_events(run_id)
+            run_id, validation_result, validation_events = _completed_run_query(coordinator).require(args.run_id)
             if not isinstance(validation_result, CompanyAnalyticsResultV1) or validation_events is None:
                 raise ValueError(f"completed run not found: {run_id}")
             report = evaluate_validation(validation_result, validation_events)
@@ -430,9 +431,7 @@ def _lifecycle_command(args: argparse.Namespace) -> int:
                 "digest": validation_digest(report),
             }
         elif args.command == "run-semantics":
-            run_id = require_completed_publication(args.run_id, RUN_STORE, coordinator)
-            semantics_result = RUN_STORE.get_result(run_id)
-            semantics_events = RUN_STORE.get_events(run_id)
+            run_id, semantics_result, semantics_events = _completed_run_query(coordinator).require(args.run_id)
             if not isinstance(semantics_result, CompanyAnalyticsResultV1) or semantics_events is None:
                 raise ValueError(f"completed run not found: {run_id}")
             response = build_completed_run_semantics(semantics_result, semantics_events).to_dict()

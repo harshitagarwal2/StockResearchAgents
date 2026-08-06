@@ -15,6 +15,14 @@ from urllib.error import HTTPError
 from urllib.parse import quote, urlencode, urlsplit, urlunsplit
 from urllib.request import Request, urlopen
 
+from stock_research_agents_host.adapters.providers import (
+    DeniedSocialProvider,
+    GdeltProvider,
+    LicensedMarketDataProvider,
+    PolymarketProvider,
+    SecProvider,
+    WorldBankProvider,
+)
 from stock_research_agents_host.contracts import (
     CompanyNewsQuery,
     FinancialStatementsQuery,
@@ -35,9 +43,9 @@ from stock_research_agents_host.contracts import (
     SourceProvenance,
     SourceQuery,
     StockTwitsQuery,
-    validate_source_response,
 )
 from stock_research_agents_host.ports import SourcePort
+from stock_research_agents_host.source_router import ProviderSourceRouter
 
 ADAPTER_VERSION = "1.0.0"
 SEC_USER_AGENT = "StockResearchAgents research adapter/0.1 (https://github.com/harshitagarwal2/StockResearchAgents)"
@@ -399,6 +407,16 @@ class PublicResearchDataAdapter:
         self._sec_headers = {"User-Agent": operator_identity}
         self._public_headers = {"User-Agent": operator_identity}
         self._clock = clock
+        self._router = ProviderSourceRouter(
+            (
+                LicensedMarketDataProvider(self._licensed_source, self._terminal),
+                DeniedSocialProvider(self._reddit_oauth_source, self._terminal),
+                SecProvider(self._sec_filings, self._sec_facts),
+                GdeltProvider(self._gdelt),
+                PolymarketProvider(self._polymarket),
+                WorldBankProvider(self._world_bank),
+            )
+        )
 
     def fetch(self, capability: str, query: SourceQuery) -> SourceBatch:
         expected = {
@@ -416,35 +434,12 @@ class PublicResearchDataAdapter:
         }.get(capability)
         if expected is None or not isinstance(query, expected):
             raise ValueError(f"{capability} requires its matching typed query")
-        if capability in {"prices", "indicators"}:
-            return self._licensed(capability, query)
-        if capability == "stocktwits":
-            return self._terminal(capability, query, "denied", "Approved StockTwits API access is not configured.")
-        if capability == "reddit":
-            if self._reddit_oauth_source is None:
-                return self._terminal(capability, query, "denied", "Host Reddit OAuth access is required.")
-            return validate_source_response(capability, query, self._reddit_oauth_source.fetch(capability, query))
         try:
-            if capability == "regulatory_filings":
-                return self._sec_filings(cast(RegulatoryFilingsQuery, query))
-            if capability == "fundamentals":
-                return self._sec_facts(cast(FundamentalsQuery, query), statements=False)
-            if capability == "financial_statements":
-                return self._sec_facts(cast(FinancialStatementsQuery, query), statements=True)
-            if capability in {"company_news", "global_news"}:
-                return self._gdelt(capability, cast(CompanyNewsQuery | GlobalNewsQuery, query))
-            if capability == "prediction_markets":
-                return self._polymarket(cast(PredictionMarketsQuery, query))
-            return self._world_bank(cast(MacroQuery, query))
+            return self._router.fetch(capability, query)
         except (ProviderTransportError, ProviderPayloadError) as exc:
             return self._terminal(
                 capability, query, "unavailable", f"Provider response unavailable: {type(exc).__name__}."
             )
-
-    def _licensed(self, capability: str, query: SourceQuery) -> SourceBatch:
-        if self._licensed_source is None:
-            return self._terminal(capability, query, "unavailable", "A licensed host SourcePort is required.")
-        return validate_source_response(capability, query, self._licensed_source.fetch(capability, query))
 
     def _request(
         self,

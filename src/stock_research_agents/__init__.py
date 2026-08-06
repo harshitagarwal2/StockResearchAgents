@@ -1,8 +1,10 @@
 """Standalone StockResearchAgents contracts and analytics runtime."""
 
+from .application import CompletedPublicationService, CompletedRunQueryService
+from .bootstrap import ApplicationRuntime, create_company_analytics_coordinator
 from .capabilities import discovery, feature_matrix
 from .company_analytics import prepare_company_analytics, submit_company_analytics
-from .company_analytics_v1 import CompanyAnalyticsResultV1
+from .company_analytics_v1 import CompanyAnalyticsResultV1, CompanyAnalyticsWorkflowDefinition
 from .company_lifecycle import CompanyAnalyticsCoordinator
 from .conformance import evaluate_validation
 from .contracts import (
@@ -19,7 +21,7 @@ from .export import export_run_bundle
 from .harness import LifecycleStageExecutor, run_sequential_company_lifecycle
 from .instruments import normalize_instrument_symbol
 from .lifecycle import LifecycleStore
-from .memory import DecisionMemoryStore
+from .memory import DecisionMemoryStore, ResearchHistoryRepository
 from .presentation import PresentationLink, ViewerDaemonPresenter
 from .report_server import (
     create_report_server,
@@ -31,12 +33,16 @@ from .report_server import (
 from .research_contracts import CompanyResearchRequest, ResearchDossierV1
 
 __all__ = [
+    "ApplicationRuntime",
     "Artifact",
     "CapabilityFeature",
     "CapabilitySetupError",
     "CompanyResearchRequest",
     "CompanyAnalyticsCoordinator",
     "CompanyAnalyticsResultV1",
+    "CompanyAnalyticsWorkflowDefinition",
+    "CompletedPublicationService",
+    "CompletedRunQueryService",
     "FeatureCapabilityMatrix",
     "PresentationLink",
     "PROTOTYPE_NOTICE",
@@ -44,10 +50,12 @@ __all__ = [
     "LifecycleStore",
     "LifecycleStageExecutor",
     "DecisionMemoryStore",
+    "ResearchHistoryRepository",
     "RunEvent",
     "SCHEMA_VERSION",
     "SetupGuidance",
     "ViewerDaemonPresenter",
+    "create_company_analytics_coordinator",
     "create_report_server",
     "discovery",
     "feature_matrix",

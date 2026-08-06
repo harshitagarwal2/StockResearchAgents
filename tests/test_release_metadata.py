@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 import tomllib
@@ -40,6 +41,28 @@ def test_project_metadata_describes_the_public_distribution() -> None:
     assert "Programming Language :: Python :: 3.11" in project["classifiers"]
 
 
+def test_ci_exercises_every_declared_python_minor() -> None:
+    pyproject = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    declared = {
+        match.group(1)
+        for classifier in pyproject["project"]["classifiers"]
+        if (match := re.fullmatch(r"Programming Language :: Python :: (\d+\.\d+)", classifier))
+    }
+    workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    exercised = set(re.findall(r'["\x27](\d+\.\d+)["\x27]', workflow))
+
+    assert declared == exercised
+
+
+def test_readme_quickstart_uses_current_cli_surfaces() -> None:
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+
+    assert "fixture --events" not in readme
+    assert "scripts/smoke_backend.py" in readme
+    assert "stock-research-agents analytics-plan" in readme
+    assert (ROOT / "examples" / "company-request.v1.json").is_file()
+
+
 def test_source_checkout_launchers_and_host_adapters_stay_thin() -> None:
     expected = {
         "scripts/run-stock-research-mcp": "stock_research_agents.mcp_server",
@@ -66,3 +89,13 @@ def test_source_checkout_launchers_and_host_adapters_stay_thin() -> None:
     assert "skills/stock-research-agents/SKILL.md" in claude
     assert "mcp_servers:" in hermes
     assert "/absolute/path/to/StockResearchAgents" in hermes
+
+
+def test_ci_installs_uv_before_source_launcher_smoke() -> None:
+    workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    compatibility_job = workflow.split("  python-compatibility:", maxsplit=1)[1]
+
+    install_step, smoke_steps = compatibility_job.split("      - name: Compile Python", maxsplit=1)
+    assert 'python -m pip install -e ".[dev]" uv' in install_step
+    assert "pytest -q" in smoke_steps
+    assert "python scripts/smoke_mcp.py" in smoke_steps

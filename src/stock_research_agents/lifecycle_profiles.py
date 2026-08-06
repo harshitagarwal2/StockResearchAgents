@@ -10,18 +10,13 @@ from .company_analytics import build_company_analytics_draft, prepare_company_an
 from .company_analytics_v1 import CompanyAnalyticsSubmissionV1, parse_company_analytics_submission_v1
 from .publication import PublicationDraft
 from .research_contracts import CompanyResearchRequest
-from .research_quality_v1 import QUALITY_STORE
 
 
-class LifecycleProfileStrategy(Protocol):
-    """Strategy interface consumed by the analytics lifecycle coordinator."""
+class WorkflowPlanner(Protocol):
+    """Prepare the caller-owned execution plan for a workflow."""
 
     workflow_profile: str
     workflow_id: str
-    terminal_stage_id: str
-    terminal_output_ref: str
-    terminal_kind: str
-    persistence_outputs: tuple[str, ...]
 
     def prepare(
         self,
@@ -31,11 +26,19 @@ class LifecycleProfileStrategy(Protocol):
         execution_mode: str | None,
     ) -> Mapping[str, object]: ...
 
+
+class TerminalSubmissionCodec(Protocol):
+    """Parse a terminal submission and expose its originating request."""
+
     def parse_terminal(self, payload: object) -> CompanyAnalyticsSubmissionV1: ...
 
     def request_from_submission(self, submission: CompanyAnalyticsSubmissionV1) -> CompanyResearchRequest: ...
 
     def build_publication(self, payload: object) -> PublicationDraft: ...
+
+
+class SidecarPublisher(Protocol):
+    """Stage, publish, and query workflow-specific sidecars."""
 
     def stage_sidecars(self, payload: object) -> None: ...
 
@@ -44,8 +47,21 @@ class LifecycleProfileStrategy(Protocol):
     def sidecars_ready(self, payload: object | None) -> bool: ...
 
 
+class WorkflowDefinition(WorkflowPlanner, TerminalSubmissionCodec, SidecarPublisher, Protocol):
+    """Complete workflow definition consumed by the lifecycle coordinator."""
+
+    terminal_stage_id: str
+    terminal_output_ref: str
+    terminal_kind: str
+    persistence_outputs: tuple[str, ...]
+
+
+# Compatibility name for callers that imported the original broad strategy.
+LifecycleProfileStrategy = WorkflowDefinition
+
+
 class CompanyAnalyticsLifecycleProfile:
-    """Company analytics strategy with an injectable immutable quality store."""
+    """Company analytics workflow definition with an injectable quality index."""
 
     workflow_profile = "company-analytics.v1"
     workflow_id = "stockresearchagents.company-analytics.v1"
@@ -64,7 +80,11 @@ class CompanyAnalyticsLifecycleProfile:
         "completed_report_bundle",
     )
 
-    def __init__(self, quality_store: QualityIndexPort = QUALITY_STORE) -> None:
+    def __init__(self, quality_store: QualityIndexPort | None = None) -> None:
+        if quality_store is None:
+            from .research_quality_v1 import QualityStore
+
+            quality_store = QualityStore()
         self.quality_store = quality_store
 
     def prepare(
@@ -110,4 +130,13 @@ class CompanyAnalyticsLifecycleProfile:
         return self.quality_store.is_published(submission.quality_receipt.run_id)
 
 
-COMPANY_ANALYTICS_LIFECYCLE_PROFILE = CompanyAnalyticsLifecycleProfile()
+COMPANY_ANALYTICS_LIFECYCLE_PROFILE: CompanyAnalyticsLifecycleProfile
+
+
+def __getattr__(name: str) -> object:
+    """Keep the former default profile import without composing it here."""
+    if name == "COMPANY_ANALYTICS_LIFECYCLE_PROFILE":
+        from .bootstrap import DEFAULT_RUNTIME
+
+        return DEFAULT_RUNTIME.coordinator.profile
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

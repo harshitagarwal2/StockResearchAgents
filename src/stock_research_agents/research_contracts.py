@@ -625,6 +625,7 @@ class FactorSnapshot(StrictModel):
             raise ValueError("factor snapshots require evidence")
 
 
+# Compatibility name retained for callers using the original factor contract.
 FactorExposure = FactorSnapshot
 
 
@@ -1297,6 +1298,7 @@ class ResearchDossierV1(StrictModel):
         return sha256(self.to_json().encode()).hexdigest()
 
 
+# Compatibility name retained for callers using the original dossier contract.
 ResearchDossier = ResearchDossierV1
 
 

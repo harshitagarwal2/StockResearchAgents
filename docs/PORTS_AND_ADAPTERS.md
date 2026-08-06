@@ -83,7 +83,7 @@ raw URL. Multicast, IPv6 site-local, private, loopback, link-local, reserved,
 and unspecified addresses fail attestation; otherwise the adapter rejects the
 page.
 
-The application-facing storage interfaces live in `application_ports.py`. `CompanyAnalyticsCoordinator` receives them through its constructor; SQLite/WAL lifecycle, filesystem result publication, decision memory, and Research Quality stores are composition-root choices rather than application-layer dependencies.
+The application-facing interfaces live in `application_ports.py` and are segregated by reader/writer role for lifecycle, completed results, research history, and Research Quality. `CompanyAnalyticsCoordinator` receives the combined ports through its constructor. `bootstrap.py` is the production composition root; SQLite/WAL lifecycle, filesystem result publication, research history, and Research Quality stores remain infrastructure choices rather than lifecycle or transport dependencies. Shared completed-result query and response assembly lives in `application.py`, so CLI and MCP adapters translate inputs and outputs instead of duplicating application orchestration.
 
 ### Add a harness adapter
 
