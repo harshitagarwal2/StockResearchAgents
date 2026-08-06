@@ -120,8 +120,11 @@ def test_release_validates_each_distribution_and_attests_release_evidence() -> N
     assert "scripts/build_release_sbom.py" in workflow
     assert "--lock-file uv.lock" in workflow
     assert "SOURCE_DATE_EPOCH" in workflow
-    assert "actions/attest-build-provenance@" in workflow
-    assert "actions/attest-sbom@" in workflow
+    attest_pin = "actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2"
+    assert workflow.count(attest_pin) == 2
+    assert "actions/attest-build-provenance@" not in workflow
+    assert "actions/attest-sbom@" not in workflow
+    assert "sbom-path: release/sbom.spdx.json" in workflow
     assert "attestations: write" in workflow
 
 
