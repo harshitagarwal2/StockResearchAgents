@@ -87,6 +87,8 @@ while using their own agents and tools.
 
 ```mermaid
 flowchart LR
+    accTitle: Proposed portable architecture and legacy adapter
+    accDescr: A versioned portable coordinator connects hosts, agents, sequential fallback, MCP tools, typed results, exports, and the read-only UI while the existing TradingAgentsGraph remains an adapter path.
     W["Versioned workflow contract"] --> C["Portable coordinator"]
     H["Codex or another host"] --> C
     C --> A["Host-owned agents and tools"]

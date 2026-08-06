@@ -32,9 +32,10 @@
 
 1. [Capability and proof ledger](FEATURE_PARITY.md) — implemented, host-dependent, and unverified behavior.
 2. [Validation](VALIDATION.md) — executable proof and known gaps.
-3. [Legacy transition](LEGACY_TRANSITION.md) — removal gates, deprecation policy, and retained readers.
-4. [Contributing](../CONTRIBUTING.md) — safe change workflow and review expectations.
-5. [Releasing](RELEASING.md) — version checks, TestPyPI preflight, PyPI, GitHub Release, and MCP Registry flow.
+3. [Live-provider matrix](LIVE_MATRIX.md) — reproducible operational evidence protocol for public and entitled routes.
+4. [Legacy transition](LEGACY_TRANSITION.md) — removal gates, deprecation policy, and retained readers.
+5. [Contributing](../CONTRIBUTING.md) — safe change workflow and review expectations.
+6. [Releasing](RELEASING.md) — version checks, TestPyPI preflight, PyPI, GitHub Release, and MCP Registry flow.
 
 ## Document ownership rule
 

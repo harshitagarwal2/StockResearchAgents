@@ -36,8 +36,12 @@ TECHNICAL_DIAGRAMS = (
     "portable-components",
     "completed-publication",
     "research-quality-lineage",
+    "solid-ports-adapters",
+    "source-to-dossier",
+    "company-analytics-lifecycle",
 )
 POSTERS = ("system-overview", "portable-patterns", "research-quality")
+DIAGRAM_GALLERY = ROOT / "docs" / "diagrams" / "README.md"
 
 
 def markdown_files() -> list[Path]:
@@ -87,9 +91,11 @@ def _png_size(path: Path) -> tuple[int, int]:
 
 def diagram_errors() -> list[str]:
     errors: list[str] = []
+    gallery_text = DIAGRAM_GALLERY.read_text(encoding="utf-8") if DIAGRAM_GALLERY.exists() else ""
     for name in TECHNICAL_DIAGRAMS:
         source = ROOT / "docs" / "diagrams" / f"{name}.mmd"
         rendered = ROOT / "assets" / "architecture" / f"{name}.svg"
+        preview = ROOT / "assets" / "architecture" / f"{name}.png"
         if not source.exists():
             errors.append(f"missing Mermaid source: {source.relative_to(ROOT)}")
         elif "accTitle:" not in source.read_text(encoding="utf-8") or "accDescr:" not in source.read_text(
@@ -100,9 +106,51 @@ def diagram_errors() -> list[str]:
             errors.append(f"missing SVG render: {rendered.relative_to(ROOT)}")
         else:
             try:
-                ET.parse(rendered)
+                svg_root = ET.parse(rendered).getroot()
             except ET.ParseError as exc:
                 errors.append(f"invalid SVG {rendered.relative_to(ROOT)}: {exc}")
+            else:
+                view_box = svg_root.attrib.get("viewBox", "").split()
+                if len(view_box) != 4:
+                    errors.append(f"missing SVG viewBox: {rendered.relative_to(ROOT)}")
+                else:
+                    try:
+                        svg_width = float(view_box[2])
+                        svg_height = float(view_box[3])
+                    except ValueError:
+                        errors.append(f"invalid SVG viewBox: {rendered.relative_to(ROOT)}")
+                    else:
+                        if svg_width <= 0 or svg_height <= 0:
+                            errors.append(f"non-positive SVG viewBox: {rendered.relative_to(ROOT)}")
+                if svg_root.attrib.get("width") != "100%":
+                    errors.append(f"SVG is not responsive-width: {rendered.relative_to(ROOT)}")
+                if not svg_root.attrib.get("role"):
+                    errors.append(f"SVG is missing an accessibility role: {rendered.relative_to(ROOT)}")
+                child_names = {child.tag.rsplit("}", 1)[-1] for child in svg_root}
+                if not {"title", "desc"}.issubset(child_names):
+                    errors.append(f"SVG is missing title/description: {rendered.relative_to(ROOT)}")
+
+        if not preview.exists():
+            errors.append(f"missing GitHub PNG preview: {preview.relative_to(ROOT)}")
+        else:
+            try:
+                width, height = _png_size(preview)
+            except ValueError as exc:
+                errors.append(f"invalid technical PNG {preview.relative_to(ROOT)}: {exc}")
+            else:
+                if width < 1200 or height < 250:
+                    errors.append(f"technical PNG is too small: {preview.relative_to(ROOT)} is {width}x{height}")
+                if max(width / height, height / width) > 6:
+                    errors.append(
+                        f"technical PNG aspect ratio is not GitHub-legible: "
+                        f"{preview.relative_to(ROOT)} is {width}x{height}"
+                    )
+
+        preview_link = f"../../assets/architecture/{name}.png"
+        svg_link = f"../../assets/architecture/{name}.svg"
+        source_link = f"({name}.mmd)"
+        if preview_link not in gallery_text or svg_link not in gallery_text or source_link not in gallery_text:
+            errors.append(f"diagram is missing from GitHub preview gallery: {name}")
 
     for name in POSTERS:
         source = ROOT / "docs" / "renders" / f"{name}.html"
@@ -136,7 +184,7 @@ def main() -> int:
         for error in errors:
             print(error)
         return 1
-    print(f"Documentation OK: {len(markdown_files())} Markdown files and 7 architecture renders")
+    print(f"Documentation OK: {len(markdown_files())} Markdown files and 17 architecture renders")
     return 0
 
 

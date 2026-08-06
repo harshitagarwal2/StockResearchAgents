@@ -61,6 +61,7 @@ EXPECTED_RESEARCH_DATA_TOOLS = {
     "research_data_get_company_news": ["symbol", "published_after", "published_before", "max_items"],
     "research_data_get_global_news": ["topics", "published_after", "published_before", "max_items"],
     "research_data_get_macro": ["series", "regions", "start_time", "end_time", "vintage_as_of"],
+    "research_data_get_prediction_markets": ["search_terms", "as_of", "max_items"],
 }
 
 

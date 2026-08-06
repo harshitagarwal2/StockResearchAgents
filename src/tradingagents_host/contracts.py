@@ -650,6 +650,39 @@ class GlobalNewsQuery:
 
 
 @dataclass(frozen=True, slots=True)
+class PredictionMarketsQuery:
+    version: ClassVar[str] = SOURCE_QUERY_VERSION
+    query_type: ClassVar[str] = "prediction_markets"
+    query_id: str
+    search_terms: tuple[str, ...]
+    as_of: str
+    max_items: int
+
+    def __post_init__(self) -> None:
+        _identifier(self.query_id, "query_id")
+        _required_string_tuple(self.search_terms, "search_terms", maximum=32)
+        for search_term in self.search_terms:
+            _text(search_term, "search_term", 128)
+        normalized_terms = tuple(term.strip().casefold() for term in self.search_terms)
+        if len(set(normalized_terms)) != len(normalized_terms):
+            raise ValueError("search_terms must be unique after whitespace and case normalization")
+        _timestamp(self.as_of, "as_of")
+        _max_items(self.max_items, "max_items", 25)
+
+    @property
+    def cutoff_at(self) -> str:
+        return self.as_of
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "version": self.version,
+            "type": self.query_type,
+            **asdict(self),
+            "search_terms": list(self.search_terms),
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class MacroQuery:
     version: ClassVar[str] = SOURCE_QUERY_VERSION
     query_type: ClassVar[str] = "macro"
@@ -726,6 +759,7 @@ SourceQuery: TypeAlias = (
     | FinancialStatementsQuery
     | CompanyNewsQuery
     | GlobalNewsQuery
+    | PredictionMarketsQuery
     | MacroQuery
     | StockTwitsQuery
     | RedditQuery
@@ -742,6 +776,7 @@ _SOURCE_QUERY_CLASSES = (
     FinancialStatementsQuery,
     CompanyNewsQuery,
     GlobalNewsQuery,
+    PredictionMarketsQuery,
     MacroQuery,
     StockTwitsQuery,
     RedditQuery,
@@ -758,6 +793,7 @@ _QUERY_TYPES: dict[str, type[SourceQuery]] = {
     FinancialStatementsQuery.query_type: FinancialStatementsQuery,
     CompanyNewsQuery.query_type: CompanyNewsQuery,
     GlobalNewsQuery.query_type: GlobalNewsQuery,
+    PredictionMarketsQuery.query_type: PredictionMarketsQuery,
     MacroQuery.query_type: MacroQuery,
     StockTwitsQuery.query_type: StockTwitsQuery,
     RedditQuery.query_type: RedditQuery,
@@ -782,7 +818,16 @@ def source_query_from_dict(value: object) -> SourceQuery:
     unknown = sorted(set(payload) - allowed)
     if unknown:
         raise ValueError(f"source query has fields invalid for {query_type}: {unknown}")
-    for collection in ("form_types", "topics", "metrics", "statement_types", "periods", "series", "regions"):
+    for collection in (
+        "form_types",
+        "topics",
+        "metrics",
+        "statement_types",
+        "periods",
+        "series",
+        "regions",
+        "search_terms",
+    ):
         if collection in payload:
             collection_value = payload[collection]
             if collection == "periods" and isinstance(collection_value, int):

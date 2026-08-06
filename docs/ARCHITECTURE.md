@@ -19,13 +19,19 @@ The design is driven by five invariants:
 
 ## System at a glance
 
-![Technical system context showing the host boundary, portable contracts, publication gate, completed dossier, viewer, and exports](../assets/architecture/system-context.svg)
+[![Technical system context showing the host boundary, portable contracts, publication gate, completed dossier, viewer, and exports](../assets/architecture/system-context.png)](../assets/architecture/system-context.svg)
 
-[![SOLID ports-and-adapters view of Company Analytics](../assets/architecture/solid-ports-adapters.svg)](../assets/architecture/solid-ports-adapters.svg)
+[![SOLID ports-and-adapters view of Company Analytics](../assets/architecture/solid-ports-adapters.png)](../assets/architecture/solid-ports-adapters.svg)
 
 External evidence enters only through a research host. The host sends typed submissions and bounded stage descriptors across the trust boundary. Portable conformance and publication decide whether a Completed Research Dossier exists; the viewer and exports read that completed artifact only.
 
 Portable conformance is independent of the optional upstream checkout. `ConformanceReport.passed` and `verified` describe StockResearchAgents' own deterministic checks; the serialized `upstream_compatibility` block separately reports whether the exact external oracle revision was checked and matched. Missing or mismatched upstream evidence therefore cannot turn a portable success into a portable failure, and portable success cannot be presented as verified upstream compatibility.
+
+## Evidence-to-dossier flow
+
+[![Evidence-to-dossier flow showing the host-owned SourcePort, portable lineage checks, explicit coverage limitations, the conformance gate, and completed-only readers](../assets/architecture/source-to-dossier.png)](../assets/architecture/source-to-dossier.svg)
+
+The host may retrieve public or entitled data through its `SourcePort`; `SourcePortfolioCollector` validates routes, isolates failures, and retains bounded `SourceBatch` records before the host derives the portable terminal lineage fields carried by the v4 submission. Host `SourceBatch` and `SourcePortfolioReceipt` types do not cross as portable-domain types. The portfolio receipt keeps sanitized failed attempts and coverage gaps host-side; the host must carry decision-relevant gaps into the submission as explicit limitations. Portable validates the crosswalk's identity, digest scope, and entitlement fields alongside the dossier's separate temporal provenance, then validates the resulting claims and calculations. A rejected terminal submission is not published. An accepted dossier may represent incomplete coverage only through an explicit limitation. Only an atomically published dossier reaches the viewer, MCP, or exports.
 
 ## Architectural patterns
 
@@ -81,7 +87,7 @@ company-research.v2   -> host-submission.v3 -> research_dossier.v3
 
 company-analytics.v1  -> host-submission.v4 -> unchanged v3 + typed sidecars
         |
-        +-> CompanyAnalyticsCoordinator + Research Quality outcome journal
+        +-> analytics-profile CompanyResearchCoordinator + Research Quality outcome journal
 ```
 
 `company-research.v2` is a parallel extension. It does not mutate the frozen `financial-research.v1` or `host-submission.v2` contracts. Discovery returns both profiles and their compatibility relationship.
@@ -136,7 +142,11 @@ All IDs are local to the dossier and cross-references must resolve. Documents re
 
 For a stateless plan, the host may execute dependency-ready work with native subagents and parallel tools before importing one complete payload. A durable full-mode run still commits one current first-incomplete stage at a time; parallel retrieval does not relax coordinator ordering. Every primary stage carries a versioned role, objective, completion criteria, semantic capabilities, dependencies, and output references. The profile-neutral sequential runner drives those same coordinator boundaries for a compatible one-agent host and resumes from the first incomplete stage. The portable semantics and terminal information remain the same; exact prompt wording, agent spawning, and scheduling do not.
 
-`CompanyAnalyticsCoordinator` provides the public 26-stage lifecycle through `analytics-init` / `create_company_analytics_run` and shared lifecycle controls. It checkpoints bounded stage descriptors and safe receipts, accepts only the current first-incomplete stage, validates the terminal v4 payload, and binds the final run card to coordinator-owned envelope and commit-receipt digests for all 26 stages. The terminal commitment uses a normalized publication-candidate digest so the contract is not circular. It also rejects a terminal run card whose execution mode differs from the mode fixed at run creation. Completed `RunResult.artifacts` are the atomically published source of truth for analytics and quality sidecars. The separate quality outcome index uses hidden stage/publish steps and can be reconstructed from completed artifacts after a crash; the design does not claim a distributed transaction. Atomic complete import remains available when lifecycle state is unnecessary.
+The analytics-profile `CompanyResearchCoordinator` (`COMPANY_ANALYTICS_COORDINATOR`) provides the public 26-stage lifecycle through `analytics-init` / `create_company_analytics_run` and shared lifecycle controls. It checkpoints bounded stage descriptors and optional safe receipts, accepts only the current first-incomplete stage, validates the terminal v4 payload, and binds the final run card to coordinator-owned envelope and commit-receipt digests for all 26 stages. The terminal commitment uses a normalized publication-candidate digest so the contract is not circular. It also rejects a terminal run card whose execution mode differs from the mode fixed at run creation. Completed `RunResult.artifacts` are the atomically published source of truth for analytics and quality sidecars. The separate quality outcome index uses hidden stage/publish steps and can be reconstructed from completed artifacts after a crash; the design does not claim a distributed transaction. Atomic complete import remains available when lifecycle state is unnecessary.
+
+[![Durable Company Analytics lifecycle showing ordered stage commits, checkpoints, pause and recovery, terminal cancellation, finalizing, and completed-only publication](../assets/architecture/company-analytics-lifecycle.png)](../assets/architecture/company-analytics-lifecycle.svg)
+
+The host can perform dependency-ready retrieval or analysis in parallel, but a durable run commits exactly one current first-incomplete stage at a time. Each accepted commit creates a new SQLite/WAL revision; pause and crash recovery return to that ordered boundary, while acknowledged cancellation is terminal. A valid final v4 bundle enters a recoverable `FINALIZING` phase that stages the canonical result and derived quality/memory sidecars before publication. This makes a sequential fallback and a native multi-agent host observably compatible without claiming identical agent scheduling.
 
 `prepare_company_analytics` returns a self-contained bundled v4 schema containing typed analytics and inward source-lineage definitions. `source-lineage-crosswalk.v1` preserves provider-neutral host batch/observation identities without moving credentials or raw content into portable state. It declares whether each digest covers authoritative source content, an exact bounded UTF-8 extract, or a normalized source record, then joins that identity to the dossier document, analytics source/license receipt, and run-card batch set. JSON Schema validates shape and local URI/digest constraints; strict Python contracts remain authoritative for complete referential and entitlement equality and for cross-field rules such as the global requirement that every `forecast_id` start with `<quality_run_id>.`.
 
@@ -169,7 +179,7 @@ The host owns entitlement checks. Licensed sources may be referenced only under 
 
 ## Lifecycle and publication
 
-![Completed-only publication sequence showing the host, portable core, durable storage, and viewer](../assets/architecture/completed-publication.svg)
+[![Completed-only publication sequence showing the host, portable core, durable storage, and viewer](../assets/architecture/completed-publication.png)](../assets/architecture/completed-publication.svg)
 
 The viewer receives no partial-stage path. A terminal submission is validated, staged, and atomically committed before the completed read model becomes visible.
 
@@ -237,7 +247,7 @@ It does not own retrieval, provider health workers, prompts, execution, portfoli
 
 The product target is the host-native portable core, not a Codex-specific or LangGraph-specific core. Codex, generic multi-agent hosts, the one-agent sequential fallback, and tools-only MCP consumers translate their mechanisms into the same versioned stages and terminal contracts. Lifecycle, memory, export, and completed-only presentation remain common.
 
-Concrete research-data MCP implementations are a host-adapter concern. The isolated server launched by `stock-research-data-mcp` now registers six public metadata/fact tools: SEC filings, fundamentals, and statements; GDELT company and global news metadata plus publisher links; and World Bank macro observations. The manifest retains `tradingagents-research-data` as its compatibility key. Licensed price/indicator adapters, host-OAuth Reddit, and approved StockTwits access are still absent from the default server. Provider SDKs, credentials, sessions, and entitlement enforcement stay outside the portable domain; current registration is not proof of live availability or complete company coverage. The adapter contract and proof requirements are defined in [Research-data MCP adapters](RESEARCH_DATA_MCP.md).
+Concrete research-data MCP implementations are a host-adapter concern. The isolated server launched by `stock-research-data-mcp` now registers seven public metadata/fact tools: SEC filings, fundamentals, and statements; GDELT company and global news metadata plus publisher links; World Bank macro observations; and read-only Polymarket current-market context. The prediction-market projection is neither forecast truth nor an executable trading action. The manifest retains `tradingagents-research-data` as its compatibility key. Licensed price/indicator adapters, host-OAuth Reddit, and approved StockTwits access are still absent from the default server. Provider SDKs, credentials, sessions, and entitlement enforcement stay outside the portable domain; current registration is not proof of live availability or complete company coverage. The adapter contract and proof requirements are defined in [Research-data MCP adapters](RESEARCH_DATA_MCP.md).
 
 The optional upstream executor is transitional. It remains available and not deprecated until the gates in [Legacy executor transition](LEGACY_TRANSITION.md) pass. CI now checks the exact pin with a credential-free pure-semantic differential over the declared whitelist; complete LLM/provider behavior and live correctness remain outside that proof. Even after executor removal, frozen schemas/readers and migrated historical results remain supported.
 

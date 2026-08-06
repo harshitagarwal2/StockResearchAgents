@@ -20,6 +20,7 @@ EXPECTED_DATA_CAPABILITIES = {
     "company_news",
     "global_news",
     "macro",
+    "prediction_markets",
     "stocktwits",
     "reddit",
 }
@@ -32,6 +33,7 @@ EXPECTED_REQUIRED_QUERY_FIELDS = {
     "company_news": ["symbol", "published_after", "published_before", "max_items"],
     "global_news": ["topics", "published_after", "published_before", "max_items"],
     "macro": ["series", "regions", "start_time", "end_time", "vintage_as_of"],
+    "prediction_markets": ["search_terms", "as_of", "max_items"],
     "stocktwits": ["symbol", "start_time", "end_time", "max_items"],
     "reddit": ["symbol", "start_time", "end_time", "max_items"],
 }
@@ -44,6 +46,7 @@ EXPECTED_CAPABILITY_POLICY = {
     "company_news": ("implemented_public_default", True, "GDELT"),
     "global_news": ("implemented_public_default", True, "GDELT"),
     "macro": ("implemented_public_default", True, "World Bank"),
+    "prediction_markets": ("implemented_public_default", True, "Polymarket Gamma"),
     "stocktwits": ("denied_unregistered", False, "none"),
     "reddit": ("host_oauth_source_port_required", False, "host_reddit_oauth_source_port"),
 }
@@ -125,7 +128,7 @@ def test_research_data_contract_reports_exact_implemented_exposure_and_sourcebat
     assert {
         tool["capability"]: (tool["implementation_status"], tool["default_exposed"], tool["provider"]) for tool in tools
     } == EXPECTED_CAPABILITY_POLICY
-    assert sum(tool["default_exposed"] is True for tool in tools) == 6
+    assert sum(tool["default_exposed"] is True for tool in tools) == 7
     assert all(tool["limitation"] for tool in tools)
     assert all(tool["response"]["type"] == "SourceBatch" for tool in tools)
     assert {tool["capability"]: tool["query"]["required"] for tool in tools} == EXPECTED_REQUIRED_QUERY_FIELDS

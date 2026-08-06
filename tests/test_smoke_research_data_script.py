@@ -42,6 +42,8 @@ class FakeTransport:
             return HTTPResponse(200, {"articles": []})
         if "worldbank" in url:
             return HTTPResponse(200, [{"pages": 1}, []])
+        if "gamma-api.polymarket.com" in url:
+            return HTTPResponse(200, {"events": [], "pagination": {"hasMore": False, "totalResults": 0}})
         raise AssertionError(f"unexpected public provider URL: {url}")
 
 
@@ -49,13 +51,13 @@ def _adapter(status: int = 200) -> PublicResearchDataAdapter:
     return PublicResearchDataAdapter(FakeTransport(status), clock=lambda: CUTOFF)
 
 
-def test_run_smoke_exercises_six_public_capabilities_for_each_symbol() -> None:
+def test_run_smoke_exercises_seven_public_capabilities_for_each_symbol() -> None:
     smoke = _load_smoke_script()
 
     evidence, exit_code = smoke.run_smoke(_adapter(), ("ORCL", "META"), CUTOFF, strict_public=False)
 
     assert exit_code == 0
-    assert len(evidence["public_calls"]) == 12
+    assert len(evidence["public_calls"]) == 14
     assert {(call["symbol"], call["capability"]) for call in evidence["public_calls"]} == {
         (symbol, capability) for symbol in ("ORCL", "META") for capability in smoke.PUBLIC_CAPABILITIES
     }
@@ -78,7 +80,7 @@ def test_default_mode_succeeds_when_provider_is_unavailable_but_contracts_are_va
     evidence, exit_code = smoke.run_smoke(_adapter(503), ("ORCL", "META"), CUTOFF, strict_public=False)
 
     assert exit_code == 0
-    assert evidence["summary"]["provider_failures"] == 12
+    assert evidence["summary"]["provider_failures"] == 14
     assert evidence["summary"]["contract_failures"] == 0
 
 

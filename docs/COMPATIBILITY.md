@@ -9,6 +9,8 @@
 
 ```mermaid
 flowchart LR
+  accTitle: Contract and workflow compatibility map
+  accDescr: Company Analytics wraps the frozen company-research dossier with v4 analytics and quality sidecars, while the financial-research v1 lifecycle remains a preserved compatibility path.
   A1[company-analytics.v1] --> H4[host-submission.v4]
   H4 --> H3
   H4 --> S[analytics and quality sidecars]

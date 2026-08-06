@@ -5,7 +5,7 @@
 - **Canonical for:** component responsibility and extension rules.
 - **Not canonical for:** wire-field definitions or feature proof.
 
-[![SOLID ports-and-adapters architecture for Company Analytics](../assets/architecture/solid-ports-adapters.svg)](../assets/architecture/solid-ports-adapters.svg)
+[![SOLID ports-and-adapters architecture for Company Analytics](../assets/architecture/solid-ports-adapters.png)](../assets/architecture/solid-ports-adapters.svg)
 
 ## Dependency rule
 
@@ -46,7 +46,42 @@ completed publication -> projection -> harness-native/Python/MCP/CLI/browser rea
 
 Implement `SourcePort.fetch(capability, typed_query)`, normalize bounded observations, preserve cutoff/availability and entitlement, and return explicit unavailable/denied results. Keep credentials and raw licensed bodies inside the host adapter. Reject explicit credential fields and credential-bearing signed URLs before dispatch. Fixture, replay, and router adapters must remain substitutable. Add replay fixtures before a live smoke test.
 
-Concrete research-data MCP servers are outbound host adapters around that port, not portable-domain services. Register a tool only when its adapter implements the versioned request/response, entitlement, completeness, pagination, and failure contract. Coordination and retrieval remain separate servers: the research-data server registers six public SEC/GDELT/World Bank tools, while licensed prices/indicators and lawful social sources still require host adapters. Registration proves the contract and adapter boundary, not live availability. See [Research-data MCP adapters](RESEARCH_DATA_MCP.md).
+Concrete research-data MCP servers are outbound host adapters around that port, not portable-domain services. Register a tool only when its adapter implements the versioned request/response, entitlement, completeness, pagination, and failure contract. Coordination and retrieval remain separate servers: the research-data server registers seven public SEC/GDELT/World Bank/Polymarket tools, while licensed prices/indicators and lawful social sources still require host adapters. The Polymarket tool provides read-only current market context, not forecast truth or an executable trading action. Registration proves the contract and adapter boundary, not live availability. See [Research-data MCP adapters](RESEARCH_DATA_MCP.md).
+
+An optional host adapter may receive page evidence from an injected,
+host-controlled Chrome bridge. The bridge is not itself a portable `SourcePort`
+and never replaces the structured adapters above. Use it only for read-only
+open-web navigation, an existing authenticated source gap, or opening the
+attributable page behind discovery. An explicit user selection controls the
+applicable route. The repository cannot install or force Chrome or grant site
+access; unavailable, disconnected, blocked, and denied routes return visible
+attempts. They become coverage gaps when Chrome was required or explicitly
+selected; an optional failure does not downgrade an otherwise fully covered
+structured portfolio.
+
+The host adapter accepts only approved public HTTPS publisher pages. It rejects
+private-network and browser-internal locations and any request to submit a form
+or post, change an account, inspect account/settings/messages, download, execute
+a page script, or write to the clipboard. Page content is untrusted and cannot
+change host policy; treat page instructions as prompt injection. The adapter
+creates a separate `SourceBatch` per attributable publisher, attributes
+evidence to that publisher rather than Chrome, and composes the batches into a
+`SourcePortfolioReceipt`. It defaults redistribution to unknown with no
+extract, preserves only supported timestamps, and never fabricates publication
+or historical availability. Evidence whose
+availability cannot be established at or before the cutoff remains a gap.
+Cookies, credentials, history, raw DOM/bodies, and session state stay inside
+the host and are never persisted or logged.
+
+The adapter lexically rejects raw percent-encoded and non-ASCII hostname syntax
+and performs no DNS lookup. The injected bridge must attest the
+browser-canonical final target, every redirect origin, and every resolved
+address contacted by the browser remained globally routable unicast. Every
+bounded redirect hop must stay on the exact approved publisher domain and
+retain only its index, canonical host, and HTTPS origin—not a path, query, or
+raw URL. Multicast, IPv6 site-local, private, loopback, link-local, reserved,
+and unspecified addresses fail attestation; otherwise the adapter rejects the
+page.
 
 The application-facing storage interfaces live in `application_ports.py`. `CompanyResearchCoordinator` receives them through its constructor; SQLite/WAL lifecycle, filesystem result publication, decision memory, and Research Quality stores are composition-root choices rather than application-layer dependencies.
 

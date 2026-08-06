@@ -156,6 +156,16 @@
       "response": {"version": "1.0.0", "type": "SourceBatch", "item_semantics": "normalized_macro_observation_with_release_and_vintage_times"}
     },
     {
+      "capability": "prediction_markets",
+      "mcp_name": "research_data_get_prediction_markets",
+      "implementation_status": "implemented_public_default",
+      "default_exposed": true,
+      "provider": "Polymarket Gamma",
+      "limitation": "Probabilities are market-implied current snapshots, not forecasts or truth; public search cannot reconstruct historical state.",
+      "query": {"version": "1.0.0", "required": ["search_terms", "as_of", "max_items"], "semantics": "bounded_current_prediction_market_search_as_of_cutoff"},
+      "response": {"version": "1.0.0", "type": "SourceBatch", "item_semantics": "normalized_non_executable_prediction_market_probability_snapshot"}
+    },
+    {
       "capability": "stocktwits",
       "mcp_name": "research_data_get_stocktwits",
       "implementation_status": "denied_unregistered",
