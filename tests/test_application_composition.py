@@ -49,6 +49,25 @@ def test_pre_refactor_python_imports_remain_compatible() -> None:
     assert PROFILE_REGISTRY.get("company-analytics.v1").descriptor.profile == "company-analytics.v1"
 
 
+def test_direct_coordinator_construction_uses_an_isolated_compatibility_profile() -> None:
+    coordinator = CompanyAnalyticsCoordinator(LifecycleStore(), RunStore())
+
+    assert coordinator.profile.workflow_profile == "company-analytics.v1"
+    assert coordinator.profile.quality_store.state_dir is None
+
+
+def test_lifecycle_profile_compatibility_surfaces_remain_isolated_and_lazy() -> None:
+    from stock_research_agents.bootstrap import DEFAULT_RUNTIME
+    from stock_research_agents.lifecycle_profiles import (
+        COMPANY_ANALYTICS_LIFECYCLE_PROFILE,
+        CompanyAnalyticsLifecycleProfile,
+    )
+
+    isolated = CompanyAnalyticsLifecycleProfile()
+    assert isolated.quality_store.state_dir is None
+    assert COMPANY_ANALYTICS_LIFECYCLE_PROFILE is DEFAULT_RUNTIME.coordinator.profile
+
+
 def test_completed_publication_service_preserves_event_order_and_injected_presentation() -> None:
     result = SimpleNamespace(run_id="run-1", to_dict=lambda: {"run_id": "run-1"})
     events = (

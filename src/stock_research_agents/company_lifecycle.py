@@ -359,6 +359,14 @@ def _checkpoint_hash(record: Mapping[str, Any], key: str) -> str:
     return _canonical_digest(record[key])
 
 
+def _isolated_compatibility_profile() -> WorkflowDefinition:
+    """Preserve direct construction without capturing production infrastructure."""
+    from .lifecycle_profiles import CompanyAnalyticsLifecycleProfile
+    from .research_quality_v1 import QualityStore
+
+    return CompanyAnalyticsLifecycleProfile(QualityStore())
+
+
 class CompanyAnalyticsCoordinator:
     """Optimistic-revision coordinator for the company analytics workflow."""
 
@@ -369,7 +377,7 @@ class CompanyAnalyticsCoordinator:
         *,
         memory_store: ResearchHistoryPort | None = None,
         memory_store_factory: Callable[[], ResearchHistoryPort] | None = None,
-        profile: WorkflowDefinition,
+        profile: WorkflowDefinition | None = None,
     ) -> None:
         if memory_store is not None and memory_store_factory is not None:
             raise ValueError("memory_store and memory_store_factory are mutually exclusive")
@@ -377,7 +385,7 @@ class CompanyAnalyticsCoordinator:
         self.result_store = result_store
         self.memory_store = memory_store
         self._memory_store_factory = memory_store_factory
-        self.profile = profile
+        self.profile = profile if profile is not None else _isolated_compatibility_profile()
 
     def _memory(self) -> ResearchHistoryPort | None:
         if self.memory_store is None and self._memory_store_factory is not None:

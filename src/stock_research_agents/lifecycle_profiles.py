@@ -80,7 +80,11 @@ class CompanyAnalyticsLifecycleProfile:
         "completed_report_bundle",
     )
 
-    def __init__(self, quality_store: QualityIndexPort) -> None:
+    def __init__(self, quality_store: QualityIndexPort | None = None) -> None:
+        if quality_store is None:
+            from .research_quality_v1 import QualityStore
+
+            quality_store = QualityStore()
         self.quality_store = quality_store
 
     def prepare(
@@ -124,3 +128,15 @@ class CompanyAnalyticsLifecycleProfile:
             return False
         submission = self.parse_terminal(payload)
         return self.quality_store.is_published(submission.quality_receipt.run_id)
+
+
+COMPANY_ANALYTICS_LIFECYCLE_PROFILE: CompanyAnalyticsLifecycleProfile
+
+
+def __getattr__(name: str) -> object:
+    """Keep the former default profile import without composing it here."""
+    if name == "COMPANY_ANALYTICS_LIFECYCLE_PROFILE":
+        from .bootstrap import DEFAULT_RUNTIME
+
+        return DEFAULT_RUNTIME.coordinator.profile
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
