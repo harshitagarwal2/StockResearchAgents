@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from dataclasses import replace
 from typing import cast
+from urllib.parse import urlsplit
 
 import pytest
 
@@ -160,7 +161,11 @@ def test_sec_filings_require_descriptive_user_agent_filter_cutoff_and_never_retu
     assert len(result.items) == 1
     assert result.items[0].bounded_extract is None
     assert "raw" not in json.dumps(result.to_dict()).lower()
-    sec_headers = [cast(dict[str, str], headers) for url, _, headers in transport.calls if "sec.gov" in url]
+    sec_headers = [
+        cast(dict[str, str], headers)
+        for url, _, headers in transport.calls
+        if urlsplit(url).hostname in {"data.sec.gov", "www.sec.gov"}
+    ]
     assert sec_headers and all("StockResearchAgents" in headers["User-Agent"] for headers in sec_headers)
 
 

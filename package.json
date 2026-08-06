@@ -5,6 +5,6 @@
   "description": "Pinned browser-only dependencies for the completed-viewer CI smoke test.",
   "devDependencies": {
     "@axe-core/playwright": "4.10.2",
-    "playwright": "1.54.1"
+    "playwright": "1.55.1"
   }
 }
