@@ -138,11 +138,11 @@ def test_security_workflows_are_pinned_and_fail_closed() -> None:
     supply_chain = (ROOT / ".github" / "workflows" / "supply-chain.yml").read_text(encoding="utf-8")
     codeql = (ROOT / ".github" / "workflows" / "codeql.yml").read_text(encoding="utf-8")
 
-    assert "actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48" in supply_chain
+    assert "actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294" in supply_chain
     assert "pip-audit==2.10.1" in supply_chain
     assert "zizmor==1.29.0" in supply_chain
-    assert "github/codeql-action/init@c4dd10e44af883a891fe31ced449bcb4a6728b9b" in codeql
-    assert "github/codeql-action/analyze@c4dd10e44af883a891fe31ced449bcb4a6728b9b" in codeql
+    assert "github/codeql-action/init@5595ccaf912efad79be6eef63a5619ff05969be3" in codeql
+    assert "github/codeql-action/analyze@5595ccaf912efad79be6eef63a5619ff05969be3" in codeql
 
 
 def test_live_provider_canary_is_scheduled_bounded_and_non_gating() -> None:
