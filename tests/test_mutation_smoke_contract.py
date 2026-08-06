@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+import runpy
 from pathlib import Path
 
-from scripts.run_mutation_smoke import MUTATIONS
-
 ROOT = Path(__file__).resolve().parents[1]
+MUTATIONS = runpy.run_path(str(ROOT / "scripts" / "run_mutation_smoke.py"))["MUTATIONS"]
 
 
 def test_mutation_smoke_targets_distinct_critical_boundaries() -> None:

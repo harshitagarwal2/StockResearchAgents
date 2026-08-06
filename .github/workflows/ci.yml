@@ -140,7 +140,7 @@ jobs:
           python-version: "3.11"
           cache: pip
       - name: Install package and MCP edge
-        run: python -m pip install -e . ${{ matrix.pip-args }} "${{ matrix.requirement }}"
+        run: python -m pip install -e ".[dev]" ${{ matrix.pip-args }} "${{ matrix.requirement }}"
       - name: MCP contract tests
         run: >-
           pytest -q
