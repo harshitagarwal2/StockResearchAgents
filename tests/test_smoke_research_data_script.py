@@ -3,6 +3,9 @@ from __future__ import annotations
 import importlib.util
 import json
 from pathlib import Path
+from urllib.parse import urlsplit
+
+import pytest
 
 from stock_research_agents_host.adapters.public import HTTPResponse, PublicResearchDataAdapter
 
@@ -42,9 +45,21 @@ class FakeTransport:
             return HTTPResponse(200, {"articles": []})
         if "worldbank" in url:
             return HTTPResponse(200, [{"pages": 1}, []])
-        if "gamma-api.polymarket.com" in url:
+        if urlsplit(url).hostname == "gamma-api.polymarket.com":
             return HTTPResponse(200, {"events": [], "pagination": {"hasMore": False, "totalResults": 0}})
         raise AssertionError(f"unexpected public provider URL: {url}")
+
+
+@pytest.mark.parametrize(
+    "url",
+    (
+        "https://gamma-api.polymarket.com@example.com/markets",
+        "https://example.com/gamma-api.polymarket.com/markets",
+    ),
+)
+def test_fake_transport_rejects_provider_name_outside_hostname(url: str) -> None:
+    with pytest.raises(AssertionError, match="unexpected public provider URL"):
+        FakeTransport().get_json(url)
 
 
 def _adapter(status: int = 200) -> PublicResearchDataAdapter:

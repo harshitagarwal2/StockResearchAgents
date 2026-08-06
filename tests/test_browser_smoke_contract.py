@@ -20,7 +20,7 @@ def test_browser_smoke_workflow_uses_locked_browser_dependencies() -> None:
     assert package["private"] is True
     assert package["devDependencies"] == {
         "@axe-core/playwright": "4.10.2",
-        "playwright": "1.54.1",
+        "playwright": "1.55.1",
     }
     assert package_lock["packages"][""]["devDependencies"] == package["devDependencies"]
     assert "playwright install --with-deps chromium" in workflow
