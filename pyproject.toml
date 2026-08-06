@@ -3,7 +3,7 @@ requires = ["setuptools>=69"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "tradingagents-portable"
+name = "stock-research-agents"
 dynamic = ["version"]
 description = "StockResearchAgents: harness-neutral, evidence-first company research with a completed-only dossier viewer"
 readme = "README.md"
@@ -28,28 +28,21 @@ Issues = "https://github.com/harshitagarwal2/StockResearchAgents/issues"
 Changelog = "https://github.com/harshitagarwal2/StockResearchAgents/releases"
 
 [project.scripts]
-stock-research-agents = "tradingagents_portable.cli:main"
-stock-research-agents-mcp = "tradingagents_portable.mcp_server:main"
-stock-research-data-mcp = "tradingagents_host.research_data_mcp:main"
-tradingagents-portable = "tradingagents_portable.cli:main"
-tradingagents-portable-mcp = "tradingagents_portable.mcp_server:main"
-tradingagents-portable-legacy-mcp = "tradingagents_portable.legacy_mcp_server:main"
-tradingagents-research-data-mcp = "tradingagents_host.research_data_mcp:main"
+stock-research-agents = "stock_research_agents.cli:main"
+stock-research-agents-mcp = "stock_research_agents.mcp_server:main"
+stock-research-data-mcp = "stock_research_agents_host.research_data_mcp:main"
 
 [project.optional-dependencies]
 dev = ["mypy>=1.13", "pytest>=8", "ruff>=0.9"]
-upstream = [
-    "tradingagents @ git+https://github.com/TauricResearch/TradingAgents.git@a33fd4c0f134485a43553a2c23a63cb14adbd88f",
-]
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.dynamic]
-version = {attr = "tradingagents_portable._version.__version__"}
+version = {attr = "stock_research_agents._version.__version__"}
 
 [tool.setuptools.package-data]
-tradingagents_portable = ["web/*.html", "web/*.js", "web/*.css", "workflow/*.json"]
+stock_research_agents = ["web/*.html", "web/*.js", "web/*.css", "workflow/*.json"]
 
 [tool.ruff]
 target-version = "py311"

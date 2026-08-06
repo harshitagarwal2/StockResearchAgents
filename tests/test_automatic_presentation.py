@@ -1,22 +1,20 @@
 from __future__ import annotations
 
 import json
-import os
 import stat
-import subprocess
-import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from urllib.parse import parse_qs, quote, urlsplit
 from urllib.request import Request, urlopen
 
-from research_v3_fixtures import complete_v3_submission
+from company_analytics_fixtures import complete_analytics_submission
 
-from tradingagents_portable import mcp_server, presentation
-from tradingagents_portable.company_research import submit_company_research
-from tradingagents_portable.presentation import ViewerDaemonPresenter
-from tradingagents_portable.report_server import present_completed_run
-from tradingagents_portable.store import RunStore
+from stock_research_agents import presentation
+from stock_research_agents.company_analytics import submit_company_analytics
+from stock_research_agents.presentation import ViewerDaemonPresenter
+from stock_research_agents.report_server import present_completed_run
+from stock_research_agents.research_quality_v1 import QualityStore
+from stock_research_agents.store import RunStore
 
 
 def _base_url(url: str) -> str:
@@ -27,7 +25,7 @@ def _view(presentation_url: str, run_id: str) -> dict[str, object]:
     parsed = urlsplit(presentation_url)
     access_token = parse_qs(parsed.fragment)["access_token"][0]
     endpoint = f"{parsed.scheme}://{parsed.netloc}/api/runs/{quote(run_id, safe='')}/view"
-    request = Request(endpoint, headers={"X-TradingAgents-Viewer-Token": access_token})
+    request = Request(endpoint, headers={"X-StockResearchAgents-Viewer-Token": access_token})
     with urlopen(request, timeout=5) as response:  # noqa: S310 - verified loopback presentation URL
         payload = json.load(response)
     assert isinstance(payload, dict)
@@ -36,7 +34,9 @@ def _view(presentation_url: str, run_id: str) -> dict[str, object]:
 
 def test_path_only_presentation_supports_completed_in_memory_runs() -> None:
     store = RunStore()
-    result, _events = submit_company_research(complete_v3_submission("QQQ"), store=store)
+    result, _events = submit_company_analytics(
+        complete_analytics_submission("QQQ"), store=store, quality_store=QualityStore()
+    )
 
     receipt = present_completed_run(result.run_id, store, mode="path_only")
 
@@ -63,7 +63,6 @@ def test_viewer_child_environment_is_credential_free(tmp_path: Path, monkeypatch
     environment = presentation._child_environment(tmp_path)
 
     assert environment["STOCKRESEARCHAGENTS_STATE_DIR"] == str(tmp_path)
-    assert environment["TRADINGAGENTS_PORTABLE_STATE_DIR"] == str(tmp_path)
     assert environment["PYTHONPATH"].endswith("/src")
     assert "OPENAI_API_KEY" not in environment
     assert "CODEX_AUTH_TOKEN" not in environment
@@ -72,7 +71,8 @@ def test_viewer_child_environment_is_credential_free(tmp_path: Path, monkeypatch
 
 def test_one_daemon_renders_companies_published_before_and_after_start(tmp_path: Path) -> None:
     store = RunStore(tmp_path / "state")
-    first, _ = submit_company_research(complete_v3_submission("ORCL"), store=store)
+    quality_store = QualityStore()
+    first, _ = submit_company_analytics(complete_analytics_submission("ORCL"), store=store, quality_store=quality_store)
     presenter = ViewerDaemonPresenter(store, startup_timeout=8)
 
     try:
@@ -81,7 +81,9 @@ def test_one_daemon_renders_companies_published_before_and_after_start(tmp_path:
         assert first_link.url is not None
         assert first_link.reused is False
 
-        second, _ = submit_company_research(complete_v3_submission("META"), store=store)
+        second, _ = submit_company_analytics(
+            complete_analytics_submission("META"), store=store, quality_store=quality_store
+        )
         second_link = presenter.present(second.run_id)
         assert second_link.status == "ready"
         assert second_link.url is not None
@@ -101,7 +103,9 @@ def test_one_daemon_renders_companies_published_before_and_after_start(tmp_path:
 
 def test_concurrent_presenters_converge_on_one_viewer(tmp_path: Path) -> None:
     store = RunStore(tmp_path / "state")
-    result, _ = submit_company_research(complete_v3_submission("NVDA"), store=store)
+    result, _ = submit_company_analytics(
+        complete_analytics_submission("NVDA"), store=store, quality_store=QualityStore()
+    )
     presenter = ViewerDaemonPresenter(store, startup_timeout=8)
 
     try:
@@ -120,7 +124,9 @@ def test_presentation_failure_does_not_rollback_completed_research(
     monkeypatch,
 ) -> None:
     store = RunStore(tmp_path / "state")
-    result, events = submit_company_research(complete_v3_submission("MSFT"), store=store)
+    result, events = submit_company_analytics(
+        complete_analytics_submission("MSFT"), store=store, quality_store=QualityStore()
+    )
 
     def fail_spawn(*_args: object, **_kwargs: object) -> None:
         raise OSError("injected viewer startup failure")
@@ -132,51 +138,3 @@ def test_presentation_failure_does_not_rollback_completed_research(
     assert receipt["error"]["code"] == "viewer_start_failed"  # type: ignore[index]
     assert store.get_result(result.run_id) == result
     assert store.get_events(result.run_id) == events
-
-
-def test_mcp_completed_response_returns_generic_presentation_and_compatibility_path(
-    tmp_path: Path,
-    monkeypatch,
-) -> None:
-    store = RunStore(tmp_path / "state")
-    payload = complete_v3_submission("ADBE")
-    monkeypatch.setattr(mcp_server, "RUN_STORE", store)
-    monkeypatch.setattr(
-        mcp_server,
-        "execute_company_research_import",
-        lambda submission: submit_company_research(submission, store=store),
-    )
-    monkeypatch.setenv("STOCKRESEARCHAGENTS_PRESENTATION_MODE", "path_only")
-
-    response = mcp_server.import_company_research(payload)
-
-    assert response["result"]["request"]["symbol"] == "ADBE"
-    assert response["presentation"]["status"] == "path_only"
-    assert response["dashboard_path"] == response["presentation"]["path"]
-
-
-def test_short_lived_cli_returns_a_viewer_url_that_outlives_the_command(tmp_path: Path) -> None:
-    state_dir = tmp_path / "state"
-    environment = os.environ.copy()
-    environment["STOCKRESEARCHAGENTS_STATE_DIR"] = str(state_dir)
-    environment["STOCKRESEARCHAGENTS_PRESENTATION_IDLE_TTL_SECONDS"] = "60"
-
-    completed = subprocess.run(  # noqa: S603 - fixed interpreter and package module
-        [sys.executable, "-m", "tradingagents_portable.cli", "fixture"],
-        check=True,
-        capture_output=True,
-        text=True,
-        env=environment,
-        timeout=20,
-    )
-    payload = json.loads(completed.stdout)
-    presenter = ViewerDaemonPresenter(RunStore(state_dir))
-
-    try:
-        assert payload["presentation"]["status"] == "ready"
-        assert payload["presentation"]["url"]
-        with urlopen(payload["presentation"]["url"], timeout=5) as response:  # noqa: S310 - loopback receipt
-            assert response.status == 200
-            assert "Research Dossier Viewer" in response.read().decode("utf-8")
-    finally:
-        presenter.stop(timeout=5)

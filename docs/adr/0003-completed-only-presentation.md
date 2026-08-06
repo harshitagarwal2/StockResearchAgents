@@ -6,7 +6,7 @@
 
 ## Context
 
-Partial stages may be inconsistent, contain material the host must retain privately, or fail terminal conformance. Presenting them as research would confuse progress with an authoritative completed artifact.
+Partial stages may be inconsistent, contain material the host must retain privately, or fail terminal validation. Presenting them as research would confuse progress with an authoritative completed artifact.
 
 ## Decision
 
@@ -14,7 +14,7 @@ The browser and public completed read models expose only atomically published re
 
 ## Scope and non-goals
 
-This decision governs the Research Dossier Viewer and any future completed dossier comparison or Research Quality view. It does not prevent hosts from showing their own native progress UI outside the portable completed-result surface.
+This decision governs the Research Dossier Viewer and any future completed dossier comparison or Research Quality view. It does not prevent hosts from showing their own native progress UI outside the StockResearchAgents completed-result surface.
 
 ## Consequences
 
@@ -29,10 +29,10 @@ This decision governs the Research Dossier Viewer and any future completed dossi
 - Add pause/resume controls to the viewer: rejected because presentation would gain runtime authority.
 - Let JavaScript derive conclusions: rejected because the browser would become a second business-logic implementation.
 
-## Compatibility impact
+## Contract impact
 
-The existing `dashboard` identifiers remain compatibility APIs. Human-facing copy uses **Research Dossier Viewer** and the additive CLI alias `report`.
+Presentation is exposed through the Research Dossier Viewer and completed-result endpoints only. The viewer has no partial-stage or run-control path.
 
 ## Validation evidence
 
-Dashboard and lifecycle tests prove loopback binding, path safety, completed-only visibility, and static rendering behavior.
+Viewer and lifecycle tests prove loopback binding, path safety, completed-only visibility, and static rendering behavior.

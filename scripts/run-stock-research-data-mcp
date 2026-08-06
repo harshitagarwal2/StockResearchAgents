@@ -7,4 +7,4 @@ repo_root="$(cd -- "$script_dir/.." && pwd)"
 cd "$repo_root"
 
 # Do not write to stdout before the JSON-RPC server starts.
-exec uv run python -m tradingagents_host.research_data_mcp
+exec uv run python -m stock_research_agents_host.research_data_mcp

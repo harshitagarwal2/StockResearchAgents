@@ -1,12 +1,12 @@
 # Merge this mapping into ~/.hermes/config.yaml after installing the package.
 mcp_servers:
-  tradingagents-portable:
+  stock-research-agents:
     command: stock-research-agents-mcp
     args: []
     env:
       PYTHONDONTWRITEBYTECODE: "1"
       PYTHONUNBUFFERED: "1"
-  tradingagents-research-data:
+  stock-research-data:
     command: stock-research-data-mcp
     args: []
     env:

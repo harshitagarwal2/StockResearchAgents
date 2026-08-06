@@ -5,16 +5,16 @@ from hashlib import sha256
 
 import pytest
 
-from tradingagents_host.adapters import (
+from stock_research_agents_host.adapters import (
     ChromeHostResult,
     ChromeNavigationHop,
     ChromePageEvidence,
     ChromeSourcePort,
     ChromeSourceRequest,
 )
-from tradingagents_host.contracts import FilingQuery, NormalizedFact, SourceProvenance
-from tradingagents_host.ports import SourcePort
-from tradingagents_host.source_portfolio import SourcePortfolioCollector
+from stock_research_agents_host.contracts import FilingQuery, NormalizedFact, SourceProvenance
+from stock_research_agents_host.ports import SourcePort
+from stock_research_agents_host.source_portfolio import SourcePortfolioCollector
 
 CUTOFF = "2026-08-01T23:59:59+00:00"
 RETRIEVED = "2026-08-02T00:05:00+00:00"

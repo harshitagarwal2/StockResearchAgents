@@ -12,12 +12,13 @@ from urllib.parse import parse_qs, urlsplit
 from urllib.request import HTTPCookieProcessor, Request, build_opener
 
 import pytest
-from research_v3_fixtures import complete_v3_submission
+from company_analytics_fixtures import complete_analytics_submission
 
-from tradingagents_portable import presentation
-from tradingagents_portable.company_research import submit_company_research
-from tradingagents_portable.presentation import ViewerDaemonPresenter
-from tradingagents_portable.store import RunStore
+from stock_research_agents import presentation
+from stock_research_agents.company_analytics import submit_company_analytics
+from stock_research_agents.presentation import ViewerDaemonPresenter
+from stock_research_agents.research_quality_v1 import QualityStore
+from stock_research_agents.store import RunStore
 
 _SECURITY_HEADERS = {
     "Content-Security-Policy",
@@ -63,7 +64,9 @@ def _registry(store: RunStore) -> tuple[Path, dict[str, object]]:
 
 
 def _publish(store: RunStore, symbol: str = "ORCL") -> str:
-    result, _ = submit_company_research(complete_v3_submission(symbol), store=store)
+    result, _ = submit_company_analytics(
+        complete_analytics_submission(symbol), store=store, quality_store=QualityStore()
+    )
     return result.run_id
 
 
@@ -107,7 +110,7 @@ def test_detached_daemon_rejects_bad_token(detached_viewer) -> None:
     status, _, payload = _request(
         base_url,
         "/api/health",
-        headers={"X-TradingAgents-Viewer-Token": "not-the-viewer-token"},
+        headers={"X-StockResearchAgents-Viewer-Token": "not-the-viewer-token"},
     )
 
     assert status == 401
@@ -120,7 +123,7 @@ def test_detached_daemon_accepts_valid_token(detached_viewer) -> None:
     status, _, payload = _request(
         base_url,
         "/api/health",
-        headers={"X-TradingAgents-Viewer-Token": token},
+        headers={"X-StockResearchAgents-Viewer-Token": token},
     )
 
     assert status == 200
@@ -144,7 +147,7 @@ def test_detached_daemon_rejects_hostile_host_with_security_headers(detached_vie
         "/api/health",
         headers={
             "Host": "attacker.example:443",
-            "X-TradingAgents-Viewer-Token": token,
+            "X-StockResearchAgents-Viewer-Token": token,
         },
     )
 
@@ -162,7 +165,7 @@ def test_detached_daemon_rejects_untrusted_origin_with_security_headers(detached
         "/api/health",
         headers={
             "Origin": origin,
-            "X-TradingAgents-Viewer-Token": token,
+            "X-StockResearchAgents-Viewer-Token": token,
         },
     )
 
@@ -174,7 +177,7 @@ def test_detached_daemon_rejects_untrusted_origin_with_security_headers(detached
 def test_detached_daemon_rejects_non_authority_host_and_origin_suffixes(detached_viewer) -> None:
     base_url, token = detached_viewer
     authority = urlsplit(base_url).netloc
-    token_header = {"X-TradingAgents-Viewer-Token": token}
+    token_header = {"X-StockResearchAgents-Viewer-Token": token}
 
     host_status, _, _ = _request(
         base_url,
@@ -218,7 +221,7 @@ def test_browser_sessions_for_two_state_directories_do_not_overwrite_each_other(
             base_url = _base_url(link.url)
             request = Request(
                 f"{base_url}/api/session",
-                headers={"X-TradingAgents-Viewer-Token": _token(link.url)},
+                headers={"X-StockResearchAgents-Viewer-Token": _token(link.url)},
             )
             with opener.open(request, timeout=5) as response:  # noqa: S310 - authenticated loopback URL
                 assert response.status == 200

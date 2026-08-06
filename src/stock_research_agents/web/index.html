@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="A completed-only projection of a StockResearchAgents company analytics result.">
+    <meta name="color-scheme" content="dark">
+    <title>StockResearchAgents · Company Analytics Viewer</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <a class="skip-link" href="#report">Skip to company analytics</a>
+
+    <header class="masthead">
+      <a class="wordmark" href="#report" aria-label="StockResearchAgents company analytics viewer home">
+        <span class="wordmark-mark" aria-hidden="true">SRA</span>
+        <span>
+          <b>StockResearchAgents</b>
+          <small>Company analytics viewer</small>
+        </span>
+      </a>
+      <div class="masthead-state" aria-label="Viewer state">
+        <span id="data-source-label">No report loaded</span>
+        <strong id="run-status" data-tone="idle">Offline</strong>
+      </div>
+    </header>
+
+    <p class="sr-only" id="interface-status" role="status" aria-live="polite">No report loaded.</p>
+
+    <main id="report">
+      <section class="empty-state" id="empty-state" aria-labelledby="empty-title">
+        <div class="empty-beacon" aria-hidden="true"><span></span></div>
+        <p class="kicker">Completed results only</p>
+        <h1 id="empty-title">No report loaded</h1>
+        <p id="empty-copy">Start the loopback report server and open a completed company analytics result.</p>
+        <p class="boundary-copy">This surface is read-only and non-executable. It does not collect inputs, recalculate analytics, or create actions.</p>
+      </section>
+
+      <div class="report-shell" id="report-shell" hidden>
+        <aside class="report-rail" aria-label="Report contents">
+          <div class="rail-index">
+            <span>Result index</span>
+            <strong id="rail-symbol">—</strong>
+          </div>
+          <nav>
+            <a href="#executive"><span>01</span> Summary</a>
+            <a href="#evidence"><span>02</span> Evidence</a>
+            <a href="#analytics"><span>03</span> Analytics</a>
+            <a href="#risks"><span>04</span> Risks</a>
+            <a href="#monitoring"><span>05</span> Monitoring</a>
+            <a href="#run-card"><span>06</span> Run ledger</a>
+            <a href="#records"><span>07</span> Records</a>
+          </nav>
+          <div class="rail-boundary">
+            <span class="pulse-dot"></span>
+            <p>READ ONLY<br>NON-EXECUTABLE</p>
+          </div>
+        </aside>
+
+        <div class="report-body">
+          <section class="hero" aria-labelledby="hero-company">
+            <div class="hero-orbit" aria-hidden="true"><span></span><i></i></div>
+            <div class="hero-copy">
+              <p class="kicker">Completed company analytics</p>
+              <h1><span id="hero-symbol">—</span><small id="hero-company">—</small></h1>
+              <p class="hero-context" id="hero-context">—</p>
+            </div>
+            <dl class="hero-facts">
+              <div><dt>As of</dt><dd id="as-of-at">—</dd></div>
+              <div><dt>Completed</dt><dd id="completed-at">—</dd></div>
+              <div><dt>Mode</dt><dd id="research-mode">—</dd></div>
+              <div><dt>Schema</dt><dd id="schema-version">—</dd></div>
+            </dl>
+          </section>
+
+          <section class="report-section executive-section" id="executive" aria-labelledby="executive-title">
+            <header class="section-heading">
+              <p class="section-code">01 · Decision-ready reading</p>
+              <h2 id="executive-title">Executive view</h2>
+              <p>The result's declared synthesis, projected without reinterpretation.</p>
+            </header>
+            <div class="recommendation-panel">
+              <div class="recommendation-mark">
+                <span>Recommendation</span>
+                <strong id="recommendation">—</strong>
+              </div>
+              <div class="executive-copy" id="executive-summary">—</div>
+            </div>
+            <div class="split-grid">
+              <article class="module">
+                <header><p class="module-label">Publication identity</p><h3>Result overview</h3></header>
+                <div id="overview-metadata" class="record-stack"></div>
+              </article>
+              <article class="module">
+                <header><p class="module-label">Declared parameters</p><h3>Research request</h3></header>
+                <div id="request-metadata" class="record-stack"></div>
+              </article>
+              <article class="module">
+                <header><p class="module-label">Research intent</p><h3>Objectives</h3></header>
+                <div id="request-objectives" class="record-stack"></div>
+              </article>
+              <article class="module">
+                <header><p class="module-label">Required scope</p><h3>Coverage plan</h3></header>
+                <div id="request-coverage" class="record-stack"></div>
+              </article>
+            </div>
+          </section>
+
+          <section class="report-section" id="evidence" aria-labelledby="evidence-title">
+            <header class="section-heading">
+              <p class="section-code">02 · Source-backed record</p>
+              <h2 id="evidence-title">Evidence &amp; claims</h2>
+              <p>Retained sources, declared claims, and exact lineage bindings remain visibly separate.</p>
+            </header>
+            <div class="section-grid wide-first">
+              <article class="module module-span">
+                <header><p class="module-label">Source record</p><h3>Evidence documents</h3><span id="document-count" class="count-chip">0</span></header>
+                <div id="documents" class="record-grid"></div>
+              </article>
+              <article class="module">
+                <header><p class="module-label">Dossier assertions</p><h3>Claims</h3><span id="claim-count" class="count-chip">0</span></header>
+                <div id="claims" class="record-stack"></div>
+              </article>
+              <article class="module">
+                <header><p class="module-label">Reasoning receipts</p><h3>Arguments</h3></header>
+                <div id="arguments" class="record-stack"></div>
+              </article>
+              <article class="module module-span">
+                <header><p class="module-label">Identity crosswalk</p><h3>Source lineage</h3></header>
+                <div id="source-lineage" class="lineage-grid"></div>
+              </article>
+            </div>
+          </section>
+
+          <section class="report-section" id="analytics" aria-labelledby="analytics-title">
+            <header class="section-heading">
+              <p class="section-code">03 · Reproducible outputs</p>
+              <h2 id="analytics-title">Analytics &amp; valuation</h2>
+              <p>Calculated values and retained model outputs. This page displays them; it does not recompute them.</p>
+            </header>
+            <div class="section-grid">
+              <article class="module module-span"><header><p class="module-label">Declared measures</p><h3>Metrics</h3></header><div id="metrics" class="metric-grid"></div></article>
+              <article class="module"><header><p class="module-label">Calculation receipts</p><h3>Calculations</h3></header><div id="calculations" class="record-stack"></div></article>
+              <article class="module"><header><p class="module-label">Scenario outputs</p><h3>Valuations</h3></header><div id="valuations" class="record-stack"></div></article>
+              <article class="module module-span"><header><p class="module-label">Analytics sidecar</p><h3>Bundle</h3></header><div id="analytics-bundle" class="analytics-grid"></div></article>
+            </div>
+          </section>
+
+          <section class="report-section" id="risks" aria-labelledby="risks-title">
+            <header class="section-heading">
+              <p class="section-code">04 · Challenge the thesis</p>
+              <h2 id="risks-title">Risks &amp; counterevidence</h2>
+              <p>Declared downside conditions and contradictory evidence stay adjacent to the synthesis.</p>
+            </header>
+            <div class="section-grid">
+              <article class="module"><header><p class="module-label">Risk register</p><h3>Named risks</h3></header><div id="risk-register" class="record-stack"></div></article>
+              <article class="module"><header><p class="module-label">Claim challenge</p><h3>Counterevidence</h3></header><div id="counterevidence" class="record-stack"></div></article>
+              <article class="module module-span warning-module"><header><p class="module-label">Known boundaries</p><h3>Limitations &amp; warnings</h3></header><div id="limitations" class="record-stack"></div></article>
+            </div>
+          </section>
+
+          <section class="report-section" id="monitoring" aria-labelledby="monitoring-title">
+            <header class="section-heading">
+              <p class="section-code">05 · What changes the view</p>
+              <h2 id="monitoring-title">Monitoring, quality &amp; forecasts</h2>
+              <p>Forward checks, falsifiable hypotheses, evaluation receipts, and explicitly declared forecasts.</p>
+            </header>
+            <div class="section-grid">
+              <article class="module"><header><p class="module-label">Watch conditions</p><h3>Monitoring rules</h3></header><div id="monitoring-rules" class="record-stack"></div></article>
+              <article class="module"><header><p class="module-label">Change receipt</p><h3>Research delta</h3></header><div id="research-delta" class="record-stack"></div></article>
+              <article class="module"><header><p class="module-label">Falsifiable work</p><h3>Hypotheses</h3></header><div id="hypotheses" class="record-stack"></div></article>
+              <article class="module"><header><p class="module-label">Stopping evidence</p><h3>Iterations</h3></header><div id="iterations" class="record-stack"></div></article>
+              <article class="module"><header><p class="module-label">Evaluation receipt</p><h3>Quality</h3></header><div id="quality" class="record-stack"></div></article>
+              <article class="module"><header><p class="module-label">Future resolution</p><h3>Forecasts</h3></header><div id="forecasts" class="record-stack"></div></article>
+            </div>
+          </section>
+
+          <section class="report-section" id="run-card" aria-labelledby="run-card-title">
+            <header class="section-heading">
+              <p class="section-code">06 · Immutable workflow receipt</p>
+              <h2 id="run-card-title">Run ledger</h2>
+              <p>The exact ordered stage receipts retained by the completed publication.</p>
+            </header>
+            <div id="run-card-meta" class="run-meta"></div>
+            <ol id="run-card-stages" class="stage-ledger"></ol>
+          </section>
+
+          <section class="report-section" id="records" aria-labelledby="records-title">
+            <header class="section-heading">
+              <p class="section-code">07 · Publication record</p>
+              <h2 id="records-title">Reports, artifacts &amp; events</h2>
+              <p>Read-only publication outputs and lifecycle receipts exposed by the canonical view.</p>
+            </header>
+            <div class="section-grid">
+              <article class="module"><header><p class="module-label">Published reports</p><h3>Reports</h3></header><div id="reports" class="record-stack"></div></article>
+              <article class="module"><header><p class="module-label">Stored outputs</p><h3>Artifacts</h3></header><div id="artifacts" class="record-stack"></div></article>
+              <article class="module"><header><p class="module-label">Lifecycle trace</p><h3>Events</h3></header><div id="events" class="event-ledger"></div></article>
+              <article class="module"><header><p class="module-label">Viewer affordances</p><h3>Available actions</h3></header><div id="actions" class="record-stack"></div></article>
+            </div>
+          </section>
+
+          <footer class="report-footer">
+            <p id="prototype-notice">Research output · verify against retained sources.</p>
+            <p>Projection only · no inputs · no recalculation · no authority</p>
+          </footer>
+        </div>
+      </div>
+    </main>
+
+    <script src="./app.js" defer></script>
+  </body>
+</html>

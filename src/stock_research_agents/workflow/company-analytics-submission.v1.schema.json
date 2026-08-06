@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stock-research-agents.local/schemas/company-analytics-submission.v1.json",
+  "title": "StockResearchAgents completed company analytics submission v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "workflow_id",
+    "company_research",
+    "analytics_bundle",
+    "source_lineage",
+    "run_card",
+    "hypothesis_ledgers",
+    "research_iterations",
+    "quality_receipt",
+    "forecasts"
+  ],
+  "properties": {
+    "schema_version": {"const": "company-analytics.v1"},
+    "workflow_id": {"const": "stockresearchagents.company-analytics.v1"},
+    "company_research": {"$ref": "company-research-submission.v1.schema.json#/$defs/companyResearchSubmission"},
+    "analytics_bundle": {"$ref": "analytics-bundle.v1.schema.json"},
+    "source_lineage": {"$ref": "source-lineage-crosswalk.v1.schema.json"},
+    "run_card": {"$ref": "research-lab.v1.schema.json#/$defs/runCard"},
+    "hypothesis_ledgers": {
+      "type": "array",
+      "maxItems": 512,
+      "items": {"$ref": "research-lab.v1.schema.json#/$defs/hypothesisLedger"}
+    },
+    "research_iterations": {
+      "type": "array",
+      "maxItems": 512,
+      "items": {"$ref": "research-lab.v1.schema.json#/$defs/researchIteration"}
+    },
+    "quality_receipt": {"$ref": "research-quality.v1.schema.json#/$defs/receipt"},
+    "forecasts": {
+      "type": "array",
+      "maxItems": 512,
+      "items": {"$ref": "research-quality.v1.schema.json#/$defs/forecast"}
+    }
+  }
+}

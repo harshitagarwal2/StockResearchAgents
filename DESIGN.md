@@ -3,11 +3,11 @@
 ## Source of truth
 
 - **Status:** Active
-- **Last refreshed:** 2026-08-03
+- **Last refreshed:** 2026-08-05
 - **Primary product surface:** a versioned research capability consumed by Codex, other agent harnesses, and custom applications. MCP, Python, and the CLI are inbound adapters; JSON/Markdown exports and the Research Dossier Viewer are completed-result projections.
 - **Canonical for:** product language, user journeys, information architecture, visual language, accessibility, and completed-result interaction rules.
-- **Not canonical for:** wire schemas, module ownership, persistence internals, compatibility guarantees, or test evidence.
-- **Evidence reviewed:** `README.md`, `docs/ARCHITECTURE.md`, `docs/FEATURE_PARITY.md`, `docs/VALIDATION.md`, `.codex-plugin/plugin.json`, `skills/tradingagents-portable/`, `src/tradingagents_portable/web/`, workflow manifests, tests, and TradingAgents architecture renders used only as external reference material.
+- **Not canonical for:** wire schemas, module ownership, persistence internals, contract guarantees, or test evidence.
+- **Evidence reviewed:** `README.md`, `docs/ARCHITECTURE.md`, `docs/FEATURE_PARITY.md`, `docs/VALIDATION.md`, `.codex-plugin/plugin.json`, `skills/stock-research-agents/`, `src/stock_research_agents/web/`, workflow manifests, and tests.
 
 ## Brand
 
@@ -17,15 +17,15 @@
 
 ## Product goals
 
-- **Goals:** let a research host execute one stable company-research contract without adopting a particular CLI or orchestration framework; make the completed artifact understandable, auditable, portable across harnesses, and safe to inspect; let a new contributor understand the authority boundary in under five minutes.
-- **Non-goals:** retrieve data inside the portable core, own model reasoning, provide financial advice, execute orders, expose credentials, or turn the browser into a research/runtime console.
-- **Success signals:** users can identify what the host owns, what Portable guarantees, why a conclusion was reached, which evidence is missing, and whether the displayed artifact is completed and non-executable.
+- **Goals:** let a research host execute the one public `company-analytics.v1` product profile without adopting a particular CLI or orchestration framework; make the completed artifact understandable, auditable, cross-harness, and safe to inspect; let a new contributor understand the authority boundary in under five minutes.
+- **Non-goals:** retrieve data inside the StockResearchAgents core, own model reasoning, provide financial advice, execute orders, expose credentials, or turn the browser into a research/runtime console.
+- **Success signals:** users can identify what the host owns, what StockResearchAgents validates, why a conclusion was reached, which evidence is missing, and whether the displayed artifact is completed and non-executable.
 
 ## Personas and jobs
 
 - **Primary personas:** research reader, Codex user, harness integrator, contract implementer, maintainer/reviewer, and compliance or provenance auditor.
 - **User jobs:** connect an agent harness; execute the declared research stages with host-owned agents and tools; run a deterministic local proof; validate a terminal dossier; receive and open its completed page without launching a company-specific UI; inspect a completed conclusion; trace a claim to evidence; export a reproducible artifact; understand a failed or incomplete run.
-- **Key contexts of use:** local development, Codex tasks, generic MCP clients, CI conformance, historical replay, and read-only review after publication.
+- **Key contexts of use:** local development, Codex tasks, generic MCP clients, CI validation, historical replay, and read-only review after publication.
 
 ## Information architecture
 
@@ -39,7 +39,7 @@
   5. Valuation and risk.
   6. Monitoring, prior outcomes, and research changes.
   7. Method, provenance, and raw audit appendix.
-- **Documentation hierarchy:** `README.md` routes tasks; this file owns product design; `docs/ARCHITECTURE.md` owns implementation structure; `docs/CONTRACTS.md` owns integration sequences; `docs/COMPATIBILITY.md` owns version mapping; `docs/VALIDATION.md` owns proof.
+- **Documentation hierarchy:** `README.md` routes tasks; this file owns product design; `docs/ARCHITECTURE.md` owns implementation structure; `docs/CONTRACTS.md` owns integration sequences; `docs/COMPATIBILITY.md` records the active contract set; `docs/VALIDATION.md` owns proof.
 
 ## Design principles
 
@@ -49,22 +49,23 @@
 4. **Missing is a result.** Stale, conflicting, unavailable, or entitlement-blocked evidence is visible—not silently replaced.
 5. **Projection is not authority.** Harness-native views, Python/CLI/MCP reads, and the browser render typed state; they do not invent research or scores.
 6. **One viewer, explicit run identity.** Completion returns a URL pinned to the published run; later companies reuse the same application instead of generating another page or server.
-- **Tradeoffs:** auditability and compatibility take precedence over compact payloads, animated UI, or a smaller number of visible limitations.
+- **Tradeoffs:** auditability and explicit contract stability take precedence over compact payloads, animated UI, or a smaller number of visible limitations.
 
 ## Stable vocabulary
 
 | Use | Meaning | Do not substitute |
 | --- | --- | --- |
 | StockResearchAgents | Product and capability bundle | trading app, prediction engine |
-| Research host | Codex, another agent harness, or a custom application that owns execution | portable core, CLI runtime |
-| Evidence-First Company Research | Implemented primary capability | company-research v2 in reader-facing prose |
-| Completed Research Dossier | Immutable human-facing artifact | report, result, dashboard |
-| Research Dossier Viewer | Completed-only read surface | live dashboard, operator console |
+| Research host | Codex, another agent harness, or a custom application that owns execution | StockResearchAgents core, CLI runtime |
+| Company Analytics | The one public `company-analytics.v1` product profile | generic company research |
+| Evidence-First Company Research | Embedded `company-research.v1` dossier foundation | separate public product profile |
+| Completed Research Dossier | Immutable human-facing artifact | transient stage output |
+| Research Dossier Viewer | Completed-only read surface | live workspace, operator console |
 | Research Quality | Planned policy, forecast, outcome, and evaluation capability | confidence engine, prediction pipeline |
 | Research Quality Receipt | Planned reproducibility and rule-evaluation artifact | generic evaluation receipts |
 | Research conclusion | Non-executable analytical conclusion | trade, order, signal authorization |
 
-Technical identifiers such as `company-research.v2`, `host-submission.v3`, `research_dossier.v3`, `RunView`, stage IDs, and compatibility commands remain unchanged.
+The outer `CompanyAnalyticsSubmissionV1` embeds `CompanyResearchSubmissionV1`, which carries `ResearchDossierV1`. Completed publication uses `CompanyAnalyticsResultV1`; it adds publication metadata and artifacts without translating the submission into another decision model. Technical identifiers such as `company-analytics.v1`, `company-research.v1`, `company-analytics-result.v1`, `run-control.v1`, `RunView`, and stage IDs remain versioned and exact.
 
 ## Visual language
 
@@ -88,7 +89,7 @@ Technical identifiers such as `company-research.v2`, `host-submission.v3`, `rese
 - **Existing components to reuse:** masthead receipt, status chips, report hero, decision aperture, evidence ledger, definition lists, trace legend, timeline, source cards, limitation callouts, and appendix accordions.
 - **New/changed components:** canonical Research Dossier Viewer wordmark; Research Quality Receipt panel only after typed data exists; explicit insufficient/conflicted/policy-blocked states; completed dossier comparison view only after a server-side typed projection exists.
 - **Variants and states:** fixture/live/historical-replay; complete/partial/missing/stale/conflicting/entitlement-blocked/not-applicable; completed/unavailable; future open/resolved/unscored/insufficient-sample states.
-- **Token/component ownership:** `src/tradingagents_portable/web/styles.css` owns tokens; `index.html` owns semantics; `app.js` only renders validated `RunView` data.
+- **Token/component ownership:** `src/stock_research_agents/web/styles.css` owns tokens; `index.html` owns semantics; `app.js` only renders validated `RunView` data.
 
 ## Accessibility
 
@@ -117,7 +118,7 @@ Technical identifiers such as `company-research.v2`, `host-submission.v3`, `rese
 ## Content voice
 
 - **Tone:** direct, precise, non-promotional, and honest about proof boundaries.
-- **Terminology:** use the stable vocabulary above; reserve code identifiers for compatibility/reference sections.
+- **Terminology:** use the stable vocabulary above; reserve code identifiers for contract/reference sections.
 - **Microcopy rules:** say what is missing and why; distinguish fixture from live; distinguish HOLD from insufficient evidence; use “non-executable” near every investment-style conclusion.
 - **Prohibited labels:** guaranteed, complete market picture, prediction engine, execution, approved trade, autonomous trader, or calibrated accuracy without defined cohorts and sufficient observations.
 
@@ -126,7 +127,7 @@ Technical identifiers such as `company-research.v2`, `host-submission.v3`, `rese
 - **Framework/styling system:** packaged static HTML/CSS/JavaScript served by Python; no frontend framework or browser-side business logic.
 - **Design-token constraints:** extend the existing CSS custom properties before adding new tokens.
 - **Performance constraints:** bounded completed payloads, no external UI assets, and no required network requests after the local page loads.
-- **Compatibility constraints:** strict wire schemas and compatibility commands remain stable; human-facing aliases are additive.
+- **Contract constraints:** strict wire schemas and `run-control.v1` commands remain stable; human-facing aliases are additive.
 - **Test/screenshot expectations:** static safety, accessibility landmarks, loopback binding, completed-only visibility, responsive CSS, forced-colors, print behavior, documentation links, and diagram source/render pairs.
 
 ## Open questions

@@ -17,42 +17,32 @@ ROOT = Path(__file__).resolve().parents[1]
 EXPECTED_TOOLS = {
     "acknowledge_run_cancellation",
     "append_run_receipts",
-    "commit_host_stage",
-    "create_company_research_run",
+    "commit_run_stage",
     "create_company_analytics_run",
-    "create_host_run",
     "discover_capability",
     "export_completed_run",
-    "finalize_host_run",
-    "get_conformance_report",
-    "get_dashboard_report",
+    "finalize_run",
     "get_feature_matrix",
     "get_run",
     "get_run_events",
     "get_run_result",
     "get_run_semantics",
-    "get_run_view",
     "get_run_control",
+    "get_run_view",
+    "get_validation_report",
     "get_research_report_summary",
     "get_research_quality",
     "launch_research_report",
-    "launch_local_dashboard",
-    "import_host_run",
-    "import_company_research",
     "import_company_analytics",
-    "pause_host_run",
+    "pause_run",
     "poll_run_events",
-    "prepare_host_run",
-    "prepare_company_research",
     "prepare_company_analytics",
-    "prepare_fixture",
     "query_decision_memory",
     "record_decision_outcome",
     "record_research_outcome",
     "request_run_cancellation",
-    "resume_host_run",
-    "run_fixture",
-    "start_host_run",
+    "resume_run",
+    "start_run",
 }
 EXPECTED_RESEARCH_DATA_TOOLS = {
     "research_data_get_regulatory_filings": ["issuer", "jurisdiction", "form_types", "filed_after", "filed_before"],
@@ -71,7 +61,8 @@ def _server_parameters(server_name: str, state_dir: Path | None = None) -> Stdio
     environment = os.environ.copy()
     environment.update(server.get("env", {}))
     if state_dir is not None:
-        environment["TRADINGAGENTS_PORTABLE_STATE_DIR"] = str(state_dir)
+        environment["STOCKRESEARCHAGENTS_STATE_DIR"] = str(state_dir)
+        environment["UV_CACHE_DIR"] = str(state_dir / "uv-cache")
     for name in server.get("env_vars", ()):
         if name in os.environ:
             environment[name] = os.environ[name]
@@ -96,8 +87,8 @@ def _payload(response: CallToolResult) -> dict[str, Any]:
 
 
 async def smoke() -> None:
-    temporary_state = tempfile.TemporaryDirectory(prefix="tradingagents-portable-mcp-smoke-")
-    parameters = _server_parameters("tradingagents-portable", Path(temporary_state.name))
+    temporary_state = tempfile.TemporaryDirectory(prefix="stock-research-agents-mcp-smoke-")
+    parameters = _server_parameters("stock-research-agents", Path(temporary_state.name))
     async with stdio_client(parameters) as (read_stream, write_stream):
         async with ClientSession(read_stream, write_stream) as session:
             await session.initialize()
@@ -107,127 +98,66 @@ async def smoke() -> None:
 
             discovery_response = await session.call_tool("discover_capability", arguments={})
             capability = _payload(discovery_response)
-            assert capability["executors"]["fixture"] is True
-            assert capability["executors"]["host_native"] is True
-            assert capability["executors"]["legacy"] is False
-            assert "run_legacy" not in capability["tools"]
-            transition_contracts = capability["transition_contracts"]
-            research_data_contract = transition_contracts["research_data_tools"]
+            assert capability["active_profile"] == "company-analytics.v1"
+            analytics_state = capability["executor_states"]["company_analytics_v1"]
+            assert analytics_state["ready"] is True
+            assert analytics_state["execution_modes"] == ["native", "sequential", "import"]
+            assert set(capability["tools"]) == EXPECTED_TOOLS
+            integration_contracts = capability["integration_contracts"]
+            research_data_contract = integration_contracts["research_data_tools"]
             research_data_tools = {tool["mcp_name"] for tool in research_data_contract["tools"]}
             assert research_data_contract["implementation_status"] == "partial_live"
             assert {tool["mcp_name"] for tool in research_data_contract["tools"] if tool["default_exposed"]} == set(
                 EXPECTED_RESEARCH_DATA_TOOLS
             )
             assert research_data_tools.isdisjoint(names)
-            legacy_transition = transition_contracts["legacy_transition"]
-            assert legacy_transition["removal_allowed"] is False
-            assert all(
-                gate["status"] == "blocked" and gate["verification"] == "unverified"
-                for gate in legacy_transition["removal_gates"]
-            )
-            executor_states = capability["executor_states"]
-            assert executor_states["research_data_adapters"]["surface_exposed"] is True
-            assert executor_states["research_data_adapters"]["coordination_mcp_exposed"] is False
-            assert executor_states["legacy_transition"]["ready_for_removal"] is False
 
+            request = json.loads((ROOT / "examples" / "company-request.v1.json").read_text(encoding="utf-8"))
+            request["research_plan"]["coverage_dimensions"][-1]["entitlement_policy"] = "caller_entitled_allowed"
             plan_response = await session.call_tool(
-                "prepare_host_run",
-                arguments={"symbol": "ORCL", "as_of_date": "2026-08-01"},
+                "prepare_company_analytics",
+                arguments={"request": request},
             )
             plan = _payload(plan_response)
-            assert plan["execution_owner"] == "host_harness"
-            assert plan["external_model_api_keys_accepted"] is False
-            assert plan["lifecycle_schema"]["properties"]["status"]["enum"][-1] == "failed"
+            assert plan["workflow_id"] == "stockresearchagents.company-analytics.v1"
+            assert plan["execution_mode"] == "sequential"
+            assert "system_boundary" in plan
 
-            created_response = await session.call_tool(
-                "create_host_run",
-                arguments={
-                    "symbol": "ORCL",
-                    "as_of_date": "2026-08-01",
-                    "analysts": ["market"],
-                    "decision_memory_enabled": False,
-                },
+            create_response = await session.call_tool(
+                "create_company_analytics_run",
+                arguments={"request": request, "decision_memory_enabled": False},
             )
-            created = _payload(created_response)["control"]
-            started_response = await session.call_tool(
-                "start_host_run",
-                arguments={"run_id": created["run_id"], "expected_revision": created["revision"]},
+            created = _payload(create_response)["control"]
+            run_id = created["run_id"]
+            assert run_id.startswith("analytics-") and len(run_id) == 22
+            started = _payload(
+                await session.call_tool(
+                    "start_run",
+                    arguments={"run_id": run_id, "expected_revision": created["revision"]},
+                )
             )
-            started = _payload(started_response)
-            assert started["stage"]["id"] == "analyst.market"
-            cancelled_response = await session.call_tool(
-                "request_run_cancellation",
-                arguments={
-                    "run_id": created["run_id"],
-                    "expected_revision": started["control"]["revision"],
-                    "reason": "MCP lifecycle smoke completed.",
-                },
+            paused = _payload(
+                await session.call_tool(
+                    "pause_run",
+                    arguments={
+                        "run_id": run_id,
+                        "expected_revision": started["control"]["revision"],
+                        "reason": "stdio smoke pause",
+                    },
+                )
+            )["control"]
+            resumed = _payload(
+                await session.call_tool(
+                    "resume_run",
+                    arguments={"run_id": run_id, "expected_revision": paused["revision"]},
+                )
             )
-            cancelled = _payload(cancelled_response)["control"]
-            assert cancelled["status"] == "cancel_requested"
+            assert resumed["control"]["status"] == "running"
+            assert resumed["stage"]["id"] == "research.plan"
 
-            run_response = await session.call_tool(
-                "run_fixture",
-                arguments={
-                    "as_of_date": "2026-07-03",
-                    "debate_rounds": 2,
-                    "risk_rounds": 2,
-                    "presentation_mode": "path_only",
-                },
-            )
-            run_payload = _payload(run_response)
-            result = run_payload["result"]
-            run_id = result["run_id"]
+            print(f"ok tools={len(names)} run={run_id} profile=company-analytics.v1 executable=false")
 
-            get_response = await session.call_tool("get_run_result", arguments={"run_id": run_id})
-            retrieved = _payload(get_response)
-            assert retrieved["ok"] is True
-            retrieved_result = retrieved["result"]
-            assert retrieved_result["run_id"] == run_id
-            assert retrieved_result["status"] == "completed"
-            assert len(retrieved_result["research_debate"]) == 4
-            assert len(retrieved_result["risk_debate"]) == 6
-            assert retrieved_result["trader_decision"]["executable"] is False
-            assert retrieved_result["portfolio_decision"]["executable"] is False
-
-            conformance_response = await session.call_tool("get_conformance_report", arguments={"run_id": run_id})
-            conformance = _payload(conformance_response)
-            assert conformance["ok"] is True
-            assert conformance["conformance"]["passed"] is True
-            assert conformance["conformance"]["verified"] is True
-            assert conformance["conformance"]["overall_status"] == "portable_conformant_upstream_unverified"
-            assert conformance["conformance"]["upstream_compatibility"] == {
-                "passed": False,
-                "verified": False,
-                "status": "skipped",
-            }
-            assert not any(check["status"] == "failed" for check in conformance["conformance"]["checks"])
-
-            view_response = await session.call_tool("get_run_view", arguments={"run_id": run_id})
-            view_payload = _payload(view_response)
-            assert view_payload["ok"] is True
-            assert view_payload["run_id"] == run_id
-            assert view_payload["overview"]["symbol"] == "ORCL"
-            assert len(view_payload["analyst_reports"]) == 4
-            intelligence = view_payload["intelligence"]
-            assert intelligence["coverage"]["evidence_count"] == 4
-            assert intelligence["coverage"]["analyst_count"] == 4
-            assert intelligence["coverage"]["source_quality_buckets"] == {"synthetic_fixture": 4}
-            assert len(intelligence["evidence_metrics"]) >= 10
-            assert len(intelligence["news"]) >= 3
-            assert len(intelligence["catalysts"]) >= 3
-            assert intelligence["risk_register"]
-            assert intelligence["conflicts"]
-            assert intelligence["unknowns"]
-            assert intelligence["monitoring_conditions"]
-
-            print(
-                f"ok tools={len(names)} run={run_id} research_turns=4 risk_turns=6 "
-                f"metrics={len(intelligence['evidence_metrics'])} news={len(intelligence['news'])} "
-                "executable=false"
-            )
-
-    research_parameters = _server_parameters("tradingagents-research-data")
+    research_parameters = _server_parameters("stock-research-data", Path(temporary_state.name))
     async with stdio_client(research_parameters) as (read_stream, write_stream):
         async with ClientSession(read_stream, write_stream) as session:
             await session.initialize()

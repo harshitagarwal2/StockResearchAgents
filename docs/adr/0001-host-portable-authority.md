@@ -1,4 +1,4 @@
-# ADR 0001: Separate host execution from portable authority
+# ADR 0001: Separate caller execution from core authority
 
 - **Status:** Accepted
 - **Date:** 2026-08-03
@@ -6,34 +6,34 @@
 
 ## Context
 
-Different harnesses provide different model, tool, credential, entitlement, agent, and interruption systems. Embedding one runtime would make the capability harness-specific and duplicate upstream TradingAgents internals.
+Different harnesses provide different model, tool, credential, entitlement, agent, and interruption systems. Embedding one runtime would make the capability harness-specific and couple the contracts to that runtime's internals.
 
 ## Decision
 
-The research host owns model reasoning, retrieval, prompts, credentials, entitlements, source terms, native scheduling, and hard interruption. StockResearchAgents owns versioned contracts, deterministic conformance, bounded stage receipts, lifecycle state, atomic completed publication, exports, and completed read models.
+The caller runtime owns model reasoning, retrieval, prompts, credentials, entitlements, source terms, native scheduling, and hard interruption. The StockResearchAgents core owns versioned contracts, deterministic validation, bounded stage receipts, lifecycle state, atomic completed publication, exports, and completed read models.
 
-The portable core never accepts provider credentials and never gains broker or order authority.
+The StockResearchAgents core never accepts provider credentials and never gains broker or order authority.
 
 ## Scope and non-goals
 
-This decision covers Python, CLI, MCP, Codex, generic harness adapters, and the optional upstream compatibility adapter. It does not standardize how a host spawns agents or retrieves evidence.
+This decision covers Python, CLI, MCP, Codex, and generic harness adapters. It does not standardize how a caller runtime spawns agents or retrieves evidence.
 
 ## Consequences
 
 - The same workflow semantics can run in multiple harnesses.
-- Live research quality remains dependent on host evidence and behavior.
-- Portable conformance can fail closed without owning the provider.
-- No single skill file is universally executable; MCP plus versioned contracts form the portable boundary.
+- Live research quality remains dependent on caller evidence and behavior.
+- Core validation can fail closed without owning the provider.
+- No single skill file is universally executable; the coordination MCP plus versioned contracts form the cross-harness boundary.
 
 ## Alternatives considered
 
-- Embed LangGraph as the core runtime: rejected because it would make orchestration and persistence harness-specific.
-- Copy upstream prompts/providers: rejected because adapters can call upstream without forking business logic.
+- Embed a specific graph runtime as the core: rejected because it would make orchestration and persistence harness-specific.
+- Bundle model prompts and provider clients: rejected because caller adapters own those mechanisms.
 - Let the browser retrieve data: rejected because it would violate credential, licensing, and authority boundaries.
 
-## Compatibility impact
+## Contract impact
 
-Adapters may change, but the host-submission and completed-result contracts remain versioned and portable.
+Adapters may change, but `CompanyAnalyticsSubmissionV1` and the completed-result contracts remain versioned and transport-neutral.
 
 ## Validation evidence
 

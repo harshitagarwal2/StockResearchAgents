@@ -3,16 +3,16 @@ from __future__ import annotations
 import json
 
 import pytest
-from company_analytics_fixtures import complete_v4_submission
+from company_analytics_fixtures import complete_analytics_submission
 
-from tradingagents_portable.company_analytics import (
+from stock_research_agents.company_analytics import (
     get_company_research_quality,
     quality_projection_for_result,
     submit_company_analytics,
 )
-from tradingagents_portable.company_analytics_v1 import HostSubmissionV4
-from tradingagents_portable.research_quality_v1 import OutcomeObservation, QualityStore
-from tradingagents_portable.store import RunStore
+from stock_research_agents.company_analytics_v1 import CompanyAnalyticsSubmissionV1
+from stock_research_agents.research_quality_v1 import OutcomeObservation, QualityStore
+from stock_research_agents.store import RunStore
 
 
 def _outcome(forecast_id: str, *, correction: bool = False) -> OutcomeObservation:
@@ -35,7 +35,7 @@ def _outcome(forecast_id: str, *, correction: bool = False) -> OutcomeObservatio
 
 
 def test_quality_store_persists_append_only_corrections_and_scorecards(tmp_path) -> None:
-    submission = HostSubmissionV4.from_dict(complete_v4_submission("META"))
+    submission = CompanyAnalyticsSubmissionV1.from_dict(complete_analytics_submission("META"))
     store = QualityStore(tmp_path / "quality")
     store.register(submission.quality_receipt, submission.forecasts)
     forecast = submission.forecasts[0]
@@ -53,7 +53,7 @@ def test_quality_store_persists_append_only_corrections_and_scorecards(tmp_path)
 
 
 def test_quality_store_registration_and_outcome_append_are_idempotent(tmp_path) -> None:
-    submission = HostSubmissionV4.from_dict(complete_v4_submission("ORCL"))
+    submission = CompanyAnalyticsSubmissionV1.from_dict(complete_analytics_submission("ORCL"))
     store = QualityStore(tmp_path / "quality")
     store.register(submission.quality_receipt, submission.forecasts)
     store.register(submission.quality_receipt, submission.forecasts)
@@ -66,7 +66,7 @@ def test_quality_store_registration_and_outcome_append_are_idempotent(tmp_path) 
 
 
 def test_staged_quality_registration_is_hidden_until_publish_and_recovers(tmp_path) -> None:
-    submission = HostSubmissionV4.from_dict(complete_v4_submission("META"))
+    submission = CompanyAnalyticsSubmissionV1.from_dict(complete_analytics_submission("META"))
     path = tmp_path / "quality"
     store = QualityStore(path)
     store.stage_registration(submission.quality_receipt, submission.forecasts)
@@ -84,8 +84,8 @@ def test_analytics_result_publish_failure_leaves_quality_registration_hidden(
     tmp_path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    payload = complete_v4_submission("META")
-    submission = HostSubmissionV4.from_dict(payload)
+    payload = complete_analytics_submission("META")
+    submission = CompanyAnalyticsSubmissionV1.from_dict(payload)
     run_store = RunStore(tmp_path / "runs")
     quality_store = QualityStore(tmp_path / "quality")
 
@@ -105,8 +105,8 @@ def test_completed_artifacts_project_quality_without_registration_after_publish_
     tmp_path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    payload = complete_v4_submission("META")
-    submission = HostSubmissionV4.from_dict(payload)
+    payload = complete_analytics_submission("META")
+    submission = CompanyAnalyticsSubmissionV1.from_dict(payload)
     run_store = RunStore(tmp_path / "runs")
     quality_store = QualityStore(tmp_path / "quality")
     original_publish = quality_store.publish_registration
@@ -129,8 +129,8 @@ def test_completed_artifacts_project_quality_without_registration_after_publish_
 
 
 def test_read_only_quality_fallback_does_not_write_registration_state(tmp_path) -> None:
-    payload = complete_v4_submission("META")
-    submission = HostSubmissionV4.from_dict(payload)
+    payload = complete_analytics_submission("META")
+    submission = CompanyAnalyticsSubmissionV1.from_dict(payload)
     run_store = RunStore(tmp_path / "runs")
     result, _ = submit_company_analytics(payload, store=run_store, quality_store=QualityStore())
     quality_path = tmp_path / "read-only-quality"
@@ -151,29 +151,26 @@ def test_read_only_quality_fallback_does_not_write_registration_state(tmp_path) 
     assert quality_path.exists() is False
 
 
-def test_pre_namespace_local_registration_migrates_without_breaking_readers(tmp_path) -> None:
-    submission = HostSubmissionV4.from_dict(complete_v4_submission("META"))
+def test_unnamespaced_local_registration_is_rejected(tmp_path) -> None:
+    submission = CompanyAnalyticsSubmissionV1.from_dict(complete_analytics_submission("META"))
     state_dir = tmp_path / "quality"
     registration_dir = state_dir / "registrations"
     registration_dir.mkdir(parents=True)
     forecast = submission.forecasts[0].to_dict()
-    forecast["forecast_id"] = "legacy.forecast.primary"
+    forecast["forecast_id"] = "unnamespaced.forecast.primary"
     path = registration_dir / f"{submission.run_card.run_id}.json"
     path.write_text(
         json.dumps({"receipt": submission.quality_receipt.to_dict(), "forecasts": [forecast]}),
         encoding="utf-8",
     )
 
-    projection = QualityStore(state_dir).projection(submission.run_card.run_id)
-    assert projection is not None
-    assert projection["forecasts"][0]["forecast_id"] == (  # type: ignore[index]
-        f"{submission.run_card.run_id}.legacy.forecast.primary"
-    )
+    with pytest.raises(ValueError, match="globally namespaced by run_id"):
+        QualityStore(state_dir).projection(submission.run_card.run_id)
 
 
 def test_run_namespaces_allow_same_forecast_suffix_across_quality_runs(tmp_path) -> None:
-    meta = HostSubmissionV4.from_dict(complete_v4_submission("META"))
-    oracle = HostSubmissionV4.from_dict(complete_v4_submission("ORCL"))
+    meta = CompanyAnalyticsSubmissionV1.from_dict(complete_analytics_submission("META"))
+    oracle = CompanyAnalyticsSubmissionV1.from_dict(complete_analytics_submission("ORCL"))
     store = QualityStore(tmp_path / "quality")
 
     store.register(meta.quality_receipt, meta.forecasts)

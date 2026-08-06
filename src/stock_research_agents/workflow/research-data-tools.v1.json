@@ -1,0 +1,189 @@
+{
+  "schema_version": "1.0.0",
+  "id": "stockresearchagents.research-data-tools.v1",
+  "kind": "integration_metadata",
+  "provider_neutral": true,
+  "implementation_status": "partial_live",
+  "exposure": {
+    "server": "stock-research-data",
+    "default_mcp_exposed": true,
+    "coordination_mcp_exposed": false,
+    "registration_policy": "register_only_receipted_capabilities",
+    "auth_owner": "host",
+    "provider_selection_owner": "host",
+    "credentials_in_core_contracts": false
+  },
+  "versioning": {
+    "capability_semantics": "1.0.0",
+    "query_semantics": "1.0.0",
+    "response_semantics": "1.0.0",
+    "change_policy": "breaking_semantic_changes_require_a_new_major_version"
+  },
+  "source_batch": {
+    "type": "SourceBatch",
+    "version": "1.0.0",
+    "implementation_status": "implemented",
+    "required_fields": [
+      "capability",
+      "query",
+      "cutoff",
+      "status",
+      "items",
+      "provenance",
+      "entitlement",
+      "completeness",
+      "pagination",
+      "limitations"
+    ],
+    "semantics": {
+      "cutoff": "host_asserted_latest_includable_observation_time",
+      "status": "typed_batch_level_availability_and_freshness_outcome",
+      "provenance": "item_and_batch_level_source_identity_and_retrieval_time",
+      "entitlement": "implemented_host_asserted_access_and_redistribution_receipt_without_credentials",
+      "completeness": "explicit_coverage_summary_relative_to_the_bounded_query_and_cutoff",
+      "pagination": "explicit_bounded_cursor_state_that_cannot_widen_the_original_query",
+      "limitations": "non_empty_provider_or_query_limitations_when_known",
+      "items": "provider_neutral_records_ordered_deterministically_by_observed_time_then_source_id"
+    }
+  },
+  "batch_status": {
+    "field": "status",
+    "values": ["complete", "partial", "unavailable", "denied", "rate_limited", "stale"],
+    "terminal_for_query": true
+  },
+  "entitlement": {
+    "status": "implemented_v1",
+    "required_fields": ["access", "redistributable", "terms_uri", "license_receipt_id", "limitation"],
+    "access_values": ["allowed", "denied", "unknown"],
+    "redistributable_values": [true, false, "unknown"],
+    "nonredistributable_rule": "when_redistributable_is_false_return_metadata_and_reference_only_with_no_extract",
+    "credentials_allowed": false
+  },
+  "pagination": {
+    "required_fields": ["has_more", "next_cursor", "returned_items", "bounded_items"],
+    "cursor_semantics": "opaque_host_owned_cursor_scoped_to_the_original_query_cutoff_and_entitlement",
+    "completeness_semantics": "complete_only_when_has_more_is_false_and_the_host_reports_no_known_coverage_gap",
+    "partial_semantics": "partial_when_a_bound_page_limit_provider_limit_or_known_coverage_gap_prevents_complete_coverage"
+  },
+  "social_bounds": {
+    "required_query_fields": ["symbol", "start_time", "end_time", "max_items"],
+    "maximum_items": 30,
+    "maximum_window_days": 7,
+    "pagination": "bounded_by_max_items_and_cutoff",
+    "unbounded_collection": false,
+    "identity_policy": "public_source_identifiers_only_no_profile_enrichment",
+    "content_policy": "return_only_content_available_under_host_entitlement"
+  },
+  "tools": [
+    {
+      "capability": "prices",
+      "mcp_name": "research_data_get_prices",
+      "implementation_status": "licensed_host_source_port_required",
+      "default_exposed": false,
+      "provider": "host_licensed_source_port",
+      "limitation": "Not registered by default; a licensed host SourcePort and matching source receipt are required.",
+      "query": {"version": "1.0.0", "required": ["symbol", "start_time", "end_time", "interval"], "semantics": "point_in_time_price_series"},
+      "response": {"version": "1.0.0", "type": "SourceBatch", "item_semantics": "normalized_ohlcv_observation"}
+    },
+    {
+      "capability": "indicators",
+      "mcp_name": "research_data_get_indicators",
+      "implementation_status": "licensed_host_source_port_required",
+      "default_exposed": false,
+      "provider": "host_licensed_source_port",
+      "limitation": "Not registered by default; a licensed host SourcePort and matching source receipt are required.",
+      "query": {"version": "1.0.0", "required": ["symbol", "indicator", "start_time", "end_time", "parameters"], "semantics": "explicit_parameter_technical_indicator_series"},
+      "response": {"version": "1.0.0", "type": "SourceBatch", "item_semantics": "normalized_indicator_observation"}
+    },
+    {
+      "capability": "regulatory_filings",
+      "mcp_name": "research_data_get_regulatory_filings",
+      "implementation_status": "implemented_public_default",
+      "default_exposed": true,
+      "provider": "SEC EDGAR",
+      "limitation": "United States SEC filing metadata and bounded normalized facts only.",
+      "query": {"version": "1.0.0", "required": ["issuer", "jurisdiction", "form_types", "filed_after", "filed_before"], "semantics": "filings_known_by_cutoff"},
+      "response": {"version": "1.0.0", "type": "SourceBatch", "item_semantics": "normalized_filing_metadata_and_host_authorized_excerpt"}
+    },
+    {
+      "capability": "fundamentals",
+      "mcp_name": "research_data_get_fundamentals",
+      "implementation_status": "implemented_public_default",
+      "default_exposed": true,
+      "provider": "SEC EDGAR",
+      "limitation": "SEC company facts only; availability depends on issuer identity and reported taxonomy facts.",
+      "query": {"version": "1.0.0", "required": ["symbol", "metrics", "as_of"], "semantics": "point_in_time_fundamental_metrics"},
+      "response": {"version": "1.0.0", "type": "SourceBatch", "item_semantics": "normalized_metric_value_period_and_unit"}
+    },
+    {
+      "capability": "financial_statements",
+      "mcp_name": "research_data_get_financial_statements",
+      "implementation_status": "implemented_public_default",
+      "default_exposed": true,
+      "provider": "SEC EDGAR",
+      "limitation": "SEC company facts normalized into requested statements; not a vendor-restated statement feed.",
+      "query": {"version": "1.0.0", "required": ["issuer", "statement_types", "periods", "as_of"], "semantics": "as_reported_statements_known_by_cutoff"},
+      "response": {"version": "1.0.0", "type": "SourceBatch", "item_semantics": "normalized_statement_fact_with_period_unit_and_filing_reference"}
+    },
+    {
+      "capability": "company_news",
+      "mcp_name": "research_data_get_company_news",
+      "implementation_status": "implemented_public_default",
+      "default_exposed": true,
+      "provider": "GDELT",
+      "limitation": "Returns GDELT discovery metadata and publisher links only; seendate is a GDELT seen-time proxy rather than asserted publisher publication time, article bodies are not redistributed, and saturated result sets are partial.",
+      "query": {"version": "1.0.0", "required": ["symbol", "published_after", "published_before", "max_items"], "semantics": "company_specific_news_available_by_cutoff"},
+      "response": {"version": "1.0.0", "type": "SourceBatch", "item_semantics": "normalized_news_metadata_and_host_authorized_excerpt"}
+    },
+    {
+      "capability": "global_news",
+      "mcp_name": "research_data_get_global_news",
+      "implementation_status": "implemented_public_default",
+      "default_exposed": true,
+      "provider": "GDELT",
+      "limitation": "Returns GDELT discovery metadata and publisher links only; seendate is a GDELT seen-time proxy rather than asserted publisher publication time, article bodies are not redistributed, and saturated result sets are partial.",
+      "query": {"version": "1.0.0", "required": ["topics", "published_after", "published_before", "max_items"], "semantics": "topic_news_available_by_cutoff"},
+      "response": {"version": "1.0.0", "type": "SourceBatch", "item_semantics": "normalized_news_metadata_and_host_authorized_excerpt"}
+    },
+    {
+      "capability": "macro",
+      "mcp_name": "research_data_get_macro",
+      "implementation_status": "implemented_public_default",
+      "default_exposed": true,
+      "provider": "World Bank",
+      "limitation": "The current-data API cannot reconstruct historical vintages; current values do not expose revision lineage.",
+      "query": {"version": "1.0.0", "required": ["series", "regions", "start_time", "end_time", "vintage_as_of"], "semantics": "vintage_aware_macro_series"},
+      "response": {"version": "1.0.0", "type": "SourceBatch", "item_semantics": "normalized_macro_observation_with_release_and_vintage_times"}
+    },
+    {
+      "capability": "prediction_markets",
+      "mcp_name": "research_data_get_prediction_markets",
+      "implementation_status": "implemented_public_default",
+      "default_exposed": true,
+      "provider": "Polymarket Gamma",
+      "limitation": "Probabilities are market-implied current snapshots, not forecasts or truth; public search cannot reconstruct historical state.",
+      "query": {"version": "1.0.0", "required": ["search_terms", "as_of", "max_items"], "semantics": "bounded_current_prediction_market_search_as_of_cutoff"},
+      "response": {"version": "1.0.0", "type": "SourceBatch", "item_semantics": "normalized_non_executable_prediction_market_probability_snapshot"}
+    },
+    {
+      "capability": "stocktwits",
+      "mcp_name": "research_data_get_stocktwits",
+      "implementation_status": "denied_unregistered",
+      "default_exposed": false,
+      "provider": "none",
+      "limitation": "Approved StockTwits API access is not configured; requests fail closed as denied.",
+      "query": {"version": "1.0.0", "required": ["symbol", "start_time", "end_time", "max_items"], "semantics": "bounded_public_symbol_message_sample"},
+      "response": {"version": "1.0.0", "type": "SourceBatch", "item_semantics": "normalized_public_message_and_available_sentiment"}
+    },
+    {
+      "capability": "reddit",
+      "mcp_name": "research_data_get_reddit",
+      "implementation_status": "host_oauth_source_port_required",
+      "default_exposed": false,
+      "provider": "host_reddit_oauth_source_port",
+      "limitation": "Not registered by default; host-owned Reddit OAuth and a matching source receipt are required.",
+      "query": {"version": "1.0.0", "required": ["symbol", "start_time", "end_time", "max_items"], "semantics": "bounded_public_post_and_comment_sample"},
+      "response": {"version": "1.0.0", "type": "SourceBatch", "item_semantics": "normalized_public_post_or_comment_and_available_engagement"}
+    }
+  ]
+}

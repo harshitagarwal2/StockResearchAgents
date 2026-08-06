@@ -1,6 +1,6 @@
 {
   "schema_version": "synthetic-ohlcv-conformance.v1",
-  "provenance": "Original synthetic fixture authored for tradingagents-portable; no external data.",
+  "provenance": "Original synthetic fixture authored for stock-research-agents; no external data.",
   "accepted_cases": [
     {
       "case_id": "unsorted_decimal_strings_are_normalized",

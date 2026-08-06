@@ -6,64 +6,58 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
-
-from tradingagents_portable.capabilities import discovery, feature_matrix
-from tradingagents_portable.contracts import PROTOTYPE_NOTICE, RunRequest
-from tradingagents_portable.errors import CapabilitySetupError
-from tradingagents_portable.legacy import LegacyTradingAgentsAdapter
+from stock_research_agents.capabilities import discovery, feature_matrix
+from stock_research_agents.contracts import PROTOTYPE_NOTICE
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_feature_matrix_has_no_ambiguous_blocker_statuses_and_keeps_partial_data_truthful() -> None:
-    matrix = feature_matrix(legacy_path=str(ROOT / "does-not-exist"))
+def test_feature_matrix_reports_only_standalone_capabilities() -> None:
+    matrix = feature_matrix()
     serialized = json.dumps(matrix.to_dict()).lower()
+    names = {feature.name for feature in matrix.features}
 
-    assert matrix.features
-    assert "missing" not in serialized
-    assert "deferred" not in serialized
-    assert "host_blocked" not in serialized
-    assert "legacy_full_topology" in {feature.name for feature in matrix.features}
-    assert "orcl_fixture" in {feature.name for feature in matrix.features}
-    assert "loopback_dashboard" in {feature.name for feature in matrix.features}
-    assert {feature.level.value for feature in matrix.features} <= {"supported", "partial", "optional", "prohibited"}
-    research_data = next(feature for feature in matrix.features if feature.name == "research_data_adapter_contracts")
-    assert research_data.level.value == "partial"
+    assert names >= {"typed_contracts", "company_analytics_v1", "research_data_adapter_contracts"}
+    assert "legacy" not in serialized
+    assert "upstream" not in serialized
+    assert "tradingagents" not in serialized
+    assert {feature.level.value for feature in matrix.features} <= {
+        "supported",
+        "partial",
+        "optional",
+        "prohibited",
+    }
 
 
-def test_discovery_has_no_broker_or_order_tool_surface() -> None:
-    payload = discovery(legacy_path=str(ROOT / "does-not-exist"))
-    tool_names = tuple(str(name).lower() for name in payload["tools"])
+def test_discovery_has_no_broker_order_or_retired_surface() -> None:
+    payload = discovery()
+    tool_names = {str(name) for name in payload["tools"]}
 
+    assert payload["active_profile"] == "company-analytics.v1"
+    assert "get_validation_report" in tool_names
+    assert not tool_names.intersection(
+        {
+            "run_legacy",
+            "prepare_host_run",
+            "import_host_run",
+            "prepare_company_research",
+            "import_company_research",
+            "create_host_run",
+            "create_company_research_run",
+            "launch_local_dashboard",
+            "get_viewer_report",
+        }
+    )
     assert not any("broker" in name or "order" in name or "trade" in name for name in tool_names)
     assert "never an order" in str(payload["safety_notice"]).lower()
-
-
-def test_optional_legacy_adapter_fails_with_typed_setup_guidance(tmp_path: Path) -> None:
-    missing_legacy = tmp_path / "missing-upstream"
-    adapter = LegacyTradingAgentsAdapter(str(missing_legacy))
-    request = RunRequest(symbol="AAPL", executor="legacy")
-
-    with pytest.raises(CapabilitySetupError) as captured:
-        adapter.run(request)
-
-    payload = captured.value.to_dict()
-    assert payload["ok"] is False
-    assert payload["error"]["code"] == "legacy_executor_unavailable"
-    assert payload["error"]["retryable"] is True
-    assert payload["error"]["steps"]
-    serialized = json.dumps(payload).lower()
-    assert "api_key" not in serialized
-    assert "secret" not in serialized
 
 
 def test_contract_imports_are_side_effect_free() -> None:
     script = """
 import json
 import sys
-import tradingagents_portable.contracts
-import tradingagents_portable.topology
+import stock_research_agents.contracts
+import stock_research_agents.company_analytics_v1
 blocked = sorted(
     name for name in sys.modules
     if name == 'tradingagents' or name.startswith(('tradingagents.', 'langgraph', 'langchain', 'dotenv'))
@@ -72,7 +66,7 @@ print(json.dumps(blocked))
 """
     environment = os.environ.copy()
     environment["PYTHONPATH"] = str(ROOT / "src")
-    completed = subprocess.run(
+    completed = subprocess.run(  # noqa: S603 - fixed interpreter and test-owned source
         [sys.executable, "-c", script],
         cwd=ROOT,
         env=environment,

@@ -1,11 +1,11 @@
 {
-  "name": "tradingagents-portable-local",
+  "name": "stock-research-agents-local",
   "interface": {
     "displayName": "StockResearchAgents local"
   },
   "plugins": [
     {
-      "name": "tradingagents-portable",
+      "name": "stock-research-agents",
       "source": {
         "source": "local",
         "path": "./"

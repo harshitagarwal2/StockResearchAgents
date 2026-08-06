@@ -5,7 +5,7 @@ from decimal import Decimal
 
 import pytest
 
-from tradingagents_portable.analytics_v1 import (
+from stock_research_agents.analytics_v1 import (
     AnalyticsBundleV1,
     CapitalBridge,
     ComparableObservation,
@@ -17,13 +17,13 @@ from tradingagents_portable.analytics_v1 import (
     SourceLicenseReceipt,
     SplitManifest,
 )
-from tradingagents_portable.analytics_v1.calculators import (
+from stock_research_agents.analytics_v1.calculators import (
     calculate_comparable_valuation,
     calculate_dcf,
     calculate_reverse_dcf,
     standard_ratio_calculator,
 )
-from tradingagents_portable.analytics_v1.validators import evaluate_analytics_bundle
+from stock_research_agents.analytics_v1.validators import evaluate_analytics_bundle
 
 NOW = "2026-08-01T12:00:00+00:00"
 

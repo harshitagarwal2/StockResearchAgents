@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "tradingagents-portable": {
+    "stock-research-agents": {
       "type": "stdio",
       "command": "bash",
       "args": [
@@ -11,7 +11,7 @@
         "PYTHONUNBUFFERED": "1"
       }
     },
-    "tradingagents-research-data": {
+    "stock-research-data": {
       "type": "stdio",
       "command": "bash",
       "args": [

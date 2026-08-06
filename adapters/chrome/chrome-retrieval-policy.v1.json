@@ -12,9 +12,9 @@
     "approval_scope": "exact_run_and_domain",
     "approval_must_be_explicit": true,
     "approval_must_not_carry_between_runs": true,
-    "portable_may_launch_chrome": false,
-    "portable_may_install_chrome": false,
-    "portable_may_force_chrome": false
+    "core_may_launch_chrome": false,
+    "core_may_install_chrome": false,
+    "core_may_force_chrome": false
   },
   "routing": {
     "structured_routes_preferred": [
@@ -87,7 +87,7 @@
       },
       "raw_percent_encoded_hostname_syntax_rejected": true,
       "non_ascii_hostname_syntax_rejected": true,
-      "one_time_portable_dns_lookup_allowed": false
+      "one_time_core_dns_lookup_allowed": false
     },
     "authenticated_page_rule": "only_approved_domain_and_run_relevant_research_page",
     "denied_targets": [
@@ -235,8 +235,8 @@
       "session_state",
       "raw_bodies"
     ],
-    "portable_storage_allowed": false,
-    "portable_logging_allowed": false
+    "core_storage_allowed": false,
+    "core_logging_allowed": false
   },
   "access_controls": {
     "respect_paywalls": true,

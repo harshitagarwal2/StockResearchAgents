@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stock-research-agents.local/schemas/research-quality.v1.json",
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9._:-]{0,127}$"},
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "receipt_id", "run_id", "issued_at", "policy", "workflow_sha256", "request_sha256", "dossier_sha256", "package_identifier", "package_version", "stage_digests", "rules", "limitations"],
+      "properties": {
+        "schema_version": {"const": "research-quality.v1"},
+        "receipt_id": {"$ref": "#/$defs/id"},
+        "run_id": {"$ref": "#/$defs/id"},
+        "issued_at": {"type": "string", "format": "date-time"},
+        "policy": {"type": "object"},
+        "workflow_sha256": {"$ref": "#/$defs/digest"},
+        "request_sha256": {"$ref": "#/$defs/digest"},
+        "dossier_sha256": {"$ref": "#/$defs/digest"},
+        "package_identifier": {"type": "string", "minLength": 1, "maxLength": 128},
+        "package_version": {"type": "string", "minLength": 1, "maxLength": 128},
+        "stage_digests": {"type": "array", "maxItems": 512, "items": {"type": "object"}},
+        "rules": {"type": "array", "minItems": 1, "maxItems": 512, "items": {"type": "object"}},
+        "limitations": {"type": "array", "maxItems": 512, "items": {"type": "string", "maxLength": 2000}}
+      }
+    },
+    "forecast": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "forecast_id", "run_id", "instrument_id", "claim_id", "forecast_kind", "target", "forecast_at", "information_cutoff_at", "resolve_after", "horizon", "resolution_rule", "probability", "point_estimate", "interval_lower", "interval_upper", "direction", "unit", "benchmark_id", "evidence_document_ids", "producer_provenance"],
+      "properties": {
+        "schema_version": {"const": "research-quality.v1"},
+        "forecast_id": {"$ref": "#/$defs/id"},
+        "run_id": {"$ref": "#/$defs/id"},
+        "instrument_id": {"$ref": "#/$defs/id"},
+        "claim_id": {"$ref": "#/$defs/id"},
+        "forecast_kind": {"enum": ["binary_event", "numeric_metric", "interval", "directional_return", "benchmark_relative_return"]},
+        "target": {"type": "string", "minLength": 1, "maxLength": 2000},
+        "forecast_at": {"type": "string", "format": "date-time"},
+        "information_cutoff_at": {"type": "string", "format": "date-time"},
+        "resolve_after": {"type": "string", "format": "date-time"},
+        "horizon": {"type": "string", "minLength": 1, "maxLength": 256},
+        "resolution_rule": {"type": "string", "minLength": 1, "maxLength": 2000},
+        "probability": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+        "point_estimate": {"type": ["number", "null"]},
+        "interval_lower": {"type": ["number", "null"]},
+        "interval_upper": {"type": ["number", "null"]},
+        "direction": {"enum": ["up", "down", "flat", null]},
+        "unit": {"type": ["string", "null"], "maxLength": 128},
+        "benchmark_id": {"oneOf": [{"$ref": "#/$defs/id"}, {"type": "null"}]},
+        "evidence_document_ids": {"type": "array", "minItems": 1, "maxItems": 128, "items": {"$ref": "#/$defs/id"}},
+        "producer_provenance": {"type": "string", "minLength": 1, "maxLength": 2000}
+      }
+    }
+  }
+}

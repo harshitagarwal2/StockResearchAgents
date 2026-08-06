@@ -2,36 +2,43 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tradingagents_portable import cli
-from tradingagents_portable.contracts import RunRequest
-from tradingagents_portable.fixture import run_fixture
-from tradingagents_portable.report_server import create_report_server, report_summary
-from tradingagents_portable.store import RunStore
+import pytest
+from company_analytics_fixtures import complete_analytics_submission
+
+from stock_research_agents import cli
+from stock_research_agents.company_analytics import submit_company_analytics
+from stock_research_agents.report_server import create_report_server, report_summary
+from stock_research_agents.research_quality_v1 import QualityStore
+from stock_research_agents.store import RunStore
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_report_is_preferred_cli_alias_with_compatibility_dashboard() -> None:
+def test_report_is_the_only_viewer_cli_command() -> None:
     parser = cli._parser()
-    report = parser.parse_args(["report", "--fixture", "--port", "0"])
-    dashboard = parser.parse_args(["dashboard", "--fixture", "--port", "0"])
-    upstream = parser.parse_args(["research", "AAPL", "--report"])
-    host_import = parser.parse_args(["host-import", "--input", "submission.json", "--report"])
-    company_import = parser.parse_args(["company-import", "--input", "submission.json", "--report"])
+    report = parser.parse_args(["report", "--port", "0"])
+    analytics_import = parser.parse_args(["analytics-import", "--input", "submission.json", "--report"])
 
     assert report.command == "report"
-    assert dashboard.command == "dashboard"
-    assert report.fixture is True
-    assert dashboard.fixture is True
-    assert upstream.dashboard is True
-    assert host_import.dashboard is True
-    assert company_import.dashboard is True
+    assert report.port == 0
+    assert analytics_import.report is True
+    with pytest.raises(SystemExit):
+        parser.parse_args(["dashboard"])
+    with pytest.raises(SystemExit):
+        parser.parse_args(["research", "AAPL"])
+    with pytest.raises(SystemExit):
+        parser.parse_args(["host-import", "--input", "submission.json"])
+    with pytest.raises(SystemExit):
+        parser.parse_args(["company-import", "--input", "submission.json"])
 
 
-def test_report_facade_uses_completed_dashboard_projection(tmp_path: Path) -> None:
+def test_report_facade_uses_completed_run_projection(tmp_path: Path) -> None:
     store = RunStore(state_dir=tmp_path / "runs")
-    result, events = run_fixture(RunRequest())
-    store.put(result, events)
+    result, _events = submit_company_analytics(
+        complete_analytics_submission("ORCL"),
+        store=store,
+        quality_store=QualityStore(),
+    )
 
     summary = report_summary(result.run_id, store)
     server = create_report_server("127.0.0.1", 0, store=store)
@@ -44,11 +51,11 @@ def test_report_facade_uses_completed_dashboard_projection(tmp_path: Path) -> No
 
 
 def test_viewer_uses_canonical_human_facing_names() -> None:
-    markup = (ROOT / "src" / "tradingagents_portable" / "web" / "index.html").read_text(encoding="utf-8")
-    script = (ROOT / "src" / "tradingagents_portable" / "web" / "app.js").read_text(encoding="utf-8")
+    markup = (ROOT / "src" / "stock_research_agents" / "web" / "index.html").read_text(encoding="utf-8")
+    script = (ROOT / "src" / "stock_research_agents" / "web" / "app.js").read_text(encoding="utf-8")
 
-    assert "StockResearchAgents · Research Dossier Viewer" in markup
-    assert "Research conclusion" in markup
-    assert "Completed Research Dossier" in markup
-    assert "Completed Research Dossier" in script
-    assert "Completed read model" in script
+    assert "StockResearchAgents · Company Analytics Viewer" in markup
+    assert "Company analytics viewer" in markup
+    assert "Completed company analytics" in markup
+    assert "Completed company-analytics projection" in script
+    assert "canonical completed result" in script

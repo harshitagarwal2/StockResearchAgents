@@ -1,6 +1,6 @@
 {
   "schema_version": "synthetic-forecast-scoring-conformance.v1",
-  "provenance": "Original synthetic fixture authored for tradingagents-portable; no external predictions or outcomes.",
+  "provenance": "Original synthetic fixture authored for stock-research-agents; no external predictions or outcomes.",
   "cases": [
     {
       "case_id": "binary_event_true",

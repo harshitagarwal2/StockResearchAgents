@@ -26,55 +26,18 @@ jobs:
       - name: Format
         run: ruff format --check .
       - name: Browser JavaScript
-        run: node --check src/tradingagents_portable/web/app.js
+        run: node --check src/stock_research_agents/web/app.js
       - name: Compile Python
         run: python -m compileall -q src tests
       - name: Type check
         run: mypy --ignore-missing-imports src
       - name: Documentation
         run: python scripts/check_docs.py
-      - name: Upstream pin consistency
-        run: python scripts/upstream_pin.py --check
       - name: Tests
         run: pytest -q
-      - name: Legacy transition remains blocked
-        run: python scripts/verify_legacy_removal.py --expect-blocked
       - name: Backend smoke
         run: python scripts/smoke_backend.py
       - name: MCP smoke
         run: python scripts/smoke_mcp.py
       - name: Build distribution
         run: python -m build
-
-  upstream-semantic-differential:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    env:
-      STOCKRESEARCHAGENTS_STATE_DIR: /tmp/stock-research-agents-upstream-state
-    steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-        with:
-          repository: TauricResearch/TradingAgents
-          ref: a33fd4c0f134485a43553a2c23a63cb14adbd88f
-          path: .upstream
-      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
-        with:
-          python-version: "3.11"
-          cache: pip
-      - name: Install portable and pinned upstream
-        run: python -m pip install -e ".[dev]" -e ./.upstream
-      - name: Run upstream-dependent tests
-        env:
-          TRADINGAGENTS_UPSTREAM_PATH: .upstream
-        run: pytest -q tests/test_conformance.py tests/test_upstream_semantic_differential.py
-      - name: Compare scoped observable semantics
-        run: >-
-          python scripts/run_upstream_semantic_probe.py
-          --upstream-path .upstream
-          --require-clean-portable
-          --output upstream-semantic-differential.json
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: upstream-semantic-differential
-          path: upstream-semantic-differential.json

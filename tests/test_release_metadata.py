@@ -33,7 +33,7 @@ def test_project_metadata_describes_the_public_distribution() -> None:
     pyproject = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     project = pyproject["project"]
 
-    assert project["name"] == "tradingagents-portable"
+    assert project["name"] == "stock-research-agents"
     assert project["dynamic"] == ["version"]
     assert project["urls"]["Repository"] == "https://github.com/harshitagarwal2/StockResearchAgents"
     assert "mcp" in project["keywords"]
@@ -42,8 +42,8 @@ def test_project_metadata_describes_the_public_distribution() -> None:
 
 def test_source_checkout_launchers_and_host_adapters_stay_thin() -> None:
     expected = {
-        "scripts/run-stock-research-mcp": "tradingagents_portable.mcp_server",
-        "scripts/run-stock-research-data-mcp": "tradingagents_host.research_data_mcp",
+        "scripts/run-stock-research-mcp": "stock_research_agents.mcp_server",
+        "scripts/run-stock-research-data-mcp": "stock_research_agents_host.research_data_mcp",
     }
     for relative_path, module in expected.items():
         launcher = ROOT / relative_path
@@ -56,13 +56,13 @@ def test_source_checkout_launchers_and_host_adapters_stay_thin() -> None:
 
     opencode = json.loads((ROOT / "opencode.json").read_text(encoding="utf-8"))
     servers = opencode["mcp"]["servers"]
-    assert servers["tradingagents-portable"]["command"] == ["bash", "scripts/run-stock-research-mcp"]
-    assert servers["tradingagents-research-data"]["command"] == ["bash", "scripts/run-stock-research-data-mcp"]
+    assert servers["stock-research-agents"]["command"] == ["bash", "scripts/run-stock-research-mcp"]
+    assert servers["stock-research-data"]["command"] == ["bash", "scripts/run-stock-research-data-mcp"]
     assert all(server["type"] == "local" for server in servers.values())
 
     claude = (ROOT / "CLAUDE.md").read_text(encoding="utf-8")
     hermes = (ROOT / "docs" / "HERMES_MCP_CONFIG.yaml").read_text(encoding="utf-8")
     assert "AGENTS.md" in claude
-    assert "skills/tradingagents-portable/SKILL.md" in claude
+    assert "skills/stock-research-agents/SKILL.md" in claude
     assert "mcp_servers:" in hermes
     assert "/absolute/path/to/StockResearchAgents" in hermes

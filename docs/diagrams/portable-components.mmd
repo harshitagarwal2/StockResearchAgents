@@ -1,27 +1,28 @@
 %%{init: {"theme":"base","fontFamily":"Avenir Next, Segoe UI, sans-serif","themeVariables":{"fontFamily":"Avenir Next, Segoe UI, sans-serif","primaryColor":"#eef3ff","primaryTextColor":"#071c26","primaryBorderColor":"#2257ff","lineColor":"#516a75","secondaryColor":"#e5f7f5","tertiaryColor":"#fff4df","background":"#f5f8f9","clusterBkg":"#ffffff","clusterBorder":"#96aab2"},"flowchart":{"curve":"linear","htmlLabels":true}}}%%
 flowchart TB
   accTitle: StockResearchAgents component architecture
-  accDescr: Inbound adapters call application coordinators. Strict domain contracts and specifications validate work. Outbound adapters persist completed state and present read-only projections.
+  accDescr: Inbound adapters call the StockResearchAgents application core. The public company-analytics.v1 profile composes an outer CompanyAnalyticsSubmissionV1 around an embedded CompanyResearchSubmissionV1 and ResearchDossierV1. Run-control.v1 coordinates durable state, while outbound adapters expose only completed projections.
 
   subgraph I["Inbound adapters"]
     direction LR
     CLI["CLI"]
-    MCP["MCP server"]
+    MCP["Coordination MCP"]
     PY["Python API"]
-    HOST["Host submission"]
+    HOST["CompanyAnalyticsSubmissionV1"]
   end
 
   subgraph A["Application core"]
     direction LR
     COORD["Research coordinators"]
-    LIFE["Lifecycle state machine"]
+    LIFE["run-control.v1"]
     PUB["Publication service"]
   end
 
   subgraph D["Domain rules"]
     direction LR
-    CONTRACT["Strict contracts"]
-    SPEC["Conformance specifications"]
+    CONTRACT["company-analytics.v1"]
+    FOUNDATION["Embedded company-research.v1<br/><small>CompanyResearchSubmissionV1 · ResearchDossierV1</small>"]
+    SPEC["Deterministic validation"]
     QUALITY["Research Quality"]
   end
 
@@ -39,7 +40,7 @@ flowchart TB
   HOST --> COORD
   COORD --> LIFE
   LIFE --> CONTRACT
-  CONTRACT --> SPEC
+  CONTRACT --> FOUNDATION --> SPEC
   QUALITY -. policy checks .-> SPEC
   SPEC --> PUB
   LIFE --> STORE
@@ -53,5 +54,5 @@ flowchart TB
   classDef out fill:#ffffff,stroke:#516a75,color:#071c26,stroke-width:2px;
   class CLI,MCP,PY,HOST inbound;
   class COORD,LIFE,PUB app;
-  class CONTRACT,SPEC,QUALITY domain;
+  class CONTRACT,FOUNDATION,SPEC,QUALITY domain;
   class STORE,BUNDLE,VIEW,UI out;

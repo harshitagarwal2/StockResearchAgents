@@ -2,17 +2,17 @@
   "schema_version": "host-adapters.v1",
   "runtime": "installed_python_package",
   "workflow_profile": "company-analytics.v1",
-  "default_execution_mode": "compatible",
-  "canonical_skill": "skills/tradingagents-portable/SKILL.md",
+  "default_execution_mode": "sequential",
+  "canonical_skill": "skills/stock-research-agents/SKILL.md",
   "servers": {
     "coordination": {
-      "server_id": "tradingagents-portable",
+      "server_id": "stock-research-agents",
       "transport": "stdio",
       "installed_command": "stock-research-agents-mcp",
       "source_launcher": "scripts/run-stock-research-mcp"
     },
     "research_data": {
-      "server_id": "tradingagents-research-data",
+      "server_id": "stock-research-data",
       "transport": "stdio",
       "installed_command": "stock-research-data-mcp",
       "source_launcher": "scripts/run-stock-research-data-mcp"

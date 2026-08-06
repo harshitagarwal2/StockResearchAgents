@@ -5,20 +5,20 @@ from __future__ import annotations
 import hashlib
 import json
 
-from research_v3_fixtures import complete_v3_submission
+from research_submission_fixtures import complete_research_submission
 
-from tradingagents_portable.analytics_v1 import AnalyticsBundleV1, FinancialFact, FiscalPeriod, SourceLicenseReceipt
-from tradingagents_portable.company_analytics_v1 import (
+from stock_research_agents.analytics_v1 import AnalyticsBundleV1, FinancialFact, FiscalPeriod, SourceLicenseReceipt
+from stock_research_agents.company_analytics_v1 import (
     SourceLineageBindingV1,
     SourceLineageCrosswalkV1,
     base_request_digest,
     base_submission_digest,
     canonical_workflow_digest,
 )
-from tradingagents_portable.company_analytics_v1.contracts import analytics_run_id
-from tradingagents_portable.company_analytics_v1.provider import CompanyAnalyticsV1Provider
-from tradingagents_portable.research_contracts import parse_host_submission_v3
-from tradingagents_portable.research_lab_v1 import (
+from stock_research_agents.company_analytics_v1.contracts import analytics_run_id
+from stock_research_agents.company_analytics_v1.provider import CompanyAnalyticsV1Provider
+from stock_research_agents.research_contracts import parse_company_research_submission_v1
+from stock_research_agents.research_lab_v1 import (
     Hypothesis,
     HypothesisLedger,
     HypothesisTransition,
@@ -26,7 +26,7 @@ from tradingagents_portable.research_lab_v1 import (
     RunCardV1,
     StageReceipt,
 )
-from tradingagents_portable.research_quality_v1 import (
+from stock_research_agents.research_quality_v1 import (
     Forecast,
     QualityPolicy,
     QualityRuleResult,
@@ -40,11 +40,12 @@ def _digest(value: object) -> str:
     ).hexdigest()
 
 
-def complete_v4_submission(symbol: str = "META", *, execution_mode: str = "compatible") -> dict[str, object]:
-    company = parse_host_submission_v3(complete_v3_submission(symbol))
+def complete_analytics_submission(symbol: str = "META", *, execution_mode: str = "sequential") -> dict[str, object]:
+    company = parse_company_research_submission_v1(complete_research_submission(symbol))
     manifest = CompanyAnalyticsV1Provider().load_manifest()
     workflow_digest = canonical_workflow_digest()
-    run_id = analytics_run_id(company, "initiating-coverage.v1", workflow_digest)
+    provisional_run_id = "analytics-provisional"
+    run_id = provisional_run_id
     document = company.dossier.documents[0]
     claim = company.dossier.claims[0]
     completed_at = company.dossier.completed_at
@@ -148,7 +149,7 @@ def complete_v4_submission(symbol: str = "META", *, execution_mode: str = "compa
         research_pack_id="initiating-coverage.v1",
         submission_digest=base_submission_digest(company),
         workflow_digest=workflow_digest,
-        harness="fixture-host",
+        executor_runtime="fixture-host",
         execution_mode=execution_mode,  # type: ignore[arg-type]
         started_at=company.request.requested_at,
         completed_at=completed_at,
@@ -168,7 +169,7 @@ def complete_v4_submission(symbol: str = "META", *, execution_mode: str = "compa
                 content_sha256_scope="normalized_source_record",
                 content_sha256=item.locator.content_sha256,
                 canonical_uri=item.locator.canonical_uri,
-                host_license_receipt_id=f"host-license.{item.id}",
+                license_receipt_id=f"license.{item.id}",
                 dossier_document_id=item.id,
                 analytics_source_id=item.id,
                 analytics_license_receipt_id=f"analytics-license.{item.id}",
@@ -221,7 +222,7 @@ def complete_v4_submission(symbol: str = "META", *, execution_mode: str = "compa
         workflow_digest,
         base_request_digest(company),
         company.dossier.digest(),
-        "tradingagents-portable",
+        "stock-research-agents",
         "0.1.0",
         tuple((stage.stage_id, stage.output_digest or "") for stage in stages),
         (QualityRuleResult("rule.analytics-conformance", "pass", "Analytics sidecars reproduced."),),
@@ -250,9 +251,9 @@ def complete_v4_submission(symbol: str = "META", *, execution_mode: str = "compa
         (document.id,),
         "fixture-host explicit forecast; not claim confidence",
     )
-    return {
+    payload = {
         "schema_version": "company-analytics.v1",
-        "workflow_id": "tradingagents.company-analytics.v1",
+        "workflow_id": "stockresearchagents.company-analytics.v1",
         "company_research": company.to_dict(),
         "analytics_bundle": analytics.to_dict(),
         "source_lineage": source_lineage.to_dict(),
@@ -262,3 +263,19 @@ def complete_v4_submission(symbol: str = "META", *, execution_mode: str = "compa
         "quality_receipt": quality.to_dict(),
         "forecasts": [forecast.to_dict()],
     }
+    run_id = analytics_run_id(payload)
+
+    def bind_canonical_run_id(value: object) -> object:
+        if isinstance(value, dict):
+            return {key: bind_canonical_run_id(item) for key, item in value.items()}
+        if isinstance(value, list):
+            return [bind_canonical_run_id(item) for item in value]
+        if isinstance(value, tuple):
+            return tuple(bind_canonical_run_id(item) for item in value)
+        if isinstance(value, str):
+            return value.replace(provisional_run_id, run_id)
+        return value
+
+    rebound = bind_canonical_run_id(payload)
+    assert isinstance(rebound, dict)
+    return rebound

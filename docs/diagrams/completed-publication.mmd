@@ -1,31 +1,31 @@
 %%{init: {"theme":"base","fontFamily":"Avenir Next, Segoe UI, sans-serif","themeVariables":{"fontFamily":"Avenir Next, Segoe UI, sans-serif","primaryColor":"#eef3ff","primaryTextColor":"#071c26","primaryBorderColor":"#2257ff","lineColor":"#516a75","secondaryColor":"#e5f7f5","tertiaryColor":"#fff4df","background":"#f5f8f9","actorBkg":"#ffffff","actorBorder":"#2257ff","actorTextColor":"#071c26","signalColor":"#28424f","signalTextColor":"#071c26","noteBkgColor":"#fff4df","noteBorderColor":"#ad6500"}}}%%
 sequenceDiagram
   accTitle: Completed-only publication sequence
-  accDescr: A host commits all 26 ordered stages, including the terminal v4 payload, before explicit finalization. StockResearchAgents stages authoritative RunResult artifacts, the recoverable quality index, and optional decision memory; it publishes quality before the canonical result and completes enabled memory publication before readers open. The viewer remains empty until every required publication is ready.
+  accDescr: A caller runtime commits all 26 ordered stages, including the terminal analytics payload, before explicit finalization. StockResearchAgents stages the strict CompanyAnalyticsResultV1 with its exact submission and seven authoritative artifacts, while the lifecycle retains a separate control ID and exposes the canonical result ID through result_run_id. The viewer remains empty until required publication state is ready.
 
-  participant H as Research host
-  participant P as Portable core
+  participant H as Caller runtime
+  participant P as StockResearchAgents core
   participant S as Durable storage
   participant Q as Quality outcome index
   participant M as Decision memory (optional)
   participant V as Dossier Viewer
 
-  H->>P: Prepare Research Request
-  P-->>H: Ordered workflow + allowed capabilities
+  H->>P: Prepare company-analytics.v1 request
+  P-->>H: 26-stage workflow + run-control.v1
   loop Each of 26 ordered stages
     H->>P: Opaque completed-stage envelope
     P->>S: Persist revision + bounded output references
     V-->>P: Query completed result
     P-->>V: No completed dossier
   end
-  H->>P: Finalize after terminal stage commit
-  P->>P: Revalidate committed v4 references, time, calculations, coverage, safety
+  H->>P: Finalize CompanyAnalyticsSubmissionV1
+  P->>P: Validate outer analytics and embedded CompanyResearchSubmissionV1 / ResearchDossierV1
   alt Rejected or incomplete
     P-->>H: Typed validation failure
     P-->>V: No completed dossier
   else Accepted
-    P->>P: Rebind report descriptors to lifecycle run_id
-    P->>S: Stage canonical RunResult, events, reports, artifacts
+    P->>P: Derive canonical result ID and retain lifecycle ID separately
+    P->>S: Stage CompanyAnalyticsResultV1 + canonical events
     P->>Q: Stage hidden derived index
     P->>M: Stage decision memory when enabled
     P->>Q: Publish index, or reconstruct after recovery
@@ -34,7 +34,8 @@ sequenceDiagram
     S-->>P: Completed publication receipt
     P->>M: Publish staged decision memory when enabled
     M-->>P: Memory ready or disabled
-    V->>P: Query completed result
+    P-->>H: control.result_run_id = canonical result ID
+    V->>P: Query canonical completed result
     P-->>V: Read-only RunView
   end
 

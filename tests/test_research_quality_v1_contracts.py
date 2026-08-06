@@ -4,7 +4,7 @@ from hashlib import sha256
 
 import pytest
 
-from tradingagents_portable.research_quality_v1 import (
+from stock_research_agents.research_quality_v1 import (
     Forecast,
     OutcomeLedger,
     OutcomeObservation,
@@ -57,7 +57,7 @@ def test_receipt_is_canonical_and_immutable() -> None:
         _sha("workflow"),
         _sha("request"),
         _sha("dossier"),
-        "tradingagents-portable",
+        "stock-research-agents",
         "0.1.0",
         (("evaluate.final", _sha("stage")),),
         (QualityRuleResult("rule-1", "pass", "validated"),),

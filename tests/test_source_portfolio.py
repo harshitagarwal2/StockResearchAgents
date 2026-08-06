@@ -5,7 +5,7 @@ from hashlib import sha256
 
 import pytest
 
-from tradingagents_host.contracts import (
+from stock_research_agents_host.contracts import (
     FilingQuery,
     SourceBatch,
     SourceCompleteness,
@@ -14,7 +14,7 @@ from tradingagents_host.contracts import (
     SourcePagination,
     SourceProvenance,
 )
-from tradingagents_host.source_portfolio import (
+from stock_research_agents_host.source_portfolio import (
     MAX_SOURCE_PORTFOLIO_PROVIDERS,
     SourcePortfolioCollector,
     SourcePortfolioReceipt,
@@ -40,6 +40,7 @@ def _observation(source_id: str, **changes: object) -> SourceObservation:
         "provider": "example",
         "provider_version": "v1",
         "license_receipt_id": "license-example",
+        "content_sha256_scope": "normalized_source_record",
     }
     values.update(changes)
     return SourceObservation(**values)

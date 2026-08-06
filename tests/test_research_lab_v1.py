@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 from jsonschema import Draft202012Validator
 
-from tradingagents_portable.research_lab_v1 import (
+from stock_research_agents.research_lab_v1 import (
     Hypothesis,
     HypothesisLedger,
     HypothesisTransition,
@@ -59,18 +59,20 @@ def test_run_card_is_complete_immutable_and_digestible() -> None:
         research_pack_id="initiating-coverage.v1",
         submission_digest="a" * 64,
         workflow_digest="b" * 64,
-        harness="codex-app",
-        execution_mode="full",
+        executor_runtime="codex-app",
+        execution_mode="sequential",
         started_at="2026-08-01T12:00:00+00:00",
         completed_at="2026-08-01T13:00:00+00:00",
         stages=(_stage(),),
         source_batch_ids=("batch.sec",),
-        artifact_kinds=("research_dossier.v3", "run_card.v1"),
+        artifact_kinds=("research_dossier.v1", "run_card.v1"),
         limitations=(),
         complete=True,
     )
 
     assert len(card.digest()) == 64
+    assert card.to_dict()["executor_runtime"] == "codex-app"
+    assert "harness" not in card.to_dict()
     with pytest.raises(ValueError, match="unique"):
         replace(card, stages=(_stage(), _stage()))
     with pytest.raises(ValueError, match="source batch IDs must be unique"):
@@ -79,7 +81,7 @@ def test_run_card_is_complete_immutable_and_digestible() -> None:
 
 def test_run_card_schema_rejects_duplicate_source_batch_ids() -> None:
     schema_path = (
-        Path(__file__).parents[1] / "src" / "tradingagents_portable" / "workflow" / "research-lab.v1.schema.json"
+        Path(__file__).parents[1] / "src" / "stock_research_agents" / "workflow" / "research-lab.v1.schema.json"
     )
     schema = json.loads(schema_path.read_text(encoding="utf-8"))
     run_card_schema = {"$schema": schema["$schema"], "$ref": "#/$defs/runCard", "$defs": schema["$defs"]}
@@ -89,8 +91,8 @@ def test_run_card_schema_rejects_duplicate_source_batch_ids() -> None:
         research_pack_id="initiating-coverage.v1",
         submission_digest="a" * 64,
         workflow_digest="b" * 64,
-        harness="codex-app",
-        execution_mode="full",
+        executor_runtime="codex-app",
+        execution_mode="sequential",
         started_at="2026-08-01T12:00:00+00:00",
         completed_at="2026-08-01T13:00:00+00:00",
         stages=(_stage(),),

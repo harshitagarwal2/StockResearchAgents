@@ -1,4 +1,4 @@
-# ADR 0002: Evolve strict contracts through parallel profiles
+# ADR 0002: Evolve strict contracts through versioned composition
 
 - **Status:** Accepted
 - **Date:** 2026-08-03
@@ -6,33 +6,33 @@
 
 ## Context
 
-Portable models reject unknown fields. Adding even optional fields to a frozen schema can break strict readers and silently change semantics across harnesses.
+StockResearchAgents models reject unknown fields. Adding even optional fields to a strict schema can break readers and silently change semantics across harnesses.
 
 ## Decision
 
-Frozen contracts are semantically frozen. New semantics use parallel workflow profiles, terminal schemas, and artifact kinds. Discovery advertises compatibility explicitly. Human-facing aliases may improve language but never rename wire identifiers.
+Strict contracts do not gain fields in place. New semantics use new schema or artifact versions. The public `company-analytics.v1` profile composes `CompanyAnalyticsSubmissionV1` around the embedded `CompanyResearchSubmissionV1` / `ResearchDossierV1` foundation. Human-facing language never renames wire identifiers.
 
 ## Scope and non-goals
 
-This decision covers `financial-research.v1`, `host-submission.v2`, `run-lifecycle.v1`, `company-research.v2`, `host-submission.v3`, and future quality artifacts. It does not require a new version for documentation-only wording.
+This decision covers `company-analytics.v1`, its embedded `company-research.v1` foundation, `run-control.v1`, and quality artifacts. The deterministic ORCL fixture remains test-only and outside public profile discovery. Documentation-only wording does not require a new contract version.
 
 ## Consequences
 
-- Existing consumers continue to work unchanged.
-- New profiles require explicit projections and conformance tests.
+- Existing strict readers continue to work unchanged.
+- New artifact versions require explicit projections and validation tests.
 - Version maps are more visible but avoid hidden reinterpretation.
-- Future Research Quality data must be a parallel sidecar rather than fields added to `research_dossier.v3`.
+- Research Quality remains a typed outer sidecar rather than fields added to `ResearchDossierV1`.
 
 ## Alternatives considered
 
-- Add optional fields to v3: rejected because strict readers reject unknown content and semantics would drift.
-- Replace old profiles immediately: rejected because compatibility evidence and migrations would be insufficient.
-- Use an untyped extension dictionary: rejected because it weakens conformance and portability.
+- Add optional fields to research: rejected because strict readers reject unknown content and semantics would drift.
+- Add a second public profile for the research foundation: rejected because it would split one product contract into competing entry points.
+- Use an untyped extension dictionary: rejected because it weakens validation and transport-neutrality.
 
-## Compatibility impact
+## Contract impact
 
-`docs/COMPATIBILITY.md` is the canonical version map. Old profiles remain discoverable until an explicit major-version removal decision.
+`docs/COMPATIBILITY.md` records the active contract graph. Discovery advertises `company-analytics.v1` as the one public product profile.
 
 ## Validation evidence
 
-Schema tests reject unknown fields and discovery tests retain both compatibility and company-research profiles.
+Schema tests reject unknown fields and discovery tests assert the single public Company Analytics profile plus its embedded foundation.

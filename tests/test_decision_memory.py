@@ -4,11 +4,12 @@ import json
 from pathlib import Path
 
 import pytest
+from company_analytics_fixtures import complete_analytics_submission
 
-from tradingagents_portable.contracts import RunRequest
-from tradingagents_portable.fixture import run_fixture
-from tradingagents_portable.memory import DecisionMemoryStore
-from tradingagents_portable.store import RunStore
+from stock_research_agents.company_analytics import submit_company_analytics
+from stock_research_agents.memory import DecisionMemoryStore
+from stock_research_agents.research_quality_v1 import QualityStore
+from stock_research_agents.store import RunStore
 
 
 def _append(memory: DecisionMemoryStore, run_id: str, symbol: str, sequence: int) -> str:
@@ -41,7 +42,11 @@ def test_memory_is_durable_and_recall_is_bounded(tmp_path: Path) -> None:
 
 
 def test_final_decision_can_receive_later_outcomes_and_reflections(tmp_path: Path) -> None:
-    result, _events = run_fixture(RunRequest(symbol="ORCL"), RunStore())
+    result, _events = submit_company_analytics(
+        complete_analytics_submission("ORCL"),
+        store=RunStore(),
+        quality_store=QualityStore(),
+    )
     with DecisionMemoryStore(tmp_path / "memory.sqlite3") as memory:
         decision_receipt = memory.append_final_decision(result, context={"research_mode": "fixture"})
         outcome_receipt = memory.append_outcome(
@@ -53,7 +58,16 @@ def test_final_decision_can_receive_later_outcomes_and_reflections(tmp_path: Pat
         entry = memory.recall("ORCL").same_symbol[0]
 
     assert outcome_receipt.operation == "outcome_appended"
-    assert entry.decision["portfolio_decision"]["rating"] == result.portfolio_decision.rating
+    dossier = result.submission.company_research.dossier
+    expected = {
+        "schema_version": "analytics-memory-projection.v1",
+        "executive_summary": dossier.executive_summary,
+        "recommendation": dossier.recommendation,
+        "valuation": [item.to_dict() for item in dossier.valuations],
+        "risk": [item.to_dict() for item in dossier.risks],
+        "monitoring": [item.to_dict() for item in dossier.monitoring],
+    }
+    assert entry.decision == json.loads(json.dumps(expected))
     assert entry.outcomes[0].outcome == {"horizon_days": 30, "return_pct": 2.5}
     assert entry.outcomes[0].reflection.startswith("The neutral stance")
 
@@ -105,7 +119,7 @@ def test_recall_exact_cutoff_filters_decisions_before_limits_and_outcomes_indepe
         recall = memory.recall(
             "AAPL",
             same_symbol_limit=1,
-            cutoff="2026-07-02T00:00:00+00:00",
+            cutoff_at="2026-07-02T00:00:00+00:00",
         )
 
     assert [entry.run_id for entry in recall.same_symbol] == ["older"]
@@ -123,7 +137,7 @@ def test_recall_cutoff_excludes_memory_with_later_embedded_evidence(tmp_path: Pa
             created_at="2026-07-01T00:00:00Z",
         )
 
-        recall = memory.recall("AAPL", cutoff="2026-07-02T00:00:00Z")
+        recall = memory.recall("AAPL", cutoff_at="2026-07-02T00:00:00Z")
 
     assert recall.same_symbol == ()
 
@@ -143,7 +157,7 @@ def test_recall_cutoff_fails_closed_on_malformed_embedded_availability(
             created_at="2026-07-01T00:00:00Z",
         )
 
-        recall = memory.recall("AAPL", cutoff="2026-07-02T00:00:00Z")
+        recall = memory.recall("AAPL", cutoff_at="2026-07-02T00:00:00Z")
 
     assert recall.same_symbol == ()
 
@@ -152,10 +166,10 @@ def test_recall_cutoff_fails_closed_on_malformed_embedded_availability(
 def test_recall_cutoff_requires_an_exact_offset_timestamp(tmp_path: Path, cutoff: str) -> None:
     with DecisionMemoryStore(tmp_path / "memory.sqlite3") as memory:
         with pytest.raises(ValueError, match="cutoff"):
-            memory.recall("AAPL", cutoff=cutoff)
+            memory.recall("AAPL", cutoff_at=cutoff)
 
 
-def test_recall_accepts_v3_cutoff_at_alias(tmp_path: Path) -> None:
+def test_recall_accepts_exact_cutoff_at(tmp_path: Path) -> None:
     with DecisionMemoryStore(tmp_path / "memory.sqlite3") as memory:
         _append(memory, "visible", "AAPL", 1)
 
@@ -174,7 +188,7 @@ def test_recall_cutoff_fails_closed_when_decision_as_of_date_is_later(tmp_path: 
             created_at="2026-07-01T00:00:00Z",
         )
 
-        recall = memory.recall("AAPL", cutoff="2026-07-02T23:59:59Z")
+        recall = memory.recall("AAPL", cutoff_at="2026-07-02T23:59:59Z")
 
     assert recall.same_symbol == ()
 
@@ -194,7 +208,7 @@ def test_recall_cutoff_fails_closed_for_all_known_availability_timestamps(
             created_at="2026-07-01T00:00:00Z",
         )
 
-        recall = memory.recall("AAPL", cutoff="2026-07-02T00:00:00Z")
+        recall = memory.recall("AAPL", cutoff_at="2026-07-02T00:00:00Z")
 
     assert recall.same_symbol == ()
 
@@ -216,12 +230,12 @@ def test_recall_keeps_cutoff_safe_forecast_with_future_economic_period(tmp_path:
             created_at="2026-07-01T12:00:00Z",
         )
 
-        recall = memory.recall("AAPL", cutoff="2026-07-02T00:00:00Z")
+        recall = memory.recall("AAPL", cutoff_at="2026-07-02T00:00:00Z")
 
     assert [entry.run_id for entry in recall.same_symbol] == ["safe-forecast"]
 
 
-def test_recall_skips_corrupt_legacy_row_and_outcome_without_aborting_safe_entries(tmp_path: Path) -> None:
+def test_recall_skips_corrupt_row_and_outcome_without_aborting_safe_entries(tmp_path: Path) -> None:
     with DecisionMemoryStore(tmp_path / "memory.sqlite3") as memory:
         safe = memory.append_decision(
             run_id="safe",
@@ -249,7 +263,7 @@ def test_recall_skips_corrupt_legacy_row_and_outcome_without_aborting_safe_entri
             ("not-a-time", safe.memory_id),
         )
 
-        recall = memory.recall("AAPL", cutoff="2026-07-02T00:00:00Z")
+        recall = memory.recall("AAPL", cutoff_at="2026-07-02T00:00:00Z")
 
     assert [entry.run_id for entry in recall.same_symbol] == ["safe"]
     assert recall.same_symbol[0].outcomes == ()
