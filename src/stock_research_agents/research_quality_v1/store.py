@@ -8,6 +8,7 @@ import tempfile
 from pathlib import Path
 from threading import RLock
 
+from ..state import DEFAULT_STATE_LAYOUT
 from .conformance import validate_quality_bundle
 from .contracts import (
     Forecast,
@@ -17,16 +18,6 @@ from .contracts import (
     canonical_json,
 )
 from .scoring import QualityScorecard, score_forecast
-
-
-def _default_quality_dir() -> Path:
-    configured = os.environ.get("STOCKRESEARCHAGENTS_STATE_DIR")
-    if configured:
-        return Path(configured).expanduser() / "quality"
-    xdg_state_home = os.environ.get("XDG_STATE_HOME")
-    if xdg_state_home:
-        return Path(xdg_state_home).expanduser() / "stock-research-agents" / "quality"
-    return Path.home() / ".local" / "state" / "stock-research-agents" / "quality"
 
 
 def _atomic_write(path: Path, payload: object) -> None:
@@ -261,4 +252,4 @@ class QualityStore:
             }
 
 
-QUALITY_STORE = QualityStore(_default_quality_dir())
+QUALITY_STORE = QualityStore(DEFAULT_STATE_LAYOUT.quality_dir)

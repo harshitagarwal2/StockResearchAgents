@@ -30,6 +30,7 @@
 - [x] Every observation in a `SourceBatch` must bind to the batch entitlement's license receipt, and run-card source-batch IDs must be unique.
 - [x] Completed results are strict `CompanyAnalyticsResultV1` values that retain the exact parsed `CompanyAnalyticsSubmissionV1` and the seven required authoritative artifact kinds.
 - [x] The isolated server launched by `stock-research-data-mcp` registers exactly seven receipt-backed public tools: three SEC, two GDELT metadata/link, one World Bank macro, and one Polymarket Gamma public search/read-only `prediction_markets` tool. The coordination MCP registers none of its tools.
+- [x] An injected `SourcePortfolioCollector` additively registers `research_data_collect_source_portfolio`; it requires at least two explicit routes, returns the terminal `SourcePortfolioReceipt`, and preserves provider batches and entitlements without changing the seven default tool contracts.
 - [x] SEC company-fact observations have provider-order-independent IDs and a hard item cap that reports omitted matches as partial coverage; GDELT observations have canonical-URI deduplication, provider-order-independent IDs, explicit seen-time semantics, and partial coverage at the result cap.
 - [x] Polymarket Gamma results are current public market metadata only: probabilities remain market-implied observations rather than truth, forecasts, or executable signals; search cannot reconstruct historical snapshots; and wallet, CLOB, and order endpoints are absent.
 - [x] Prices and indicators remain unregistered without a licensed caller `SourcePort`; Yahoo Finance/`yfinance` remains caller-owned and subject to applicable terms; Reddit remains unregistered without approved caller OAuth; StockTwits is denied and unregistered; FRED and Alpha Vantage are not defaults.
@@ -56,12 +57,21 @@
 - [x] Portfolio fields require an explicit non-execution boundary and reject private account/customer identity.
 - [x] Credential-shaped keys are rejected recursively.
 
+## Research Quality cohort evaluation
+
+- [x] `research-quality-cohort.v1` strictly parses one policy and a binary forecast/outcome cohort, rejects unknown fields, and is exposed through CLI `quality-cohort` and the read-only coordination MCP tool `evaluate_research_quality_cohort`.
+- [x] Policies require an explicit evaluation cutoff, horizon, resolution rule, bin edges, at least 30 samples, and distinct instruments; evaluation blocks duplicate forecast/instrument IDs, convention drift, unresolved outcomes, and outcomes available or resolved after the cutoff.
+- [x] Deterministic reports return `evaluated`, `insufficient_sample`, or `policy_blocked` with mean Brier score, mean log loss, expected calibration error, bins, and limitations.
+- [x] The evaluator does not fit, train, tune, select, or deploy a calibration or machine-learning model, and its minimum sample floor is not presented as evidence of representativeness or investment performance.
+
 ## Memory and lifecycle
 
 - [x] Exact-cutoff memory recall filters decisions before applying same/cross-symbol limits and filters outcomes independently by `observed_at`.
 - [x] Recall excludes later `created_at`, later decision `as_of_date`, and embedded post-cutoff filing/event/metric-vintage/outcome availability while retaining cutoff-safe forecasts with future economic periods; malformed historical rows and outcomes fail closed without aborting safe recall.
 - [x] Staged decisions remain outside recall until final publication.
 - [x] `CompanyAnalyticsCoordinator` tests cover all 26 ordered stage commits, strict opaque reference descriptors, digest-bound receipts, optimistic revision conflicts, pause/resume, cooperative cancellation, cursor events, fresh-coordinator recovery, cutoff-safe memory recall, rejection of out-of-order dependency-ready commits, analytics terminal validation, report descriptor rebinding, quality-index staging/publication, and crash reconstruction.
+- [x] Durable state schema adoption is dry-run and validation-first; existing state requires a complete backup to a new path outside the state root before the v1 manifest is atomically written, and corrupt or future-version state fails closed.
+- [x] CLI `doctor` and MCP `get_operational_diagnostics` report redacted, read-only state permissions, integrity, schema, recovery, and viewer-registry status without exposing identifiers, capability URLs, credentials, or raw artifacts.
 
 ## Plan/import, UI, and package surfaces
 
@@ -78,14 +88,19 @@
 - [x] `report`, `launch_research_report`, and `get_research_report_summary` expose the completed-results-only Research Dossier Viewer.
 - [x] Completed CLI and MCP responses carry a versioned presentation receipt; spawned-process tests prove one private loopback daemon is reused for multiple companies, observes later atomic publications and quality outcomes, survives the short-lived CLI command, recovers from killed or protocol-mismatched generations, and leaves publication-pending results hidden.
 - [x] Detached-viewer tests prove per-daemon capability authentication, hostile Host/Origin rejection, restrictive browser headers, private registry permissions, startup diagnostics, headless no-spawn behavior, and per-call MCP presentation policy.
-- [x] Documentation checks validate relative links, required canonical documents, Mermaid source/SVG/PNG sets, GitHub preview references, poster HTML/PNG pairs, PNG dimensions, and accessible SVG structure.
+- [x] Documentation checks validate relative links, required canonical documents, coordination-CLI syntax, repository-license consistency, contributor development bootstrap, Mermaid source/SVG/PNG sets, GitHub preview references, poster HTML/PNG pairs, PNG dimensions, and accessible SVG structure.
 - [x] Test startup assigns an isolated temporary `STOCKRESEARCHAGENTS_STATE_DIR` when the caller does not provide one, so offline verification does not write to a developer's normal state directory.
 - [x] JSON metadata tests parse `.codex-plugin/plugin.json`, `.mcp.json`, workflow manifests, and terminal schemas.
+- [x] The generated ORCL fixture result, events, completed view, SVG preview, and digest manifest are deterministic, visibly fixture/non-executable labeled, and checked byte-for-byte.
+- [x] CI runs the full gate on Python 3.11 and compatibility tests on Python 3.12, 3.13, and 3.14.
+- [x] Release tests build and independently install the wheel and source distribution, validate entry points and packaged assets, create checksums and a deterministic SPDX SBOM, and require build-provenance/SBOM attestations before publication.
+- [x] Supply-chain checks review pull-request dependency changes, audit the locked runtime dependency set, and audit pinned GitHub Actions workflows.
 
 ## Standalone integration proof
 
 - [ ] Concrete provider-neutral research-data MCP adapters are registered and conformant for every required category. Seven public tools pass locally, but licensed prices/indicators and lawful social-provider coverage remain open; prediction-market metadata does not close either gap.
 - [ ] A representative live and failure symbol matrix has recorded, reproducible evidence.
+- [x] A scheduled, bounded, non-gating canary probes the credential-free SEC, GDELT, World Bank, and Polymarket routes for ORCL and META and retains only sanitized status/shape evidence for seven days.
 - [x] Python, CLI, MCP, export/reload, viewer, and RunView return the same canonical completed-run semantic projection and digest; the projection content-addresses every terminal artifact, evidence item, report section, and complete terminal research payload.
 - [x] Current-schema result/event goldens exercise strict reload plus hash-bound store/export/memory receipts.
 
@@ -104,10 +119,10 @@ uv build --offline
 uv run pytest -q tests/test_manifests_and_mcp.py
 ```
 
-The fixture and CLI help are safe smoke checks:
+The deterministic backend fixture and CLI help are safe smoke checks:
 
 ```bash
-uv run stock-research-agents fixture --events
+uv run python scripts/smoke_backend.py
 uv run stock-research-agents --help
 ```
 
@@ -122,5 +137,6 @@ Record fresh counts and command results in the release or handoff report. Do not
 - [ ] Token-level continuation of an interrupted agent/tool call.
 - [ ] Runtime-specific push event delivery or hard-interruption behavior.
 - [ ] Live-network freshness and arbitrary-symbol/query coverage for the seven default SEC/GDELT/World Bank/Polymarket Gamma tools; local tests use recorded transports and prove contracts, normalization, and registration rather than current provider availability.
+- [ ] Review and promotion of scheduled canary evidence into a representative, release-bound live/failure matrix; the non-gating canary alone does not certify production availability.
 - [ ] Concrete licensed price/indicator retrieval, host-OAuth Reddit retrieval, or approved StockTwits access.
 - [ ] Broker or order execution; this is intentionally prohibited, not a validation target.

@@ -173,11 +173,13 @@ def test_analytics_profile_has_full_durable_lifecycle_and_completed_only_view(tm
 def test_canonical_result_and_lifecycle_alias_stay_hidden_until_memory_publication(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    request: pytest.FixtureRequest,
 ) -> None:
     submission = complete_analytics_submission("META")
-    request = submission["company_research"]["request"]  # type: ignore[index]
+    company_request = submission["company_research"]["request"]  # type: ignore[index]
     result_store = RunStore(tmp_path / "runs")
     memory_store = DecisionMemoryStore(tmp_path / "decision-memory.sqlite3")
+    request.addfinalizer(memory_store.close)
     quality_store = QualityStore(tmp_path / "quality")
     coordinator = CompanyAnalyticsCoordinator(
         LifecycleStore(tmp_path / "lifecycle"),
@@ -185,7 +187,7 @@ def test_canonical_result_and_lifecycle_alias_stay_hidden_until_memory_publicati
         memory_store=memory_store,
         profile=CompanyAnalyticsLifecycleProfile(quality_store),
     )
-    control = coordinator.create(request, decision_memory_enabled=True)
+    control = coordinator.create(company_request, decision_memory_enabled=True)
     started = coordinator.start(control["run_id"], control["revision"])
     revision = _complete(coordinator, control["run_id"], started["control"]["revision"], submission)
     original_publish = memory_store.publish_decision
@@ -393,7 +395,10 @@ def test_analytics_lifecycle_keeps_publication_pending_until_quality_index_is_vi
     try:
         with pytest.raises(HTTPError) as exc_info:
             urlopen(f"http://{host}:{port}/api/runs/{control['run_id']}/view", timeout=5)  # noqa: S310
-        assert exc_info.value.code == 404
+        try:
+            assert exc_info.value.code == 404
+        finally:
+            exc_info.value.close()
     finally:
         server.shutdown()
         server.server_close()

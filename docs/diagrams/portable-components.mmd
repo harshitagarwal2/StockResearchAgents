@@ -1,58 +1,99 @@
 %%{init: {"theme":"base","fontFamily":"Avenir Next, Segoe UI, sans-serif","themeVariables":{"fontFamily":"Avenir Next, Segoe UI, sans-serif","primaryColor":"#eef3ff","primaryTextColor":"#071c26","primaryBorderColor":"#2257ff","lineColor":"#516a75","secondaryColor":"#e5f7f5","tertiaryColor":"#fff4df","background":"#f5f8f9","clusterBkg":"#ffffff","clusterBorder":"#96aab2"},"flowchart":{"curve":"linear","htmlLabels":true}}}%%
 flowchart TB
-  accTitle: StockResearchAgents component architecture
-  accDescr: Inbound adapters call the StockResearchAgents application core. The public company-analytics.v1 profile composes an outer CompanyAnalyticsSubmissionV1 around an embedded CompanyResearchSubmissionV1 and ResearchDossierV1. Run-control.v1 coordinates durable state, while outbound adapters expose only completed projections.
+  accTitle: StockResearchAgents layered component architecture
+  accDescr: CLI, MCP, and Python adapters call StockResearchApplication. ApplicationRuntime composes the application from StateLayout and focused durable ports. CompanyAnalyticsCoordinator owns lifecycle sequencing and delegates recoverable completed publication to CompletedPublicationSaga. Contracts, deterministic analytics, and validation remain domain-owned. Completed bundles feed projection-only readers, while backup-first migration and redacted doctor remain operational paths.
 
-  subgraph I["Inbound adapters"]
+  subgraph IN["Inbound adapters"]
     direction LR
     CLI["CLI"]
     MCP["Coordination MCP"]
     PY["Python API"]
-    HOST["CompanyAnalyticsSubmissionV1"]
   end
 
-  subgraph A["Application core"]
+  subgraph COMPOSE["Composition root"]
     direction LR
-    COORD["Research coordinators"]
-    LIFE["run-control.v1"]
-    PUB["Publication service"]
+    LAYOUT["StateLayout"]
+    RUNTIME["ApplicationRuntime<br/><small>construct · inject · close</small>"]
+    LAYOUT --> RUNTIME
   end
 
-  subgraph D["Domain rules"]
+  subgraph APP["Application layer"]
     direction LR
-    CONTRACT["company-analytics.v1"]
-    FOUNDATION["Embedded company-research.v1<br/><small>CompanyResearchSubmissionV1 · ResearchDossierV1</small>"]
-    SPEC["Deterministic validation"]
-    QUALITY["Research Quality"]
+    FACADE["StockResearchApplication<br/><small>shared use-case facade</small>"]
+    COORD["CompanyAnalyticsCoordinator<br/><small>run-control.v1 sequencing</small>"]
+    SAGA["CompletedPublicationSaga<br/><small>recoverable publication order</small>"]
+    QUERY["Completed query / response services"]
+    FACADE --> COORD --> SAGA
+    FACADE --> QUERY
   end
 
-  subgraph O["Outbound adapters"]
+  subgraph DOMAIN["Domain layer"]
     direction LR
-    STORE["SQLite / WAL"]
-    BUNDLE[["Atomic result bundles"]]
-    VIEW["RunView projection"]
-    UI["Research Dossier Viewer"]
+    CONTRACT["company-analytics.v1 contracts"]
+    FOUNDATION["Embedded company-research.v1"]
+    ANALYTICS["Deterministic analytics"]
+    VALIDATE["Deterministic conformance<br/><small>temporal · referential · numerical · safety</small>"]
+    QUALITY["Research Quality policy + evaluators"]
+    CONTRACT --> FOUNDATION
+    CONTRACT --> ANALYTICS
+    CONTRACT --> QUALITY
+    FOUNDATION --> VALIDATE
+    ANALYTICS --> VALIDATE
+    QUALITY --> VALIDATE
   end
 
-  CLI --> COORD
-  MCP --> COORD
-  PY --> COORD
-  HOST --> COORD
-  COORD --> LIFE
-  LIFE --> CONTRACT
-  CONTRACT --> FOUNDATION --> SPEC
-  QUALITY -. policy checks .-> SPEC
-  SPEC --> PUB
-  LIFE --> STORE
-  PUB --> BUNDLE
-  BUNDLE --> VIEW
-  VIEW --> UI
+  subgraph OUT["Focused ports and durable adapters"]
+    direction LR
+    LIFEPORT["LifecycleRepository<br/><small>validated LifecycleRecordV1</small>"]
+    RESULTPORT["ResultPublicationPort"]
+    QUALITYPORT["QualitySidecarPort"]
+    MEMORYPORT["ResearchHistoryPort"]
+    STORES["SQLite/WAL · atomic bundles<br/>quality journal · decision memory"]
+    LIFEPORT --> STORES
+    RESULTPORT --> STORES
+    QUALITYPORT --> STORES
+    MEMORYPORT --> STORES
+  end
+
+  subgraph READ["Completed-only projection"]
+    direction LR
+    RESULT[["CompanyAnalyticsResultV1"]]
+    VIEW["RunView + reports"]
+    UI["CLI · MCP · exports · loopback viewer"]
+    RESULT --> VIEW --> UI
+  end
+
+  subgraph OPS["Operational state safety"]
+    direction LR
+    MIGRATE["Dry-run migration<br/><small>integrity check · backup first · atomic manifest</small>"]
+    DOCTOR["Redacted read-only doctor<br/><small>health + bounded counts only</small>"]
+  end
+
+  CLI --> FACADE
+  MCP --> FACADE
+  PY --> FACADE
+  RUNTIME --> FACADE
+  RUNTIME --> LIFEPORT
+  RUNTIME --> RESULTPORT
+  RUNTIME --> QUALITYPORT
+  RUNTIME --> MEMORYPORT
+  COORD --> CONTRACT
+  VALIDATE --> SAGA
+  COORD --> LIFEPORT
+  SAGA --> RESULTPORT
+  SAGA --> QUALITYPORT
+  SAGA --> MEMORYPORT
+  RESULTPORT --> RESULT
+  LAYOUT -. scoped state .-> MIGRATE
+  LAYOUT -. scoped state .-> DOCTOR
 
   classDef inbound fill:#fff4df,stroke:#ad6500,color:#071c26,stroke-width:2px;
   classDef app fill:#eef3ff,stroke:#2257ff,color:#071c26,stroke-width:2px;
   classDef domain fill:#e5f7f5,stroke:#00746e,color:#071c26,stroke-width:2px;
   classDef out fill:#ffffff,stroke:#516a75,color:#071c26,stroke-width:2px;
-  class CLI,MCP,PY,HOST inbound;
-  class COORD,LIFE,PUB app;
-  class CONTRACT,FOUNDATION,SPEC,QUALITY domain;
-  class STORE,BUNDLE,VIEW,UI out;
+  classDef artifact fill:#ffffff,stroke:#1231a6,color:#071c26,stroke-width:3px;
+  class CLI,MCP,PY inbound;
+  class LAYOUT,RUNTIME,FACADE,COORD,SAGA,QUERY app;
+  class CONTRACT,FOUNDATION,ANALYTICS,VALIDATE,QUALITY domain;
+  class LIFEPORT,RESULTPORT,QUALITYPORT,MEMORYPORT,STORES,VIEW,UI,MIGRATE,DOCTOR out;
+  class RESULT artifact;

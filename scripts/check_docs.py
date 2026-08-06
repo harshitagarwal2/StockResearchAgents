@@ -2,14 +2,26 @@
 
 from __future__ import annotations
 
+import contextlib
+import io
 import re
+import shlex
 import struct
+import tomllib
 import xml.etree.ElementTree as ET
+from collections.abc import Iterable, Iterator
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 LINK_PATTERN = re.compile(r"!?\[[^\]]*\]\(([^)]+)\)")
 NESTED_IMAGE_LINK_PATTERN = re.compile(r"\[!\[[^\]]*\]\([^)]+\)\]\(([^)]+)\)")
+BASH_FENCE_PATTERN = re.compile(r"```bash\s*\n(?P<body>.*?)```", re.DOTALL)
+CLI_PREFIX_PATTERN = re.compile(r"(?<![\w-])uv\s+run\s+stock-research-agents(?:\s|$)")
+REPOSITORY_LICENSE_PATTERN = re.compile(
+    r"\b(?:repository|project)(?:'s)?\s+"
+    r"(?P<license>MIT|Apache(?:\s+License)?(?:\s+2\.0|-2\.0)?)\s+license\b",
+    re.IGNORECASE,
+)
 REMOTE_PREFIXES = ("http://", "https://", "mailto:", "plugin://", "subagent://")
 STALE_VOCABULARY = (
     (re.compile(r"\bRunResult\b"), "retired RunResult contract"),
@@ -26,6 +38,11 @@ REQUIRED_DOCS = (
     ROOT / "README.md",
     ROOT / "DESIGN.md",
     ROOT / "CONTRIBUTING.md",
+    ROOT / "CHANGELOG.md",
+    ROOT / "CODE_OF_CONDUCT.md",
+    ROOT / "ROADMAP.md",
+    ROOT / "SECURITY.md",
+    ROOT / "SUPPORT.md",
     ROOT / "docs" / "README.md",
     ROOT / "docs" / "GETTING_STARTED.md",
     ROOT / "docs" / "ARCHITECTURE.md",
@@ -39,6 +56,19 @@ REQUIRED_DOCS = (
     ROOT / "docs" / "RESEARCH_QUALITY.md",
     ROOT / "docs" / "RESEARCH_DATA_MCP.md",
 )
+
+PUBLIC_ROOT_DOCS = (
+    "README.md",
+    "DESIGN.md",
+    "design-qa.md",
+    "CONTRIBUTING.md",
+    "CHANGELOG.md",
+    "CODE_OF_CONDUCT.md",
+    "ROADMAP.md",
+    "SECURITY.md",
+    "SUPPORT.md",
+)
+PUBLIC_DOC_DIRECTORIES = ("docs", "examples", "benchmarks", "assets", "adapters", "skills")
 
 TECHNICAL_DIAGRAMS = (
     "system-context",
@@ -54,21 +84,18 @@ DIAGRAM_GALLERY = ROOT / "docs" / "diagrams" / "README.md"
 
 
 def markdown_files() -> list[Path]:
-    files = [ROOT / "README.md", ROOT / "DESIGN.md", ROOT / "CONTRIBUTING.md"]
-    for directory in (ROOT / "docs", ROOT / "examples", ROOT / "assets"):
+    files = [ROOT / name for name in PUBLIC_ROOT_DOCS]
+    for directory in (ROOT / name for name in PUBLIC_DOC_DIRECTORIES):
         files.extend(path for path in directory.rglob("*.md") if path.is_file())
     return sorted(set(files))
 
 
 def documentation_text_files() -> list[Path]:
-    files = [
-        ROOT / "README.md",
-        ROOT / "DESIGN.md",
-        ROOT / "skills" / "stock-research-agents" / "SKILL.md",
-    ]
-    files.extend(
-        path for path in (ROOT / "docs").rglob("*") if path.is_file() and path.suffix in {".md", ".mmd", ".html"}
-    )
+    files = [ROOT / name for name in PUBLIC_ROOT_DOCS]
+    for directory in (ROOT / name for name in PUBLIC_DOC_DIRECTORIES):
+        files.extend(
+            path for path in directory.rglob("*") if path.is_file() and path.suffix in {".md", ".mmd", ".html"}
+        )
     return sorted(set(files))
 
 
@@ -82,6 +109,100 @@ def stale_vocabulary_errors() -> list[str]:
                 if pattern.search(line):
                     errors.append(f"{path.relative_to(ROOT)}:{line_number}: {description}")
     return errors
+
+
+def _bash_commands(path: Path) -> Iterator[str]:
+    text = path.read_text(encoding="utf-8")
+    for match in BASH_FENCE_PATTERN.finditer(text):
+        command = ""
+        for raw_line in match.group("body").splitlines():
+            line = raw_line.strip()
+            if not line or line.startswith("#"):
+                continue
+            command = f"{command} {line}".strip()
+            if command.endswith("\\"):
+                command = command[:-1].rstrip()
+                continue
+            yield command
+            command = ""
+        if command:
+            yield command
+
+
+def cli_example_errors(paths: Iterable[Path] | None = None) -> list[str]:
+    """Validate documented coordination-CLI commands without executing them."""
+
+    from stock_research_agents.cli import _parser
+
+    errors: list[str] = []
+    for path in markdown_files() if paths is None else paths:
+        for command in _bash_commands(path):
+            prefix = CLI_PREFIX_PATTERN.search(command)
+            if prefix is None:
+                continue
+            documented_command = command[prefix.start() :]
+            try:
+                arguments = shlex.split(documented_command)[3:]
+            except ValueError as exc:
+                errors.append(f"{path.relative_to(ROOT)}: invalid CLI example quoting: {exc}")
+                continue
+
+            stderr = io.StringIO()
+            with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(stderr):
+                try:
+                    _parser().parse_args(arguments)
+                except SystemExit as exc:
+                    if exc.code == 0:
+                        continue
+                    detail = stderr.getvalue().strip().splitlines()[-1]
+                    errors.append(f"{path.relative_to(ROOT)}: invalid CLI example `{documented_command}`: {detail}")
+    return errors
+
+
+def _normalized_license(value: str) -> str | None:
+    normalized = re.sub(r"[\s-]+", " ", value.strip().lower())
+    if normalized == "mit":
+        return "MIT"
+    if normalized in {"apache", "apache 2.0", "apache license 2.0"}:
+        return "Apache-2.0"
+    return None
+
+
+def license_consistency_errors(paths: Iterable[Path] | None = None) -> list[str]:
+    """Keep explicit repository-license claims aligned with package metadata and LICENSE."""
+
+    project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
+    declared_license = project.get("license")
+    if not isinstance(declared_license, str):
+        return ["pyproject.toml: project.license must be a SPDX string"]
+
+    canonical = _normalized_license(declared_license)
+    if canonical is None:
+        return [f"pyproject.toml: unsupported project.license value {declared_license!r}"]
+
+    errors: list[str] = []
+    license_text = (ROOT / "LICENSE").read_text(encoding="utf-8")
+    expected_marker = "Apache License" if canonical == "Apache-2.0" else "MIT License"
+    if expected_marker not in license_text:
+        errors.append(f"LICENSE: content does not match pyproject.toml project.license {declared_license}")
+
+    for path in markdown_files() if paths is None else paths:
+        for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+            for match in REPOSITORY_LICENSE_PATTERN.finditer(line):
+                referenced = _normalized_license(match.group("license"))
+                if referenced != canonical:
+                    errors.append(
+                        f"{path.relative_to(ROOT)}:{line_number}: repository license {match.group('license')!r} "
+                        f"does not match {declared_license}"
+                    )
+    return errors
+
+
+def contributor_bootstrap_errors() -> list[str]:
+    text = (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
+    if re.search(r"(?m)^uv sync --extra dev(?:\s|$)", text):
+        return []
+    return ["CONTRIBUTING.md: development bootstrap must install the dev extra with `uv sync --extra dev`"]
 
 
 def _link_target(raw_target: str) -> str:
@@ -209,6 +330,9 @@ def check() -> list[str]:
     for path in markdown_files():
         errors.extend(broken_links(path))
     errors.extend(stale_vocabulary_errors())
+    errors.extend(cli_example_errors())
+    errors.extend(license_consistency_errors())
+    errors.extend(contributor_bootstrap_errors())
     errors.extend(diagram_errors())
     return errors
 

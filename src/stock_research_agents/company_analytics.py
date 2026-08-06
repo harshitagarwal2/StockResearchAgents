@@ -27,7 +27,11 @@ from .research_quality_v1 import (
 )
 from .store import RUN_STORE
 
-_WORKFLOW = CompanyAnalyticsWorkflowDefinition()
+COMPANY_ANALYTICS_WORKFLOW = CompanyAnalyticsWorkflowDefinition()
+
+# Deprecated private alias retained for downstream imports that reached into
+# this module before the workflow definition became an explicit shared object.
+_WORKFLOW = COMPANY_ANALYTICS_WORKFLOW
 
 # Compatibility registry retained for callers that discover the original profile
 # through this module. New composition code should depend on the workflow directly.

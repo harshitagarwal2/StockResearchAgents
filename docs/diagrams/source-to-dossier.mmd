@@ -1,57 +1,66 @@
 %%{init: {"theme":"base","fontFamily":"Avenir Next, Segoe UI, sans-serif","themeVariables":{"fontFamily":"Avenir Next, Segoe UI, sans-serif","primaryColor":"#eef3ff","primaryTextColor":"#071c26","primaryBorderColor":"#2257ff","lineColor":"#516a75","secondaryColor":"#e5f7f5","tertiaryColor":"#fff4df","background":"#f5f8f9","clusterBkg":"#ffffff","clusterBorder":"#96aab2"},"flowchart":{"curve":"basis","htmlLabels":true}}}%%
 flowchart TB
-  accTitle: Evidence-to-dossier flow
-  accDescr: A caller-owned source adapter normalizes public or entitled evidence through a provider-neutral SourcePort boundary. The caller derives typed terminal lineage fields from retained batches, while sanitized failed attempts and coverage gaps remain caller receipts that must be declared as limitations when decision-relevant. StockResearchAgents validates provenance, time, licensing, claims, and calculations in the complete CompanyAnalyticsSubmissionV1 before publishing CompanyAnalyticsResultV1; a rejected terminal submission is not published.
+  accTitle: Direct and portfolio evidence-to-dossier flows
+  accDescr: A direct research-data capability calls one host SourcePort and returns one SourceBatch. An optional explicitly configured SourcePortfolioCollector calls at least two SourcePort routes and returns a SourcePortfolioReceipt while preserving separate batches, entitlements, attempts, and gaps. The caller derives terminal lineage from retained batches and declares decision-relevant gaps before StockResearchAgents performs domain-owned deterministic validation and completed-only publication.
 
-  subgraph H["Caller-owned retrieval"]
+  SRC["Public or entitled evidence<br/><small>filing · market · publisher · macro</small>"]
+
+  subgraph DIRECT["Default direct capability route"]
     direction LR
-    SRC["Public or entitled source<br/><small>filing · market · publisher · macro</small>"]
-    ADAPTER["Caller source adapter<br/><small>credentials · terms · pagination · retries</small>"]
-    PORT["SourcePort.fetch<br/><small>capability + typed query</small>"]
-    COLLECT["SourcePortfolioCollector<br/><small>validate routes · isolate failures</small>"]
-    BATCH["Retained SourceBatch<br/><small>bounded facts · provenance · entitlement</small>"]
-    ATTEMPT["Portfolio attempt receipt<br/><small>sanitized failures · coverage gaps</small>"]
-    SRC --> ADAPTER --> PORT --> COLLECT
-    COLLECT --> BATCH
-    COLLECT --> ATTEMPT
+    ADAPTER["Host provider adapter<br/><small>credentials · terms · pagination</small>"]
+    PORT["SourcePort.fetch<br/><small>one capability + typed query</small>"]
+    BATCH["SourceBatch<br/><small>one normalized bounded response</small>"]
+    ADAPTER --> PORT --> BATCH
   end
 
-  subgraph P["StockResearchAgents evidence and research contracts"]
+  subgraph OPTIONAL["Optional portfolio route · registered only when configured"]
     direction LR
-    LINEAGE["Source lineage crosswalk<br/><small>identity · digest scope · entitlement</small>"]
-    DOSSIER["Caller analytics submission<br/><small>documents · claims · calculations</small>"]
-    LIMIT["Declared coverage limitation<br/><small>partial · stale · blocked · missing</small>"]
-    GATE{"Validation gate<br/><small>time · references · licensing · safety</small>"}
-    DONE[["Completed Research Dossier<br/><small>immutable published artifact</small>"]]
-    LINEAGE --> DOSSIER --> GATE
-    LIMIT --> DOSSIER
+    COLLECT["SourcePortfolioCollector<br/><small>requires 2+ explicit routes</small>"]
+    ROUTEA["SourcePort route A"]
+    ROUTEB["SourcePort route B+"]
+    BATCHES["Separate SourceBatch values<br/><small>no merged publishers or entitlements</small>"]
+    RECEIPT["SourcePortfolioReceipt<br/><small>batches · attempts · gaps · duplicates</small>"]
+    COLLECT --> ROUTEA --> BATCHES
+    COLLECT --> ROUTEB --> BATCHES
+    BATCHES --> RECEIPT
+  end
+
+  SRC --> ADAPTER
+  SRC -. caller selects portfolio collection .-> COLLECT
+
+  subgraph CALLER["Caller terminal assembly"]
+    direction LR
+    LINEAGE["Source lineage crosswalk<br/><small>batch identity · digest scope · entitlement</small>"]
+    LIMIT["Declared limitations<br/><small>decision-relevant coverage gaps</small>"]
+    SUBMIT["CompanyAnalyticsSubmissionV1<br/><small>dossier · claims · calculations · lineage</small>"]
+    LINEAGE --> SUBMIT
+    LIMIT --> SUBMIT
+  end
+
+  BATCH -->|derive retained-batch lineage| LINEAGE
+  BATCHES -->|derive retained-batch lineage| LINEAGE
+  RECEIPT -. sanitized gaps stay host-side .-> LIMIT
+
+  subgraph CORE["StockResearchAgents core"]
+    direction LR
+    GATE{"Domain-owned deterministic validation<br/><small>time · references · licensing · calculations · safety</small>"}
+    DONE[["CompanyAnalyticsResultV1<br/><small>atomic completed publication</small>"]]
+    REJECT["Typed rejection<br/><small>no completed publication</small>"]
     GATE -->|accepted| DONE
+    GATE -->|rejected| REJECT
   end
 
-  subgraph R["Completed-only readers"]
-    direction LR
-    VIEW["RunView / Dossier Viewer"]
-    EXPORT["JSON / Markdown / MCP"]
-  end
-
-  REJECT["Typed terminal rejection<br/><small>no completed publication</small>"]
-
-  BATCH -->|caller derives terminal lineage fields| LINEAGE
-  ATTEMPT -. caller declares decision-relevant gap .-> LIMIT
-  GATE -->|rejected| REJECT
-  DONE --> VIEW
-  DONE --> EXPORT
+  SUBMIT --> GATE
+  DONE --> READ["Completed-only readers<br/><small>RunView · viewer · JSON · Markdown · MCP</small>"]
 
   classDef host fill:#fff4df,stroke:#ad6500,color:#071c26,stroke-width:2px;
   classDef port fill:#eef3ff,stroke:#2257ff,color:#071c26,stroke-width:2px;
   classDef validated fill:#e5f7f5,stroke:#00746e,color:#071c26,stroke-width:2px;
   classDef artifact fill:#ffffff,stroke:#1231a6,color:#071c26,stroke-width:3px;
   classDef rejected fill:#fff0ef,stroke:#b42318,color:#071c26,stroke-width:2px;
-  classDef read fill:#ffffff,stroke:#516a75,color:#071c26,stroke-width:2px;
-  class SRC,ADAPTER,BATCH host;
-  class PORT,DOSSIER,GATE port;
-  class LINEAGE validated;
+  class SRC,ADAPTER,COLLECT,RECEIPT host;
+  class PORT,ROUTEA,ROUTEB,BATCH,BATCHES port;
+  class LINEAGE,LIMIT,SUBMIT,GATE validated;
   class DONE artifact;
-  class LIMIT validated;
   class REJECT rejected;
-  class VIEW,EXPORT read;
+  class READ port;

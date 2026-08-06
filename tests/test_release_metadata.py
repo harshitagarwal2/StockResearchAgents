@@ -39,6 +39,7 @@ def test_project_metadata_describes_the_public_distribution() -> None:
     assert project["urls"]["Repository"] == "https://github.com/harshitagarwal2/StockResearchAgents"
     assert "mcp" in project["keywords"]
     assert "Programming Language :: Python :: 3.11" in project["classifiers"]
+    assert "Programming Language :: Python :: 3.14" in project["classifiers"]
 
 
 def test_ci_exercises_every_declared_python_minor() -> None:
@@ -96,6 +97,62 @@ def test_ci_installs_uv_before_source_launcher_smoke() -> None:
     compatibility_job = workflow.split("  python-compatibility:", maxsplit=1)[1]
 
     install_step, smoke_steps = compatibility_job.split("      - name: Compile Python", maxsplit=1)
-    assert 'python -m pip install -e ".[dev]" uv' in install_step
+    assert 'python -m pip install -e ".[dev]" "uv==0.12.1"' in install_step
     assert "pytest -q" in smoke_steps
     assert "python scripts/smoke_mcp.py" in smoke_steps
+
+
+def test_release_publication_is_strictly_ordered_and_publisher_is_verified() -> None:
+    workflow = (ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
+    publisher_job = workflow.split("  publish-mcp-registry:", maxsplit=1)[1]
+
+    assert "needs: create-github-release" in publisher_job
+    assert "releases/latest/download" not in publisher_job
+    assert "/releases/download/v1.7.9/" in publisher_job
+    assert "ab128162b0616090b47cf245afe0a23f3ef08936fdce19074f5ba0a4469281ac" in publisher_job
+    assert "sha256sum --check" in publisher_job
+
+
+def test_release_validates_each_distribution_and_attests_release_evidence() -> None:
+    workflow = (ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
+
+    assert "scripts/smoke_installed_distribution.py" in workflow
+    assert "scripts/build_release_sbom.py" in workflow
+    assert "SOURCE_DATE_EPOCH" in workflow
+    assert "actions/attest-build-provenance@" in workflow
+    assert "actions/attest-sbom@" in workflow
+    assert "attestations: write" in workflow
+
+
+def test_ci_has_locked_and_mcp_compatibility_edges() -> None:
+    workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+
+    assert "uv sync --locked" in workflow
+    assert "mcp==2.0.0" in workflow
+    assert '"mcp>=2,<3"' in workflow
+    assert "3.14" in workflow
+
+
+def test_security_workflows_are_pinned_and_fail_closed() -> None:
+    supply_chain = (ROOT / ".github" / "workflows" / "supply-chain.yml").read_text(encoding="utf-8")
+    codeql = (ROOT / ".github" / "workflows" / "codeql.yml").read_text(encoding="utf-8")
+
+    assert "actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48" in supply_chain
+    assert "pip-audit==2.10.1" in supply_chain
+    assert "zizmor==1.29.0" in supply_chain
+    assert "github/codeql-action/init@c4dd10e44af883a891fe31ced449bcb4a6728b9b" in codeql
+    assert "github/codeql-action/analyze@c4dd10e44af883a891fe31ced449bcb4a6728b9b" in codeql
+
+
+def test_live_provider_canary_is_scheduled_bounded_and_non_gating() -> None:
+    workflow = (ROOT / ".github" / "workflows" / "live-provider-canary.yml").read_text(encoding="utf-8")
+
+    assert "schedule:" in workflow
+    assert "workflow_dispatch:" in workflow
+    assert "timeout-minutes: 8" in workflow
+    assert "timeout --kill-after=15s 360s python scripts/smoke_research_data.py" in workflow
+    assert "--strictness contract" in workflow
+    assert "sanitized-live-provider-canary" in workflow
+    assert "SEC, GDELT, World Bank, and Polymarket" in workflow
+    assert "pull_request:" not in workflow
+    assert "push:" not in workflow

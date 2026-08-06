@@ -46,6 +46,27 @@
       "items": "provider_neutral_records_ordered_deterministically_by_observed_time_then_source_id"
     }
   },
+  "source_portfolio": {
+    "type": "SourcePortfolioReceipt",
+    "version": "1.0.0",
+    "implementation_status": "implemented_host_configured",
+    "mcp_name": "research_data_collect_source_portfolio",
+    "default_exposed": false,
+    "required_fields": [
+      "version",
+      "capability",
+      "query",
+      "status",
+      "attempts",
+      "batches",
+      "coverage_gaps",
+      "exact_duplicate_clusters",
+      "portfolio_sha256"
+    ],
+    "min_routes": 2,
+    "provider_batches_merged": false,
+    "entitlements_preserved": true
+  },
   "batch_status": {
     "field": "status",
     "values": ["complete", "partial", "unavailable", "denied", "rate_limited", "stale"],

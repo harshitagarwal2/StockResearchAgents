@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675" role="img" aria-labelledby="title description">
+  <title id="title">Fixture Research Dossier Viewer preview for ORCL</title>
+  <desc id="description">A deterministic, non-executable fixture preview generated from the typed completed view.</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#08111f"/><stop offset="1" stop-color="#14233a"/></linearGradient>
+    <style>
+      .label { font: 700 14px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 1px; fill: #8dd5ff; }
+      .title { font: 700 40px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #f6f9ff; }
+      .subtitle { font: 500 18px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #b8c6dc; }
+      .metric { font: 700 30px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #f6f9ff; }
+      .caption { font: 500 14px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #92a5c2; }
+      .body { font: 500 18px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #dce6f7; }
+    </style>
+  </defs>
+  <rect width="1200" height="675" rx="28" fill="url(#background)"/>
+  <rect x="52" y="46" width="1096" height="583" rx="22" fill="#0d192a" stroke="#294363"/>
+  <text x="84" y="91" class="label">STOCKRESEARCHAGENTS · RESEARCH DOSSIER VIEWER</text>
+  <rect x="84" y="116" width="128" height="34" rx="17" fill="#173f55"/><text x="105" y="139" class="label">FIXTURE DATA</text>
+  <rect x="226" y="116" width="330" height="34" rx="17" fill="#4d2e2a"/><text x="246" y="139" class="label">NON-EXECUTABLE ANALYTICAL SCENARIO</text>
+  <text x="84" y="213" class="title">ORCL · Oracle Corporation</text>
+  <text x="84" y="250" class="subtitle">Completed at 2026-07-31T20:00:00Z · Coverage supported</text>
+  <g transform="translate(84 282)">
+    <rect width="226" height="92" rx="14" fill="#13243a"/><text x="22" y="42" class="metric">26</text><text x="22" y="69" class="caption">validated lifecycle stages</text>
+    <rect x="244" width="226" height="92" rx="14" fill="#13243a"/><text x="266" y="42" class="metric">5</text><text x="266" y="69" class="caption">attributed source documents</text>
+    <rect x="488" width="226" height="92" rx="14" fill="#13243a"/><text x="510" y="42" class="metric">1</text><text x="510" y="69" class="caption">typed forecasts</text>
+    <rect x="732" width="226" height="92" rx="14" fill="#13243a"/><text x="754" y="42" class="metric">34</text><text x="754" y="69" class="caption">ordered lifecycle events</text>
+  </g>
+  <text x="84" y="427" class="label">FIXTURE RECOMMENDATION</text>
+  <text x="84" y="356" class="body">hold</text>
+  <line x1="84" y1="512" x2="1116" y2="512" stroke="#294363"/>
+  <text x="84" y="553" class="caption">Generated from company-analytics-view.v1 · browser code performs projection only</text>
+  <text x="84" y="584" class="caption">Synthetic fixture values are not current market research, investment advice, or an executable trade.</text>
+</svg>

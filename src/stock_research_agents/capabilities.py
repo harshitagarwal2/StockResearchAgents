@@ -108,6 +108,8 @@ def discovery() -> dict[str, object]:
             "import_company_analytics",
             "record_research_outcome",
             "get_research_quality",
+            "evaluate_research_quality_cohort",
+            "get_operational_diagnostics",
             "create_company_analytics_run",
             "start_run",
             "append_run_receipts",

@@ -1,0 +1,18 @@
+{
+  "files": [
+    "events.json",
+    "preview.svg",
+    "result.json",
+    "view.json"
+  ],
+  "fixture": true,
+  "non_executable": true,
+  "run_id": "analytics-9198a2d47ec7",
+  "schema_version": "stockresearchagents-fixture-demo.v1",
+  "sha256": {
+    "events.json": "d8ba78543fc9b5c1193a541de79d873a3858a7228a04752f63005b16cd328258",
+    "preview.svg": "2c5fca86d25c2ae980146863dfb999dfe17de17feeb3de2bc84e2f76d98430a2",
+    "result.json": "c3d9c1e7f21cd6db7c4fd6c15e33e337cf2273c5b9b2b4eb861c212cbbe2dbcd",
+    "view.json": "4b2bfd04de8374ef1db98b4ccb8231d43dcd043406eb86f385ce8ed1b61d23be"
+  }
+}

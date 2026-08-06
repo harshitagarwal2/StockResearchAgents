@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Protocol
+from typing import TYPE_CHECKING, Any, Literal, Protocol
 
 from .contracts import RunEvent
 from .research_quality_v1.contracts import Forecast, OutcomeObservation, ResearchQualityReceipt
@@ -13,10 +13,36 @@ from .serialization import StoredResult
 
 if TYPE_CHECKING:
     from .company_analytics_v1.contracts import CompanyAnalyticsResultV1
+    from .view import RunView
 
 
 class WireReceipt(Protocol):
     def to_dict(self) -> dict[str, Any]: ...
+
+
+class CompletedPublicationCoordinator(Protocol):
+    """Minimum lifecycle seam needed to authorize completed publication reads."""
+
+    def control(self, run_id: str) -> dict[str, Any]: ...
+
+
+class CompletedPresenter(Protocol):
+    def __call__(
+        self,
+        run_id: str,
+        store: CompletedResultReader,
+        *,
+        coordinator: CompletedPublicationCoordinator | None = None,
+        mode: Literal["auto", "path_only"] | None = None,
+    ) -> dict[str, object]: ...
+
+
+class CompletedViewBuilder(Protocol):
+    def __call__(
+        self,
+        result: CompanyAnalyticsResultV1,
+        events: tuple[RunEvent, ...],
+    ) -> RunView: ...
 
 
 class LifecycleReader(Protocol):

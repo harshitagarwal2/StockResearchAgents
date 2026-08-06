@@ -13,7 +13,7 @@ At completed publication, the request, policy identity, workflow/run manifest, d
 
 ## Implemented boundary
 
-`company-analytics.v1` publishes an immutable `research_quality.v1` receipt and explicit forecast set beside the unchanged research dossier. A durable quality store registers those records, appends typed outcome observations and corrections, and derives reproducible scorecards. CLI exposes `quality-outcome` and `quality-show`; MCP exposes `record_research_outcome` and `get_research_quality`.
+`company-analytics.v1` publishes an immutable `research_quality.v1` receipt and explicit forecast set beside the unchanged research dossier. A durable quality store registers those records, appends typed outcome observations and corrections, and derives reproducible scorecards. CLI exposes `quality-outcome`, `quality-show`, and the read-only `quality-cohort --input <request.json>` evaluator; MCP exposes `record_research_outcome`, `get_research_quality`, and `evaluate_research_quality_cohort`.
 
 The completed `CompanyAnalyticsResultV1` is authoritative and includes `research_quality.v1` and `forecast_set.v1` among its seven artifacts. The outcome index is a recoverable derived store: durable finalization stages it invisibly, publishes it after canonical completion, and reconstructs it from completed artifacts after an interrupted boundary. This is not a distributed transaction across stores.
 
@@ -97,13 +97,21 @@ A non-executable HOLD conclusion is distinct from insufficient or conflicting ev
 | Directional return | Directional accuracy, realized return | Resolved realized return |
 | Benchmark-relative return | Directional accuracy, relative return, benchmark return | Resolved realized and benchmark returns |
 
-These are individual-forecast scorecards, not cohort statistics. The current scorer does not validate exact horizon or price conventions, calculate drawdown or adverse excursion, adjust for costs or corporate actions, aggregate cohorts, or emit an `insufficient_sample` status. Those conventions and required inputs must be approved and represented before performance or calibration claims are made. Calibration fitting remains deferred.
+These remain individual-forecast scorecards. They do not calculate drawdown or adverse excursion, adjust for costs or corporate actions, or establish investment performance.
+
+## Implemented binary cohort evaluation
+
+`research-quality-cohort.v1` evaluates a fixed historical cohort of resolved `binary_event` forecasts. It is evaluation-only: it does not fit, train, tune, select, or deploy a calibration or machine-learning model.
+
+The caller must supply an explicit evaluation cutoff, horizon, resolution rule, probability-bin edges, and a minimum sample size of at least 30. Every member must have a unique `forecast_id` and distinct `instrument_id`, use the same approved horizon and resolution rule, pass the per-forecast scoring policy, and have an active resolved outcome whose availability and resolution do not exceed the evaluation cutoff.
+
+The deterministic report returns `evaluated`, `insufficient_sample`, or `policy_blocked`, together with sample size, mean Brier score, mean log loss, expected calibration error, bins, and explicit limitations. Thirty is a contract floor for running the summary, not evidence that a cohort is statistically representative or that the forecasts have investment skill.
 
 ## Leakage-safe evaluation
 
 - Scored outcomes must have both `available_at` and `resolved_at` at or after the forecast's `resolve_after` boundary.
-- Any future training or calibration observations must be available before the forecast being tested.
-- Future cohort evaluation must explicitly address issuer, horizon, and overlapping-window leakage.
+- Any training, fitting, or model-selection dataset must remain separate from this evaluator and must be available before the forecast being tested.
+- The implemented binary evaluator requires distinct instruments and one explicit horizon and resolution rule; callers remain responsible for stronger issuer-family, temporal-window, and dataset-split controls when their study requires them.
 - A historical retrieval cutoff alone does not prove a causal backtest: a contemporary model may encode information that post-dates the simulated decision. Unless the host provides an independently supportable model knowledge-cutoff declaration, label the result a **historically grounded simulation**, not a temporally pure or causal backtest.
 - A caller claiming temporal purity must retain the model identifier/version and declared knowledge cutoff, plus retrieval, embedding/reranking, memory, and outcome-data cutoff receipts. The StockResearchAgents core records no provider credentials, prompts, or model weights and cannot independently verify those caller-owned claims.
 - Licensed source bodies are not copied into evaluation datasets.
@@ -138,10 +146,10 @@ This projection exposes current weaknesses but does not broaden retrieval. Bette
 
 Implemented tests cover strict contracts, deterministic scoring by forecast kind, validation, durable reload, correction supersession, CLI/MCP access, and completed-only projection.
 
-Still required before making calibration or performance claims:
+Still required before fitting a calibration model or making performance claims:
 
-1. sufficiently large, independently resolved forecast cohorts;
-2. approved cohort and leakage policies for calibration fitting;
-3. exact horizon and price conventions plus independently verified benchmark, corporate-action, and cost conventions;
+1. sufficiently large and representative independently resolved cohorts beyond the evaluator's minimum contract floor;
+2. separately approved, leakage-controlled training, validation, and holdout policies;
+3. exact price conventions plus independently verified benchmark, corporate-action, and cost conventions where relevant;
 4. long-running live-host evidence and outcome collection; and
-5. explicit external evaluation criteria. Passing contract tests is not evidence of investment skill.
+5. explicit external evaluation criteria. Passing contract or cohort-evaluator tests is not evidence of investment skill.

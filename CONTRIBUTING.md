@@ -12,7 +12,7 @@ StockResearchAgents is an incubation repository for a harness-neutral research c
 ## Development
 
 ```bash
-uv sync
+uv sync --extra dev
 uv run pytest -q
 uv run ruff check .
 uv run mypy src

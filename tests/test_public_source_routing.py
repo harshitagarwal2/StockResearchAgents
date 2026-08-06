@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import pytest
 
+from stock_research_agents_host.adapters.providers.catalog import CapabilitySpec, provider_specs
 from stock_research_agents_host.adapters.public import HTTPResponse, PublicResearchDataAdapter
 from stock_research_agents_host.contracts import (
     CompanyNewsQuery,
@@ -22,6 +25,7 @@ from stock_research_agents_host.contracts import (
     SourceQuery,
     StockTwitsQuery,
 )
+from stock_research_agents_host.source_router import ProviderSourceRouter
 
 NOW = "2026-08-03T12:00:00+00:00"
 
@@ -45,44 +49,15 @@ def _empty_batch(capability: str, query: SourceQuery) -> SourceBatch:
     )
 
 
-class RecordingSource:
-    def __init__(self, calls: list[str]) -> None:
-        self._calls = calls
+@dataclass(frozen=True, slots=True)
+class RecordingProvider:
+    provider_id: str
+    specs: tuple[CapabilitySpec, ...]
+    calls: list[str]
 
     def fetch(self, capability: str, query: SourceQuery) -> SourceBatch:
-        self._calls.append(capability)
+        self.calls.append(self.provider_id)
         return _empty_batch(capability, query)
-
-
-class RecordingAdapter(PublicResearchDataAdapter):
-    def __init__(self, calls: list[str]) -> None:
-        super().__init__(
-            NoNetworkTransport(),
-            licensed_source=RecordingSource(calls),
-            reddit_oauth_source=RecordingSource(calls),
-            clock=lambda: NOW,
-        )
-        self._calls = calls
-
-    def _sec_filings(self, query: RegulatoryFilingsQuery) -> SourceBatch:
-        self._calls.append("sec_filings")
-        return _empty_batch("regulatory_filings", query)
-
-    def _sec_facts(self, query: FundamentalsQuery | FinancialStatementsQuery, *, statements: bool) -> SourceBatch:
-        self._calls.append("sec_statements" if statements else "sec_fundamentals")
-        return _empty_batch("financial_statements" if statements else "fundamentals", query)
-
-    def _gdelt(self, capability: str, query: CompanyNewsQuery | GlobalNewsQuery) -> SourceBatch:
-        self._calls.append("gdelt")
-        return _empty_batch(capability, query)
-
-    def _polymarket(self, query: PredictionMarketsQuery) -> SourceBatch:
-        self._calls.append("polymarket")
-        return _empty_batch("prediction_markets", query)
-
-    def _world_bank(self, query: MacroQuery) -> SourceBatch:
-        self._calls.append("world_bank")
-        return _empty_batch("macro", query)
 
 
 def _queries() -> tuple[tuple[str, SourceQuery, str], ...]:
@@ -90,27 +65,27 @@ def _queries() -> tuple[tuple[str, SourceQuery, str], ...]:
         (
             "prices",
             PricesQuery("prices", "ORCL", "2026-07-01T00:00:00+00:00", NOW, "1d"),
-            "prices",
+            "licensed_market_data",
         ),
         (
             "indicators",
             IndicatorsQuery("indicators", "ORCL", "rsi", "2026-07-01T00:00:00+00:00", NOW, {}),
-            "indicators",
+            "licensed_market_data",
         ),
         (
             "regulatory_filings",
             RegulatoryFilingsQuery("filings", "ORCL", "US", ("10-Q",), "2026-07-01T00:00:00+00:00", NOW),
-            "sec_filings",
+            "sec",
         ),
         (
             "fundamentals",
             FundamentalsQuery("fundamentals", "ORCL", ("Assets",), NOW),
-            "sec_fundamentals",
+            "sec",
         ),
         (
             "financial_statements",
             FinancialStatementsQuery("statements", "ORCL", ("balance_sheet",), ("2025",), NOW),
-            "sec_statements",
+            "sec",
         ),
         (
             "company_news",
@@ -142,7 +117,7 @@ def _queries() -> tuple[tuple[str, SourceQuery, str], ...]:
         (
             "reddit",
             RedditQuery("reddit", "ORCL", "2026-07-28T00:00:00+00:00", NOW, 10),
-            "reddit",
+            "social",
         ),
     )
 
@@ -153,24 +128,54 @@ def test_capabilities_route_to_their_existing_provider_boundary(
 ) -> None:
     calls: list[str] = []
 
-    result = RecordingAdapter(calls).fetch(capability, query)
+    providers = tuple(
+        RecordingProvider(provider_id, provider_specs(provider_id), calls)
+        for provider_id in ("licensed_market_data", "sec", "gdelt", "polymarket", "world_bank", "social")
+    )
+
+    result = ProviderSourceRouter(providers).fetch(capability, query)
 
     assert result.capability == capability
     assert calls == [expected_call]
 
 
 def test_stocktwits_remains_fail_closed_without_invoking_a_host_source() -> None:
-    calls: list[str] = []
     query = StockTwitsQuery("stocktwits", "ORCL", "2026-07-28T00:00:00+00:00", NOW, 10)
 
-    result = RecordingAdapter(calls).fetch("stocktwits", query)
+    result = PublicResearchDataAdapter(NoNetworkTransport(), clock=lambda: NOW).fetch("stocktwits", query)
 
     assert result.status == "denied"
-    assert calls == []
 
 
 def test_capability_still_requires_its_matching_typed_query() -> None:
     query = PricesQuery("prices", "ORCL", "2026-07-01T00:00:00+00:00", NOW, "1d")
 
     with pytest.raises(ValueError, match="company_news requires its matching typed query"):
-        RecordingAdapter([]).fetch("company_news", query)
+        PublicResearchDataAdapter(NoNetworkTransport(), clock=lambda: NOW).fetch("company_news", query)
+
+
+def test_public_adapter_exposes_every_cataloged_capability_once() -> None:
+    adapter = PublicResearchDataAdapter(NoNetworkTransport(), clock=lambda: NOW)
+
+    assert adapter.capabilities == frozenset(
+        {
+            "prices",
+            "indicators",
+            "regulatory_filings",
+            "fundamentals",
+            "financial_statements",
+            "company_news",
+            "global_news",
+            "macro",
+            "prediction_markets",
+            "stocktwits",
+            "reddit",
+        }
+    )
+
+
+def test_provider_router_rejects_catalog_ownership_mismatch() -> None:
+    provider = RecordingProvider("wrong-owner", provider_specs("sec"), [])
+
+    with pytest.raises(ValueError, match="catalog ownership mismatch"):
+        ProviderSourceRouter((provider,))

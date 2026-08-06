@@ -3,6 +3,7 @@ from __future__ import annotations
 import ast
 import importlib
 import json
+import runpy
 import subprocess
 import sys
 from pathlib import Path
@@ -71,9 +72,11 @@ def test_mcp_discovery_and_function_schemas_match_exactly() -> None:
 def test_registered_mcp_tool_names_match_discovery() -> None:
     pytest.importorskip("mcp")
     mcp_server = importlib.import_module("stock_research_agents.mcp_server")
+    smoke_tools = runpy.run_path(str(ROOT / "scripts" / "smoke_mcp.py"))["EXPECTED_TOOLS"]
     registered = mcp_server.mcp._tool_manager.list_tools()
 
     assert {tool.name for tool in registered} == set(discovery()["tools"])
+    assert smoke_tools == set(discovery()["tools"])
 
 
 def test_isolated_research_data_mcp_registers_only_public_tools() -> None:

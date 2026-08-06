@@ -1,0 +1,597 @@
+[
+  {
+    "data": {
+      "attempts": 1,
+      "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+      "limitation": null,
+      "output_digest": "d88b6cdb334c54971051c4a1944077e034ac3c4ec7d74f5a737f6786e65214ae",
+      "workflow_profile": "company-analytics.v1"
+    },
+    "id": "analytics-9198a2d47ec7:0001",
+    "kind": "stage",
+    "message": "Recorded completed research.plan stage receipt.",
+    "run_id": "analytics-9198a2d47ec7",
+    "schema_version": "1.0.0",
+    "sequence": 1,
+    "stage_id": "research.plan",
+    "status": "completed",
+    "timestamp": "2026-08-01T00:30:00Z"
+  },
+  {
+    "data": {
+      "attempts": 1,
+      "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+      "limitation": null,
+      "output_digest": "456d11a962af92d716337654a5bf098b6b350c9663d17226a3bf1583aefcae75",
+      "workflow_profile": "company-analytics.v1"
+    },
+    "id": "analytics-9198a2d47ec7:0002",
+    "kind": "stage",
+    "message": "Recorded completed evidence.official stage receipt.",
+    "run_id": "analytics-9198a2d47ec7",
+    "schema_version": "1.0.0",
+    "sequence": 2,
+    "stage_id": "evidence.official",
+    "status": "completed",
+    "timestamp": "2026-08-01T00:30:00Z"
+  },
+  {
+    "data": {
+      "attempts": 1,
+      "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+      "limitation": null,
+      "output_digest": "e75c808366ac9a60aa279c7906ca9dd24dfe56b8b8c80fb5ec88548fa455a8b1",
+      "workflow_profile": "company-analytics.v1"
+    },
+    "id": "analytics-9198a2d47ec7:0003",
+    "kind": "stage",
+    "message": "Recorded completed evidence.market stage receipt.",
+    "run_id": "analytics-9198a2d47ec7",
+    "schema_version": "1.0.0",
+    "sequence": 3,
+    "stage_id": "evidence.market",
+    "status": "completed",
+    "timestamp": "2026-08-01T00:30:00Z"
+  },
+  {
+    "data": {
+      "attempts": 1,
+      "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+      "limitation": null,
+      "output_digest": "a81cf0887baa0cd01f7871325b74894ee7fb6dffe773c34be9d84d04012d84a5",
+      "workflow_profile": "company-analytics.v1"
+    },
+    "id": "analytics-9198a2d47ec7:0004",
+    "kind": "stage",
+    "message": "Recorded completed analysis.financial stage receipt.",
+    "run_id": "analytics-9198a2d47ec7",
+    "schema_version": "1.0.0",
+    "sequence": 4,
+    "stage_id": "analysis.financial",
+    "status": "completed",
+    "timestamp": "2026-08-01T00:30:00Z"
+  },
+  {
+    "data": {
+      "attempts": 1,
+      "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+      "limitation": null,
+      "output_digest": "671c2fd7d46f4432fd903606a58f5331ffeac482f282f3a9d7b08ef259d12521",
+      "workflow_profile": "company-analytics.v1"
+    },
+    "id": "analytics-9198a2d47ec7:0005",
+    "kind": "stage",
+    "message": "Recorded completed analysis.company stage receipt.",
+    "run_id": "analytics-9198a2d47ec7",
+    "schema_version": "1.0.0",
+    "sequence": 5,
+    "stage_id": "analysis.company",
+    "status": "completed",
+    "timestamp": "2026-08-01T00:30:00Z"
+  },
+  {
+    "data": {
+      "attempts": 1,
+      "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+      "limitation": null,
+      "output_digest": "085c1ff0af7855593326891546d40a793ec2f9c147b10619ad99da16b2e6f1ec",
+      "workflow_profile": "company-analytics.v1"
+    },
+    "id": "analytics-9198a2d47ec7:0006",
+    "kind": "stage",
+    "message": "Recorded completed audit.evidence stage receipt.",
+    "run_id": "analytics-9198a2d47ec7",
+    "schema_version": "1.0.0",
+    "sequence": 6,
+    "stage_id": "audit.evidence",
+    "status": "completed",
+    "timestamp": "2026-08-01T00:30:00Z"
+  },
+  {
+    "data": {
+      "attempts": 1,
+      "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+      "limitation": null,
+      "output_digest": "2fd1a528f14ae385cfc23dcf935ad556ea64e0d27611575de2faa4ab047a55f6",
+      "workflow_profile": "company-analytics.v1"
+    },
+    "id": "analytics-9198a2d47ec7:0007",
+    "kind": "stage",
+    "message": "Recorded completed verify.numerical stage receipt.",
+    "run_id": "analytics-9198a2d47ec7",
+    "schema_version": "1.0.0",
+    "sequence": 7,
+    "stage_id": "verify.numerical",
+    "status": "completed",
+    "timestamp": "2026-08-01T00:30:00Z"
+  },
+  {
+    "data": {
+      "attempts": 1,
+      "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+      "limitation": null,
+      "output_digest": "a4518c757197faccf853a0bf002ce90dfc3c298276d45a582324f668e9558ed9",
+      "workflow_profile": "company-analytics.v1"
+    },
+    "id": "analytics-9198a2d47ec7:0008",
+    "kind": "stage",
+    "message": "Recorded completed debate.bull stage receipt.",
+    "run_id": "analytics-9198a2d47ec7",
+    "schema_version": "1.0.0",
+    "sequence": 8,
+    "stage_id": "debate.bull",
+    "status": "completed",
+    "timestamp": "2026-08-01T00:30:00Z"
+  },
+  {
+    "data": {
+      "attempts": 1,
+      "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+      "limitation": null,
+      "output_digest": "ac0c945bb80ce765a61d147e615b6150ae087f92656f2bf7bc5ce6e8667ea65c",
+      "workflow_profile": "company-analytics.v1"
+    },
+    "id": "analytics-9198a2d47ec7:0009",
+    "kind": "stage",
+    "message": "Recorded completed debate.bear stage receipt.",
+    "run_id": "analytics-9198a2d47ec7",
+    "schema_version": "1.0.0",
+    "sequence": 9,
+    "stage_id": "debate.bear",
+    "status": "completed",
+    "timestamp": "2026-08-01T00:30:00Z"
+  },
+  {
+    "data": {
+      "attempts": 1,
+      "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+      "limitation": null,
+      "output_digest": "c216e3bc735117060a2be8922a5ed75f3fe596c71f3eb2f8dde363876103a041",
+      "workflow_profile": "company-analytics.v1"
+    },
+    "id": "analytics-9198a2d47ec7:0010",
+    "kind": "stage",
+    "message": "Recorded completed synthesis.valuation stage receipt.",
+    "run_id": "analytics-9198a2d47ec7",
+    "schema_version": "1.0.0",
+    "sequence": 10,
+    "stage_id": "synthesis.valuation",
+    "status": "completed",
+    "timestamp": "2026-08-01T00:30:00Z"
+  },
+  {
+    "data": {
+      "attempts": 1,
+      "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+      "limitation": null,
+      "output_digest": "acfe8a3c48b65f04844aa9b81ae6a1d52c075da1c016e360692c10ca64edb99d",
+      "workflow_profile": "company-analytics.v1"
+    },
+    "id": "analytics-9198a2d47ec7:0011",
+    "kind": "stage",
+    "message": "Recorded completed synthesis.risk stage receipt.",
+    "run_id": "analytics-9198a2d47ec7",
+    "schema_version": "1.0.0",
+    "sequence": 11,
+    "stage_id": "synthesis.risk",
+    "status": "completed",
+    "timestamp": "2026-08-01T00:30:00Z"
+  },
+  {
+    "data": {
+      "attempts": 1,
+      "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+      "limitation": null,
+      "output_digest": "0346e7689c71b890195b832982b262f86966b6b8190c96ab90279cc3d591bcd0",
+      "workflow_profile": "company-analytics.v1"
+    },
+    "id": "analytics-9198a2d47ec7:0012",
+    "kind": "stage",
+    "message": "Recorded completed research.delta stage receipt.",
+    "run_id": "analytics-9198a2d47ec7",
+    "schema_version": "1.0.0",
+    "sequence": 12,
+    "stage_id": "research.delta",
+    "status": "completed",
+    "timestamp": "2026-08-01T00:30:00Z"
+  },
+  {
+    "data": {
+      "attempts": 1,
+      "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+      "limitation": null,
+      "output_digest": "b169878d2e302db280bab6678ccdce40e89b2c010e2dd24b9eac2ad0cf4e400a",
+      "workflow_profile": "company-analytics.v1"
+    },
+    "id": "analytics-9198a2d47ec7:0013",
+    "kind": "stage",
+    "message": "Recorded completed research.monitor stage receipt.",
+    "run_id": "analytics-9198a2d47ec7",
+    "schema_version": "1.0.0",
+    "sequence": 13,
+    "stage_id": "research.monitor",
+    "status": "completed",
+    "timestamp": "2026-08-01T00:30:00Z"
+  },
+  {
+    "data": {
+      "attempts": 1,
+      "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+      "limitation": null,
+      "output_digest": "c2546f5eef0cda1ffb0709fda28624a6683b568b4376b3d4d7324e0af0106abf",
+      "workflow_profile": "company-analytics.v1"
+    },
+    "id": "analytics-9198a2d47ec7:0014",
+    "kind": "stage",
+    "message": "Recorded completed evaluate.dossier stage receipt.",
+    "run_id": "analytics-9198a2d47ec7",
+    "schema_version": "1.0.0",
+    "sequence": 14,
+    "stage_id": "evaluate.dossier",
+    "status": "completed",
+    "timestamp": "2026-08-01T00:30:00Z"
+  },
+  {
+    "data": {
+      "attempts": 1,
+      "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+      "limitation": null,
+      "output_digest": "a9d72907a98d2ce07f6d7882521c4b2e0331c5409d760a94376e5c7df637225a",
+      "workflow_profile": "company-analytics.v1"
+    },
+    "id": "analytics-9198a2d47ec7:0015",
+    "kind": "stage",
+    "message": "Recorded completed assemble.dossier stage receipt.",
+    "run_id": "analytics-9198a2d47ec7",
+    "schema_version": "1.0.0",
+    "sequence": 15,
+    "stage_id": "assemble.dossier",
+    "status": "completed",
+    "timestamp": "2026-08-01T00:30:00Z"
+  },
+  {
+    "data": {
+      "attempts": 1,
+      "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+      "limitation": null,
+      "output_digest": "1bf83db872af701050e0ec364304b5e2a2bcee59db15593f015caa439c34f1a2",
+      "workflow_profile": "company-analytics.v1"
+    },
+    "id": "analytics-9198a2d47ec7:0016",
+    "kind": "stage",
+    "message": "Recorded completed research.hypotheses stage receipt.",
+    "run_id": "analytics-9198a2d47ec7",
+    "schema_version": "1.0.0",
+    "sequence": 16,
+    "stage_id": "research.hypotheses",
+    "status": "completed",
+    "timestamp": "2026-08-01T00:30:00Z"
+  },
+  {
+    "data": {
+      "attempts": 1,
+      "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+      "limitation": null,
+      "output_digest": "30e0c6f56cee5b28d41da2d2386d6ea3cdc89fca9578637e6945a4a9a67983cb",
+      "workflow_profile": "company-analytics.v1"
+    },
+    "id": "analytics-9198a2d47ec7:0017",
+    "kind": "stage",
+    "message": "Recorded completed analytics.fundamentals stage receipt.",
+    "run_id": "analytics-9198a2d47ec7",
+    "schema_version": "1.0.0",
+    "sequence": 17,
+    "stage_id": "analytics.fundamentals",
+    "status": "completed",
+    "timestamp": "2026-08-01T00:30:00Z"
+  },
+  {
+    "data": {
+      "attempts": 1,
+      "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+      "limitation": null,
+      "output_digest": "2f29a13dc1698f27dd58c440aef48aed2bbd62604f781ad0ca6b5bb4dc4555f2",
+      "workflow_profile": "company-analytics.v1"
+    },
+    "id": "analytics-9198a2d47ec7:0018",
+    "kind": "stage",
+    "message": "Recorded completed analytics.models stage receipt.",
+    "run_id": "analytics-9198a2d47ec7",
+    "schema_version": "1.0.0",
+    "sequence": 18,
+    "stage_id": "analytics.models",
+    "status": "completed",
+    "timestamp": "2026-08-01T00:30:00Z"
+  },
+  {
+    "data": {
+      "attempts": 1,
+      "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+      "limitation": null,
+      "output_digest": "4a67e3571dd59cf23a1527e918de694d25a9efc546da7bc11d691882c3dad671",
+      "workflow_profile": "company-analytics.v1"
+    },
+    "id": "analytics-9198a2d47ec7:0019",
+    "kind": "stage",
+    "message": "Recorded completed analytics.consensus stage receipt.",
+    "run_id": "analytics-9198a2d47ec7",
+    "schema_version": "1.0.0",
+    "sequence": 19,
+    "stage_id": "analytics.consensus",
+    "status": "completed",
+    "timestamp": "2026-08-01T00:30:00Z"
+  },
+  {
+    "data": {
+      "attempts": 1,
+      "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+      "limitation": null,
+      "output_digest": "634745b8d7a6580517c3b232768942142963add0f377685dbaab4b1b7c082c67",
+      "workflow_profile": "company-analytics.v1"
+    },
+    "id": "analytics-9198a2d47ec7:0020",
+    "kind": "stage",
+    "message": "Recorded completed analytics.positioning stage receipt.",
+    "run_id": "analytics-9198a2d47ec7",
+    "schema_version": "1.0.0",
+    "sequence": 20,
+    "stage_id": "analytics.positioning",
+    "status": "completed",
+    "timestamp": "2026-08-01T00:30:00Z"
+  },
+  {
+    "data": {
+      "attempts": 1,
+      "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+      "limitation": null,
+      "output_digest": "9614c47d75ce32ab0fd238165d47c52f2c5a02dd03f28d9c9aa97424082361c8",
+      "workflow_profile": "company-analytics.v1"
+    },
+    "id": "analytics-9198a2d47ec7:0021",
+    "kind": "stage",
+    "message": "Recorded completed analytics.events stage receipt.",
+    "run_id": "analytics-9198a2d47ec7",
+    "schema_version": "1.0.0",
+    "sequence": 21,
+    "stage_id": "analytics.events",
+    "status": "completed",
+    "timestamp": "2026-08-01T00:30:00Z"
+  },
+  {
+    "data": {
+      "attempts": 1,
+      "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+      "limitation": null,
+      "output_digest": "e789c2286a18c5d37b3e2effefd4fe945baa8376730c8e029c3d279cf155de28",
+      "workflow_profile": "company-analytics.v1"
+    },
+    "id": "analytics-9198a2d47ec7:0022",
+    "kind": "stage",
+    "message": "Recorded completed experiment.plan stage receipt.",
+    "run_id": "analytics-9198a2d47ec7",
+    "schema_version": "1.0.0",
+    "sequence": 22,
+    "stage_id": "experiment.plan",
+    "status": "completed",
+    "timestamp": "2026-08-01T00:30:00Z"
+  },
+  {
+    "data": {
+      "attempts": 1,
+      "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+      "limitation": null,
+      "output_digest": "c6c1090dbf8791ebb76c3912bc1e1b57defa142af41c07399bb468149c7443ed",
+      "workflow_profile": "company-analytics.v1"
+    },
+    "id": "analytics-9198a2d47ec7:0023",
+    "kind": "stage",
+    "message": "Recorded completed experiment.run stage receipt.",
+    "run_id": "analytics-9198a2d47ec7",
+    "schema_version": "1.0.0",
+    "sequence": 23,
+    "stage_id": "experiment.run",
+    "status": "completed",
+    "timestamp": "2026-08-01T00:30:00Z"
+  },
+  {
+    "data": {
+      "attempts": 1,
+      "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+      "limitation": null,
+      "output_digest": "d71f9a3690a5cfff1257e6f6caf6af670bb2a73a2acb3bc440ebd5b027b6e872",
+      "workflow_profile": "company-analytics.v1"
+    },
+    "id": "analytics-9198a2d47ec7:0024",
+    "kind": "stage",
+    "message": "Recorded completed experiment.evaluate stage receipt.",
+    "run_id": "analytics-9198a2d47ec7",
+    "schema_version": "1.0.0",
+    "sequence": 24,
+    "stage_id": "experiment.evaluate",
+    "status": "completed",
+    "timestamp": "2026-08-01T00:30:00Z"
+  },
+  {
+    "data": {
+      "attempts": 1,
+      "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+      "limitation": null,
+      "output_digest": "d108ab1fdb75f74a2745b10b9ccfbd1c9d9de676a4d8d521fe83cd1d63dca1bb",
+      "workflow_profile": "company-analytics.v1"
+    },
+    "id": "analytics-9198a2d47ec7:0025",
+    "kind": "stage",
+    "message": "Recorded completed quality.issue stage receipt.",
+    "run_id": "analytics-9198a2d47ec7",
+    "schema_version": "1.0.0",
+    "sequence": 25,
+    "stage_id": "quality.issue",
+    "status": "completed",
+    "timestamp": "2026-08-01T00:30:00Z"
+  },
+  {
+    "data": {
+      "attempts": 1,
+      "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+      "limitation": null,
+      "output_digest": "ccbc1a86016c9db8d9bf68132282043f303e1c99cd0fadc5623bc3113742d10f",
+      "workflow_profile": "company-analytics.v1"
+    },
+    "id": "analytics-9198a2d47ec7:0026",
+    "kind": "stage",
+    "message": "Recorded completed publish.completed stage receipt.",
+    "run_id": "analytics-9198a2d47ec7",
+    "schema_version": "1.0.0",
+    "sequence": 26,
+    "stage_id": "publish.completed",
+    "status": "completed",
+    "timestamp": "2026-08-01T00:30:00Z"
+  },
+  {
+    "data": {
+      "artifact_id": "research.dossier.v1",
+      "artifact_kind": "research_dossier.v1",
+      "workflow_profile": "company-analytics.v1"
+    },
+    "id": "analytics-9198a2d47ec7:0027",
+    "kind": "artifact",
+    "message": "Published completed research_dossier.v1 artifact.",
+    "run_id": "analytics-9198a2d47ec7",
+    "schema_version": "1.0.0",
+    "sequence": 27,
+    "stage_id": null,
+    "status": "published",
+    "timestamp": "2026-08-01T00:30:00Z"
+  },
+  {
+    "data": {
+      "artifact_id": "research.analytics.v1",
+      "artifact_kind": "analytics_bundle.v1",
+      "workflow_profile": "company-analytics.v1"
+    },
+    "id": "analytics-9198a2d47ec7:0028",
+    "kind": "artifact",
+    "message": "Published completed analytics_bundle.v1 artifact.",
+    "run_id": "analytics-9198a2d47ec7",
+    "schema_version": "1.0.0",
+    "sequence": 28,
+    "stage_id": null,
+    "status": "published",
+    "timestamp": "2026-08-01T00:30:00Z"
+  },
+  {
+    "data": {
+      "artifact_id": "research.run-card.v1",
+      "artifact_kind": "run_card.v1",
+      "workflow_profile": "company-analytics.v1"
+    },
+    "id": "analytics-9198a2d47ec7:0029",
+    "kind": "artifact",
+    "message": "Published completed run_card.v1 artifact.",
+    "run_id": "analytics-9198a2d47ec7",
+    "schema_version": "1.0.0",
+    "sequence": 29,
+    "stage_id": null,
+    "status": "published",
+    "timestamp": "2026-08-01T00:30:00Z"
+  },
+  {
+    "data": {
+      "artifact_id": "research.hypotheses.v1",
+      "artifact_kind": "hypothesis_ledger.v1",
+      "workflow_profile": "company-analytics.v1"
+    },
+    "id": "analytics-9198a2d47ec7:0030",
+    "kind": "artifact",
+    "message": "Published completed hypothesis_ledger.v1 artifact.",
+    "run_id": "analytics-9198a2d47ec7",
+    "schema_version": "1.0.0",
+    "sequence": 30,
+    "stage_id": null,
+    "status": "published",
+    "timestamp": "2026-08-01T00:30:00Z"
+  },
+  {
+    "data": {
+      "artifact_id": "research.iterations.v1",
+      "artifact_kind": "research_iterations.v1",
+      "workflow_profile": "company-analytics.v1"
+    },
+    "id": "analytics-9198a2d47ec7:0031",
+    "kind": "artifact",
+    "message": "Published completed research_iterations.v1 artifact.",
+    "run_id": "analytics-9198a2d47ec7",
+    "schema_version": "1.0.0",
+    "sequence": 31,
+    "stage_id": null,
+    "status": "published",
+    "timestamp": "2026-08-01T00:30:00Z"
+  },
+  {
+    "data": {
+      "artifact_id": "research.quality.v1",
+      "artifact_kind": "research_quality.v1",
+      "workflow_profile": "company-analytics.v1"
+    },
+    "id": "analytics-9198a2d47ec7:0032",
+    "kind": "artifact",
+    "message": "Published completed research_quality.v1 artifact.",
+    "run_id": "analytics-9198a2d47ec7",
+    "schema_version": "1.0.0",
+    "sequence": 32,
+    "stage_id": null,
+    "status": "published",
+    "timestamp": "2026-08-01T00:30:00Z"
+  },
+  {
+    "data": {
+      "artifact_id": "research.forecasts.v1",
+      "artifact_kind": "forecast_set.v1",
+      "workflow_profile": "company-analytics.v1"
+    },
+    "id": "analytics-9198a2d47ec7:0033",
+    "kind": "artifact",
+    "message": "Published completed forecast_set.v1 artifact.",
+    "run_id": "analytics-9198a2d47ec7",
+    "schema_version": "1.0.0",
+    "sequence": 33,
+    "stage_id": null,
+    "status": "published",
+    "timestamp": "2026-08-01T00:30:00Z"
+  },
+  {
+    "data": {
+      "schema_version": "company-analytics-result.v1",
+      "workflow_profile": "company-analytics.v1"
+    },
+    "id": "analytics-9198a2d47ec7:0034",
+    "kind": "run",
+    "message": "Company analytics publication completed atomically.",
+    "run_id": "analytics-9198a2d47ec7",
+    "schema_version": "1.0.0",
+    "sequence": 34,
+    "stage_id": null,
+    "status": "completed",
+    "timestamp": "2026-08-01T00:30:00Z"
+  }
+]

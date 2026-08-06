@@ -21,6 +21,7 @@ from .application_ports import CompletedResultReader, LifecycleRepository, Resea
 from .company_analytics_v1 import CompanyAnalyticsResultV1, analytics_run_id
 from .contracts import EventKind, RunEvent, reject_secret_shaped_keys
 from .lifecycle import (
+    LIFECYCLE_SCHEMA_VERSION,
     LifecycleStatus,
     RevisionConflict,
     is_lifecycle_run_id,
@@ -29,7 +30,8 @@ from .lifecycle_profiles import WorkflowDefinition
 from .research_contracts import CompanyResearchRequest, StrictModel
 from .research_lab_v1 import StageCommitmentV1
 
-COMPANY_LIFECYCLE_SCHEMA_VERSION = "1.0.0"
+# Compatibility name; lifecycle.py owns the durable record schema identity.
+COMPANY_LIFECYCLE_SCHEMA_VERSION = LIFECYCLE_SCHEMA_VERSION
 STAGE_ENVELOPE_SCHEMA_VERSION = "1.0.0"
 _MAX_STAGE_ENVELOPE_BYTES = 1_500_000
 _MAX_RECEIPTS_PER_BATCH = 100
@@ -367,6 +369,83 @@ def _isolated_compatibility_profile() -> WorkflowDefinition:
     return CompanyAnalyticsLifecycleProfile(QualityStore())
 
 
+@dataclass(frozen=True, slots=True)
+class CompletedPublicationSaga:
+    """Recover the ordered side effects that make a completed run readable."""
+
+    lifecycle_store: LifecycleRepository
+    result_store: ResultPublicationPort
+    profile: WorkflowDefinition
+    memory_store: Callable[[], ResearchHistoryPort | None]
+
+    def publish(
+        self,
+        run_id: str,
+        record: dict[str, Any],
+        build_final_result: Callable[[Mapping[str, Any]], tuple[CompanyAnalyticsResultV1, tuple[RunEvent, ...]]],
+    ) -> tuple[CompanyAnalyticsResultV1, tuple[RunEvent, ...]]:
+        """Resume publication from any durable finalizing/completed checkpoint."""
+        result, events = build_final_result(record)
+        self.result_store.stage(result, events)
+        self.profile.stage_sidecars(record["final_submission"])
+        if record["decision_memory_enabled"] and record.get("memory_stage_receipt") is None:
+            memory = self.memory_store()
+            if memory is None:
+                raise RuntimeError("decision memory was enabled but no memory store is available")
+            receipt = memory.stage_final_decision(
+                result,
+                context={
+                    "workflow_profile": self.profile.workflow_profile,
+                    "research_cutoff": record["request"]["cutoff_at"],
+                },
+            ).to_dict()
+
+            def retain_memory_stage(candidate: dict[str, Any]) -> None:
+                candidate["memory_stage_receipt"] = receipt
+                _emit(
+                    candidate,
+                    kind=EventKind.ARTIFACT,
+                    status="staged",
+                    message="Decision memory staged outside recall.",
+                    data=receipt,
+                )
+
+            record = self.lifecycle_store.update(run_id, int(record["revision"]), retain_memory_stage)
+
+        if record["status"] == LifecycleStatus.FINALIZING.value:
+
+            def complete(candidate: dict[str, Any]) -> None:
+                candidate["status"] = LifecycleStatus.COMPLETED.value
+                candidate["result_run_id"] = result.run_id
+                _emit(
+                    candidate,
+                    kind=EventKind.RUN,
+                    status="completed",
+                    message=f"{self.profile.workflow_profile} lifecycle completed; publication committed.",
+                )
+
+            record = self.lifecycle_store.update(run_id, int(record["revision"]), complete)
+
+        result, events = build_final_result(record)
+        self.result_store.stage(result, events)
+        # Sidecars are part of completed-view readiness. Publish them before the
+        # canonical result so a sidecar failure cannot expose a partial run.
+        self.profile.publish_sidecars(record["final_submission"])
+        published = self.result_store.publish_staged(result.run_id)
+        if record["decision_memory_enabled"]:
+            memory = self.memory_store()
+            if memory is None:
+                raise RuntimeError("decision memory was enabled but no memory store is available")
+            receipt = memory.publish_decision(result.run_id).to_dict()
+            if record.get("memory_write_receipt") is None:
+
+                def retain_memory_write(candidate: dict[str, Any]) -> None:
+                    candidate["memory_write_receipt"] = receipt
+
+                self.lifecycle_store.update(run_id, int(record["revision"]), retain_memory_write)
+        return published
+
+
 class CompanyAnalyticsCoordinator:
     """Optimistic-revision coordinator for the company analytics workflow."""
 
@@ -385,7 +464,14 @@ class CompanyAnalyticsCoordinator:
         self.result_store = result_store
         self.memory_store = memory_store
         self._memory_store_factory = memory_store_factory
+        self._owns_memory_store = memory_store is None and memory_store_factory is not None
         self.profile = profile if profile is not None else _isolated_compatibility_profile()
+        self.publication_saga = CompletedPublicationSaga(
+            lifecycle_store,
+            result_store,
+            self.profile,
+            self._memory,
+        )
 
     def _memory(self) -> ResearchHistoryPort | None:
         if self.memory_store is None and self._memory_store_factory is not None:
@@ -397,6 +483,13 @@ class CompanyAnalyticsCoordinator:
         if memory is None:
             raise RuntimeError("this coordinator has no decision memory store")
         return memory
+
+    def close(self) -> None:
+        """Close lazily-created durable resources owned by this coordinator."""
+        if self._owns_memory_store and self.memory_store is not None:
+            self.memory_store.close()
+            self.memory_store = None
+            self._memory_store_factory = None
 
     def create(
         self,
@@ -1024,65 +1117,7 @@ class CompanyAnalyticsCoordinator:
 
             record = self.lifecycle_store.update(run_id, expected_revision, begin)
 
-        result, events = self._build_final_result(record)
-        self.result_store.stage(result, events)
-        self.profile.stage_sidecars(record["final_submission"])
-        if record["decision_memory_enabled"] and record.get("memory_stage_receipt") is None:
-            memory = self._memory()
-            if memory is None:
-                raise RuntimeError("decision memory was enabled but no memory store is available")
-            receipt = memory.stage_final_decision(
-                result,
-                context={
-                    "workflow_profile": self.profile.workflow_profile,
-                    "research_cutoff": record["request"]["cutoff_at"],
-                },
-            ).to_dict()
-
-            def retain_memory_stage(candidate: dict[str, Any]) -> None:
-                candidate["memory_stage_receipt"] = receipt
-                _emit(
-                    candidate,
-                    kind=EventKind.ARTIFACT,
-                    status="staged",
-                    message="Decision memory staged outside recall.",
-                    data=receipt,
-                )
-
-            record = self.lifecycle_store.update(run_id, int(record["revision"]), retain_memory_stage)
-
-        if record["status"] == LifecycleStatus.FINALIZING.value:
-
-            def complete(candidate: dict[str, Any]) -> None:
-                candidate["status"] = LifecycleStatus.COMPLETED.value
-                candidate["result_run_id"] = result.run_id
-                _emit(
-                    candidate,
-                    kind=EventKind.RUN,
-                    status="completed",
-                    message=f"{self.profile.workflow_profile} lifecycle completed; publication committed.",
-                )
-
-            record = self.lifecycle_store.update(run_id, int(record["revision"]), complete)
-
-        result, events = self._build_final_result(record)
-        self.result_store.stage(result, events)
-        # Sidecars are part of completed-view readiness. Publish them before the
-        # canonical result so a sidecar failure cannot expose a partial run.
-        self.profile.publish_sidecars(record["final_submission"])
-        published = self.result_store.publish_staged(result.run_id)
-        if record["decision_memory_enabled"]:
-            memory = self._memory()
-            if memory is None:
-                raise RuntimeError("decision memory was enabled but no memory store is available")
-            receipt = memory.publish_decision(result.run_id).to_dict()
-            if record.get("memory_write_receipt") is None:
-
-                def retain_memory_write(candidate: dict[str, Any]) -> None:
-                    candidate["memory_write_receipt"] = receipt
-
-                self.lifecycle_store.update(run_id, int(record["revision"]), retain_memory_write)
-        return published
+        return self.publication_saga.publish(run_id, record, self._build_final_result)
 
     def poll_events(self, run_id: str, *, after_sequence: int = 0, limit: int = 100) -> dict[str, Any]:
         if not isinstance(after_sequence, int) or isinstance(after_sequence, bool) or after_sequence < 0:

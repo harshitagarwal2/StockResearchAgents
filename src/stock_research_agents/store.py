@@ -19,18 +19,9 @@ from .serialization import (
     serialize_run_events,
     serialize_run_result,
 )
+from .state import DEFAULT_STATE_LAYOUT
 
 _RUN_ID_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}\Z")
-
-
-def _default_state_dir() -> Path:
-    configured = os.environ.get("STOCKRESEARCHAGENTS_STATE_DIR")
-    if configured:
-        return Path(configured).expanduser()
-    xdg_state_home = os.environ.get("XDG_STATE_HOME")
-    if xdg_state_home:
-        return Path(xdg_state_home).expanduser() / "stock-research-agents"
-    return Path.home() / ".local" / "state" / "stock-research-agents"
 
 
 def _validate_run_id(run_id: str) -> str:
@@ -483,4 +474,4 @@ class RunStore:
             return tuple(_detach_result(result) for result in self._results.values())
 
 
-RUN_STORE = RunStore(_state_dir_factory=_default_state_dir)
+RUN_STORE = RunStore(_state_dir_factory=lambda: DEFAULT_STATE_LAYOUT.root)

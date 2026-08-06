@@ -279,7 +279,10 @@ def test_viewer_hides_noncompleted_results_from_all_public_routes_and_aliases() 
             for suffix in ("", "/result", "/semantics", "/view", "/events"):
                 with pytest.raises(HTTPError) as exc_info:
                     urlopen(f"{base}/api/runs/{requested_run_id}{suffix}", timeout=5)  # noqa: S310
-                assert exc_info.value.code == 404
+                try:
+                    assert exc_info.value.code == 404
+                finally:
+                    exc_info.value.close()
         with pytest.raises(ValueError, match="completed run not found"):
             launch_viewer("127.0.0.1", 0, WEB_ROOT, run_id="current", store=store)
     finally:
@@ -349,7 +352,10 @@ def test_viewer_rejects_path_traversal() -> None:
     try:
         with pytest.raises(HTTPError) as captured:
             urlopen(f"http://{host}:{port}/%2e%2e/pyproject.toml", timeout=5)  # noqa: S310
-        assert captured.value.code == 403
+        try:
+            assert captured.value.code == 403
+        finally:
+            captured.value.close()
     finally:
         server.shutdown()
         server.server_close()

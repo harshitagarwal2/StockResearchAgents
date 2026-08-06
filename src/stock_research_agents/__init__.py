@@ -1,6 +1,6 @@
 """Standalone StockResearchAgents contracts and analytics runtime."""
 
-from .application import CompletedPublicationService, CompletedRunQueryService
+from .application import CompletedPublicationService, CompletedRunQueryService, StockResearchApplication
 from .bootstrap import ApplicationRuntime, create_company_analytics_coordinator
 from .capabilities import discovery, feature_matrix
 from .company_analytics import prepare_company_analytics, submit_company_analytics
@@ -20,7 +20,7 @@ from .errors import CapabilitySetupError
 from .export import export_run_bundle
 from .harness import LifecycleStageExecutor, run_sequential_company_lifecycle
 from .instruments import normalize_instrument_symbol
-from .lifecycle import LifecycleStore
+from .lifecycle import LifecycleRecordV1, LifecycleStore
 from .memory import DecisionMemoryStore, ResearchHistoryRepository
 from .presentation import PresentationLink, ViewerDaemonPresenter
 from .report_server import (
@@ -31,6 +31,7 @@ from .report_server import (
     report_summary,
 )
 from .research_contracts import CompanyResearchRequest, ResearchDossierV1
+from .state import StateLayout
 
 __all__ = [
     "ApplicationRuntime",
@@ -48,12 +49,15 @@ __all__ = [
     "PROTOTYPE_NOTICE",
     "ResearchDossierV1",
     "LifecycleStore",
+    "LifecycleRecordV1",
     "LifecycleStageExecutor",
     "DecisionMemoryStore",
     "ResearchHistoryRepository",
     "RunEvent",
     "SCHEMA_VERSION",
     "SetupGuidance",
+    "StateLayout",
+    "StockResearchApplication",
     "ViewerDaemonPresenter",
     "create_company_analytics_coordinator",
     "create_report_server",
