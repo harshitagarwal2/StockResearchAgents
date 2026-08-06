@@ -281,6 +281,11 @@ def test_viewer_hides_noncompleted_results_from_all_public_routes_and_aliases() 
                     urlopen(f"{base}/api/runs/{requested_run_id}{suffix}", timeout=5)  # noqa: S310
                 try:
                     assert exc_info.value.code == 404
+                    if suffix == "/view":
+                        payload = json.load(exc_info.value)
+                        assert payload["error"]["code"] == "run_not_found"
+                        assert "view" not in payload
+                        assert "result" not in payload
                 finally:
                     exc_info.value.close()
         with pytest.raises(ValueError, match="completed run not found"):

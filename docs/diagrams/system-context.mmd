@@ -1,7 +1,7 @@
 %%{init: {"theme":"base","fontFamily":"Avenir Next, Segoe UI, sans-serif","themeVariables":{"fontFamily":"Avenir Next, Segoe UI, sans-serif","primaryColor":"#eef3ff","primaryTextColor":"#071c26","primaryBorderColor":"#2257ff","lineColor":"#516a75","secondaryColor":"#e5f7f5","tertiaryColor":"#fff4df","background":"#f5f8f9","clusterBkg":"#ffffff","clusterBorder":"#96aab2"},"flowchart":{"curve":"basis","htmlLabels":true}}}%%
 flowchart TB
   accTitle: StockResearchAgents system context and authority boundaries
-  accDescr: A caller runtime owns models, credentials, retrieval, and scheduling. The separate research-data MCP returns a direct SourceBatch by default and an optional SourcePortfolioReceipt only when a portfolio collector is explicitly configured. CLI, Python, and coordination MCP adapters call StockResearchApplication. ApplicationRuntime composes the coordinator and durable stores from StateLayout, while domain-owned deterministic validation and CompletedPublicationSaga gate completed publication.
+  accDescr: A caller runtime owns models, credentials, retrieval, and scheduling. The separate research-data MCP returns a direct SourceBatch by default and an optional SourcePortfolioReceipt only when a portfolio collector is explicitly configured. CLI, Python, and coordination MCP adapters use StockResearchApplication for completed reads, responses, cohort evaluation, and diagnostics, while dedicated application command functions own plan, import, and lifecycle mutations. ApplicationRuntime composes the coordinator and durable stores from StateLayout, while domain-owned deterministic validation and CompletedPublicationSaga gate completed publication.
 
   E["External evidence<br/><small>public or caller-entitled</small>"]
   H["Caller runtime<br/><small>models · credentials · entitlements · scheduling</small>"]
@@ -31,7 +31,8 @@ flowchart TB
 
   subgraph CORE["STOCKRESEARCHAGENTS · no credentials · no broker authority"]
     direction TB
-    APP["StockResearchApplication<br/><small>transport-neutral facade</small>"]
+    APP["StockResearchApplication<br/><small>completed reads · response · cohort · doctor</small>"]
+    COMMANDS["Application command functions<br/><small>plan · import · lifecycle mutations</small>"]
     RUNTIME["ApplicationRuntime<br/><small>composition + resource lifetime</small>"]
     LAYOUT["StateLayout<br/><small>one durable root</small>"]
     LIFE["CompanyAnalyticsCoordinator<br/><small>run-control.v1 · validated LifecycleRecordV1</small>"]
@@ -43,14 +44,20 @@ flowchart TB
     RUNTIME --> APP
     RUNTIME --> LIFE
     RUNTIME --> STORES
-    APP --> LIFE --> DOMAIN --> SAGA
+    APP --> LIFE
+    COMMANDS --> LIFE
+    COMMANDS --> DOMAIN
+    LIFE --> DOMAIN --> SAGA
     SAGA --> STORES
     SAGA --> DONE
   end
 
   COORD --> APP
+  COORD --> COMMANDS
   CLI --> APP
+  CLI --> COMMANDS
   PY --> APP
+  PY --> COMMANDS
 
   OPS["State operations<br/><small>backup-first migration · redacted read-only doctor</small>"]
   OPS -. inspect / adopt .-> LAYOUT
@@ -64,7 +71,7 @@ flowchart TB
   classDef state fill:#f2f5f6,stroke:#516a75,color:#071c26,stroke-width:2px;
   classDef artifact fill:#ffffff,stroke:#1231a6,color:#071c26,stroke-width:3px;
   class E,H,DATA,DIRECT,PORTFOLIO host;
-  class COORD,CLI,PY,APP,LIFE,SAGA adapter;
+  class COORD,CLI,PY,APP,COMMANDS,LIFE,SAGA adapter;
   class DOMAIN domain;
   class RUNTIME,LAYOUT,STORES,OPS state;
   class DONE artifact;

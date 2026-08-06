@@ -57,14 +57,19 @@ EXPECTED_RESEARCH_DATA_TOOLS = {
 }
 
 
-def _server_parameters(server_name: str, state_dir: Path | None = None) -> StdioServerParameters:
+def _server_parameters(
+    server_name: str,
+    state_dir: Path | None = None,
+    uv_cache_dir: Path | None = None,
+) -> StdioServerParameters:
     manifest = json.loads((ROOT / ".mcp.json").read_text(encoding="utf-8"))
     server = manifest["mcpServers"][server_name]
     environment = os.environ.copy()
     environment.update(server.get("env", {}))
     if state_dir is not None:
         environment["STOCKRESEARCHAGENTS_STATE_DIR"] = str(state_dir)
-        environment["UV_CACHE_DIR"] = str(state_dir / "uv-cache")
+    if uv_cache_dir is not None:
+        environment["UV_CACHE_DIR"] = str(uv_cache_dir)
     for name in server.get("env_vars", ()):
         if name in os.environ:
             environment[name] = os.environ[name]
@@ -90,7 +95,10 @@ def _payload(response: CallToolResult) -> dict[str, Any]:
 
 async def smoke() -> None:
     temporary_state = tempfile.TemporaryDirectory(prefix="stock-research-agents-mcp-smoke-")
-    parameters = _server_parameters("stock-research-agents", Path(temporary_state.name))
+    temporary_root = Path(temporary_state.name)
+    state_dir = temporary_root / "state"
+    uv_cache_dir = temporary_root / "uv-cache"
+    parameters = _server_parameters("stock-research-agents", state_dir, uv_cache_dir)
     async with stdio_client(parameters) as (read_stream, write_stream):
         async with ClientSession(read_stream, write_stream) as session:
             await session.initialize()
@@ -159,7 +167,7 @@ async def smoke() -> None:
 
             print(f"ok tools={len(names)} run={run_id} profile=company-analytics.v1 executable=false")
 
-    research_parameters = _server_parameters("stock-research-data", Path(temporary_state.name))
+    research_parameters = _server_parameters("stock-research-data", state_dir, uv_cache_dir)
     async with stdio_client(research_parameters) as (read_stream, write_stream):
         async with ClientSession(read_stream, write_stream) as session:
             await session.initialize()

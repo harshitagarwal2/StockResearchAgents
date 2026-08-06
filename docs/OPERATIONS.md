@@ -23,6 +23,15 @@ STOCKRESEARCHAGENTS_STATE_DIR=/private/tmp/stock-research-agents-demo \
 The isolated viewer remains empty until a host publishes a completed result into that state directory. The store writes
 private temporary files and atomically replaces completed artifacts. Do not edit run files manually.
 
+Multiple local processes may use one state root. Durable lifecycle, result, event, staging, and Research Quality mutations
+are serialized by an OS-backed advisory lock at `.state-writer.lock`; the lock is reentrant for nested publication work in
+one thread and is released by the operating system if a writer exits. The marker file intentionally remains in place so
+all processes continue locking the same inode. Lifecycle and completed result/event readers remain lock-free through
+SQLite/WAL and atomic file replacement. Research Quality publication-status and projection readers take the shared writer
+lock before their instance lock so staged-to-published visibility is atomic. Long-lived stores refresh durable state before
+mutation and refresh mutable/current projections when read. All cooperating writers must use the StockResearchAgents store
+APIs rather than editing state files.
+
 ## State schema adoption
 
 Durable state carries a versioned `state-schema.json` manifest. Inspect or adopt existing unversioned state with the backup-first migration utility:
@@ -42,7 +51,7 @@ The first command is a no-write plan that validates bounded JSON artifacts and r
 uv run stock-research-agents doctor
 ```
 
-The CLI command and coordination MCP tool `get_operational_diagnostics` inspect state-root permissions, bounded artifact integrity, schema status, pending publication recovery, and the detached-viewer registry. They are read-only and return only bounded scalar status details: no run identifiers, capability URLs, tokens, credentials, provider data, or raw artifacts. A warning means the state is uninitialized or needs an operator action; a failed check remains fail-closed.
+The CLI command and coordination MCP tool `get_operational_diagnostics` inspect state-root permissions, bounded artifact integrity, schema status, pending publication recovery, and the detached-viewer registry. They are read-only and return only bounded scalar status details: no run identifiers, capability URLs, tokens, credentials, provider data, or raw artifacts. The CLI `doctor` command remains available without initializing or adopting state when normal CLI/MCP startup is blocked by a missing, unversioned, corrupt, or future schema. The MCP diagnostic tool is available after the server passes that startup gate. A warning means the state is uninitialized or needs an operator action; a failed check remains fail-closed.
 
 ## Completed publication
 

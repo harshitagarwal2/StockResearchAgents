@@ -12,7 +12,7 @@ Run:
 ./scripts/render_architecture_diagrams.sh
 ```
 
-The script pins Mermaid CLI so the repository does not gain a Node runtime dependency. Commit the `.mmd` source plus regenerated `.svg` and `.png` outputs in the same change. GitHub-facing Markdown embeds the PNG preview and links it to the full-resolution SVG. A raw `.mmd` file is source text on GitHub; GitHub renders Mermaid only when the diagram is inside a supported fenced `mermaid` block.
+The script pins Mermaid CLI so the repository does not gain a Node runtime dependency. Commit the `.mmd` source, regenerated `.svg` and `.png` outputs, and updated `assets/architecture/render-manifest.json` in the same change. The documentation gate verifies the manifest's source and render digests, so a source-only edit fails until its checked assets are regenerated. GitHub-facing Markdown embeds the PNG preview and links it to the full-resolution SVG. A raw `.mmd` file is source text on GitHub; GitHub renders Mermaid only when the diagram is inside a supported fenced `mermaid` block.
 
 The checked-in Puppeteer configuration uses the standard macOS Google Chrome path. On another platform, override `executablePath` locally or use Mermaid CLI's bundled browser installation before rendering.
 

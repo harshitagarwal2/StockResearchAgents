@@ -141,7 +141,7 @@ try {
   const sessionResponse = page.waitForResponse((response) =>
     new URL(response.url()).pathname === "/api/session"
   );
-  await page.goto(metadata.url, { waitUntil: "networkidle" });
+  await page.goto(metadata.url, { waitUntil: "domcontentloaded" });
   const exchanged = await sessionResponse;
   assert.equal(exchanged.status(), 200);
   const setCookie = await exchanged.headerValue("set-cookie");
@@ -159,20 +159,18 @@ try {
   await assertCompletedDossier(page, "desktop");
   await assertAccessible(page, "desktop");
 
-  const partial = await page.evaluate(async (partialRunId) => {
-    const response = await fetch(`/api/runs/${encodeURIComponent(partialRunId)}/view`, {
-      headers: { Accept: "application/json" },
-      cache: "no-store",
-    });
-    return { status: response.status, payload: await response.json() };
-  }, metadata.partialRunId);
+  const partialResponse = await context.request.get(
+    new URL(`/api/runs/${encodeURIComponent(metadata.partialRunId)}/view`, page.url()).href,
+    { headers: { Accept: "application/json" } },
+  );
+  const partial = { status: partialResponse.status(), payload: await partialResponse.json() };
   assert.equal(partial.status, 404);
   assert.equal(partial.payload.ok, false);
   assert.ok(!Object.hasOwn(partial.payload, "view"));
   assert.ok(!Object.hasOwn(partial.payload, "result"));
 
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.reload({ waitUntil: "networkidle" });
+  await page.reload({ waitUntil: "domcontentloaded" });
   await assertCompletedDossier(page, "narrow");
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   assert.ok(overflow <= 1, `narrow: page overflows horizontally by ${overflow}px`);

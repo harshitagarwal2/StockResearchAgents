@@ -50,7 +50,7 @@ where = ["src"]
 version = {attr = "stock_research_agents._version.__version__"}
 
 [tool.setuptools.package-data]
-stock_research_agents = ["web/*.html", "web/*.js", "web/*.css", "workflow/*.json"]
+stock_research_agents = ["web/*.html", "web/*.js", "web/*.css", "web/*.svg", "workflow/*.json"]
 
 [tool.ruff]
 target-version = "py311"

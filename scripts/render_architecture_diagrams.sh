@@ -32,4 +32,9 @@ for name in \
     --quiet
 done
 
+python3 "$repo_root/scripts/architecture_render_manifest.py" \
+  --root "$repo_root" \
+  --renderer "$renderer" \
+  --write
+
 printf 'Rendered architecture SVG and PNG pairs with %s\n' "$renderer"

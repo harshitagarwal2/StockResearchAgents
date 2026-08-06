@@ -15,7 +15,7 @@ class StateLayout:
     root: Path
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "root", Path(self.root).expanduser())
+        object.__setattr__(self, "root", Path(self.root).expanduser().resolve(strict=False))
 
     @property
     def quality_dir(self) -> Path:

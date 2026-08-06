@@ -47,6 +47,19 @@ def test_mcp_manifest_has_exact_local_stdio_launch_commands() -> None:
     assert "API_KEY" not in json.dumps(manifest)
 
 
+def test_mcp_smoke_keeps_launcher_cache_outside_durable_state(tmp_path) -> None:
+    smoke = runpy.run_path(str(ROOT / "scripts" / "smoke_mcp.py"))
+    state_dir = tmp_path / "state"
+    cache_dir = tmp_path / "uv-cache"
+
+    parameters = smoke["_server_parameters"]("stock-research-agents", state_dir, cache_dir)
+
+    assert parameters.env["STOCKRESEARCHAGENTS_STATE_DIR"] == str(state_dir)
+    assert parameters.env["UV_CACHE_DIR"] == str(cache_dir)
+    assert cache_dir.parent == state_dir.parent
+    assert cache_dir != state_dir
+
+
 def test_mcp_discovery_and_function_schemas_match_exactly() -> None:
     payload = discovery()
     expected_tools = set(payload["tools"])
@@ -109,21 +122,29 @@ def test_export_mcp_tool_declares_destructive_non_idempotent_behavior() -> None:
     assert export_tool.annotations.open_world_hint is False
 
 
-def test_mcp_validation_report_has_no_external_compatibility_state() -> None:
+def test_mcp_validation_report_has_no_external_compatibility_state(tmp_path) -> None:
     pytest.importorskip("mcp")
     from company_analytics_fixtures import complete_analytics_submission
 
+    from stock_research_agents.bootstrap import create_runtime
     from stock_research_agents.company_analytics import submit_company_analytics
-    from stock_research_agents.mcp_server import get_validation_report
-    from stock_research_agents.research_quality_v1 import QualityStore
-    from stock_research_agents.store import RUN_STORE
+    from stock_research_agents.mcp_server import create_server
+    from stock_research_agents.state import StateLayout
 
-    result, _events = submit_company_analytics(
-        complete_analytics_submission("ORCL"),
-        store=RUN_STORE,
-        quality_store=QualityStore(),
-    )
-    payload = get_validation_report(result.run_id)
+    runtime = create_runtime(StateLayout(tmp_path / "state"))
+    try:
+        result, _events = submit_company_analytics(
+            complete_analytics_submission("ORCL"),
+            store=runtime.result_store,
+            quality_store=runtime.quality_store,
+        )
+        server = create_server(runtime.application)
+        validation_tool = next(
+            tool for tool in server._tool_manager.list_tools() if tool.name == "get_validation_report"
+        )
+        payload = validation_tool.fn(result.run_id)
+    finally:
+        runtime.close()
 
     assert payload["ok"] is True
     assert payload["validation"]["overall_status"] == "validation_passed"

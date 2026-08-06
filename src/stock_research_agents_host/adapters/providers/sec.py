@@ -426,7 +426,12 @@ class SecProvider:
                 f"statement_type={statement_type}, period={period}."
                 for statement_type, period in sorted(expected - returned_statement_periods)
             )
-        status = "complete" if not gaps else ("partial" if rows else "unavailable")
+        if not gaps:
+            status = "complete"
+        elif rows:
+            status = "partial"
+        else:
+            status = "unavailable"
         limitations = list(gaps)
         if conservative_dates:
             limitations.append("SEC company facts expose filing dates without times; availability uses end-of-day UTC.")

@@ -1,7 +1,7 @@
 %%{init: {"theme":"base","fontFamily":"Avenir Next, Segoe UI, sans-serif","themeVariables":{"fontFamily":"Avenir Next, Segoe UI, sans-serif","primaryColor":"#eef3ff","primaryTextColor":"#071c26","primaryBorderColor":"#2257ff","lineColor":"#516a75","secondaryColor":"#e5f7f5","tertiaryColor":"#fff4df","background":"#f5f8f9","clusterBkg":"#ffffff","clusterBorder":"#96aab2"},"flowchart":{"curve":"basis","htmlLabels":true}}}%%
 flowchart TB
   accTitle: SOLID ports-and-adapters architecture for Company Analytics
-  accDescr: Host retrieval adapters implement SourcePort outside the core; direct capability calls return one SourceBatch, while optional portfolio collection fans out across at least two routes and returns a separate SourcePortfolioReceipt. Inbound adapters depend on StockResearchApplication. ApplicationRuntime composes focused ports, CompanyAnalyticsCoordinator, and CompletedPublicationSaga. Domain contracts own deterministic validation, and only completed results reach projections.
+  accDescr: Host retrieval adapters implement SourcePort outside the core; direct capability calls return one SourceBatch, while optional portfolio collection fans out across at least two routes and returns a separate SourcePortfolioReceipt. Inbound adapters use StockResearchApplication for completed reads, responses, cohort evaluation, and diagnostics, and use dedicated application command functions for plan, import, and lifecycle mutations. ApplicationRuntime composes focused ports, CompanyAnalyticsCoordinator, and CompletedPublicationSaga. Domain contracts own deterministic validation, and only completed results reach projections.
 
   subgraph REQUEST["Caller-owned request path"]
     direction LR
@@ -16,13 +16,15 @@ flowchart TB
 
   subgraph USECASES["Application boundary"]
     direction LR
-    FACADE["StockResearchApplication<br/><small>transport-neutral facade</small>"]
+    FACADE["StockResearchApplication<br/><small>completed reads · response · cohort · doctor</small>"]
+    COMMANDS["Application command functions<br/><small>plan · import · lifecycle mutations</small>"]
     COORD["CompanyAnalyticsCoordinator<br/><small>lifecycle sequencing</small>"]
     QUERY["Completed query / response"]
-    FACADE --> COORD
     FACADE --> QUERY
+    COMMANDS --> COORD
   end
   INBOUND --> FACADE
+  INBOUND --> COMMANDS
 
   subgraph TRUTH["Domain-owned truth"]
     direction LR
@@ -35,7 +37,7 @@ flowchart TB
     ANALYTICS --> CALC --> CONFORM
     ANALYTICS --> QUALITY --> CONFORM
   end
-  COORD --> ANALYTICS
+  COMMANDS --> ANALYTICS
 
   subgraph PUBLICATION["Recoverable completed publication"]
     direction LR
@@ -69,7 +71,7 @@ flowchart TB
   classDef port fill:#ffffff,stroke:#516a75,color:#071c26,stroke-width:2px;
   classDef artifact fill:#ffffff,stroke:#1231a6,color:#071c26,stroke-width:3px;
   class PROVIDERS,SOURCE,PORTFOLIO,CALLER host;
-  class INBOUND,FACADE,COORD,QUERY,SAGA adapter;
+  class INBOUND,FACADE,COMMANDS,COORD,QUERY,SAGA adapter;
   class ANALYTICS,RESEARCH,CALC,QUALITY,CONFORM domain;
   class LAYOUT,RUNTIME,PORTS,STORES,OPS,READ port;
   class RESULT artifact;

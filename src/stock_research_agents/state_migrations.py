@@ -13,6 +13,18 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Literal
 
+from .contracts import EventKind, RunEvent, RunStatus
+from .lifecycle import LifecycleRecordV1
+from .publication import validate_completed_publication
+from .research_quality_v1 import QualityStore
+from .serialization import (
+    StoredResult,
+    deserialize_run_events,
+    deserialize_run_result,
+    serialize_run_events,
+    serialize_run_result,
+)
+
 STATE_SCHEMA_VERSION = "1.0.0"
 _MANIFEST_NAME = "state-schema.json"
 _MAX_JSON_FILES = 10_000
@@ -80,7 +92,7 @@ def _validate_json_artifacts(root: Path) -> int:
 
 
 def _validate_sqlite_databases(root: Path) -> int:
-    paths = sorted(path for path in root.rglob("*.sqlite3") if not path.name.endswith(("-wal", "-shm")))
+    paths = sorted(root.rglob("*.sqlite3"))
     for path in paths:
         if path.is_symlink():
             raise ValueError("state SQLite databases must not be symbolic links")
@@ -93,6 +105,167 @@ def _validate_sqlite_databases(root: Path) -> int:
         if result != ("ok",):
             raise ValueError(f"state SQLite database failed quick_check: {path.name}")
     return len(paths)
+
+
+def _read_json_value(path: Path, description: str) -> object:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ValueError(f"{description} must be valid JSON: {path.name}") from exc
+
+
+def _same_publication(
+    left: tuple[StoredResult, tuple[RunEvent, ...]],
+    right: tuple[StoredResult, tuple[RunEvent, ...]],
+) -> bool:
+    return serialize_run_result(left[0]) == serialize_run_result(right[0]) and serialize_run_events(
+        left[1]
+    ) == serialize_run_events(right[1])
+
+
+def _is_terminal_completed_stream(events: tuple[RunEvent, ...]) -> bool:
+    if not events:
+        return False
+    terminal = events[-1]
+    return terminal.status == RunStatus.COMPLETED.value and terminal.kind is EventKind.RUN and terminal.stage_id is None
+
+
+def _validate_run_state(root: Path) -> None:
+    results: dict[str, StoredResult] = {}
+    events: dict[str, tuple[RunEvent, ...]] = {}
+    for path in sorted((root / "results").glob("*.json")):
+        result = deserialize_run_result(path.read_bytes())
+        if result.run_id != path.stem:
+            raise ValueError(f"persisted result run_id does not match filename: {path.name}")
+        results[path.stem] = result
+    for path in sorted((root / "events").glob("*.json")):
+        decoded = deserialize_run_events(path.read_bytes())
+        if any(event.run_id != path.stem for event in decoded):
+            raise ValueError(f"persisted events run_id does not match filename: {path.name}")
+        events[path.stem] = decoded
+    bundles: dict[str, tuple[StoredResult, tuple[RunEvent, ...]]] = {}
+    recovery_intent: tuple[StoredResult, tuple[RunEvent, ...]] | None = None
+    bundle_paths = [*(root / "bundles").glob("*.json"), *(root / "staged").glob("*.json")]
+    direct_put = root / "direct-put.json"
+    if direct_put.is_file():
+        bundle_paths.append(direct_put)
+    for path in sorted(bundle_paths):
+        value = _read_json_value(path, "persisted run bundle")
+        if not isinstance(value, dict) or set(value) != {"result", "events"}:
+            raise ValueError(f"persisted run bundle has an invalid shape: {path.name}")
+        result = deserialize_run_result(json.dumps(value["result"]))
+        decoded_events = deserialize_run_events(json.dumps(value["events"]))
+        validate_completed_publication(result, decoded_events)
+        if path != direct_put and result.run_id != path.stem:
+            raise ValueError(f"persisted run bundle run_id does not match filename: {path.name}")
+        if path.parent.name == "bundles":
+            bundles[result.run_id] = (result, decoded_events)
+        elif path == direct_put:
+            recovery_intent = (result, decoded_events)
+
+    recovery_by_id = {recovery_intent[0].run_id: recovery_intent} if recovery_intent is not None else {}
+    completed_sources = bundles | recovery_by_id
+
+    for run_id, result in results.items():
+        if run_id in events:
+            validate_completed_publication(result, events[run_id])
+        elif run_id not in completed_sources:
+            raise ValueError(f"persisted completed result is missing matching events or bundle: {run_id}")
+
+    for run_id, decoded_events in events.items():
+        if run_id not in results and run_id not in completed_sources and _is_terminal_completed_stream(decoded_events):
+            raise ValueError(f"persisted completed event stream is missing matching result or bundle: {run_id}")
+
+    for run_id, publication in completed_sources.items():
+        projection_result = results.get(run_id, publication[0])
+        projection_events = events.get(run_id, publication[1])
+        if not _same_publication(publication, (projection_result, projection_events)):
+            raise ValueError(f"persisted run bundle conflicts with split projections: {run_id}")
+
+    for run_id in bundles.keys() & recovery_by_id:
+        if not _same_publication(bundles[run_id], recovery_by_id[run_id]):
+            raise ValueError(f"direct-put recovery intent conflicts with persisted run bundle: {run_id}")
+
+    current_path = root / "current.json"
+    if current_path.is_file():
+        current = _read_json_value(current_path, "current run pointer")
+        if not isinstance(current, dict) or set(current) != {"run_id"} or not isinstance(current["run_id"], str):
+            raise ValueError("current run pointer must contain only a string run_id")
+        run_id = current["run_id"]
+        if run_id not in events and run_id not in bundles and run_id not in recovery_by_id:
+            raise ValueError("current run pointer references an unknown run")
+
+
+def _validate_lifecycle_database(root: Path) -> None:
+    path = root / "lifecycle.sqlite3"
+    if not path.exists():
+        return
+    uri = f"{path.resolve().as_uri()}?mode=ro"
+    try:
+        with closing(sqlite3.connect(uri, uri=True, timeout=1.0)) as connection:
+            columns = tuple(row[1] for row in connection.execute("PRAGMA table_info(lifecycle_runs)"))
+            if columns != ("run_id", "revision", "record_json", "updated_at"):
+                raise ValueError("lifecycle SQLite schema is invalid")
+            rows = connection.execute("SELECT run_id, revision, record_json, updated_at FROM lifecycle_runs").fetchall()
+    except sqlite3.Error as exc:
+        raise ValueError("lifecycle SQLite database failed semantic validation") from exc
+    for run_id, revision, raw_record, updated_at in rows:
+        try:
+            value = json.loads(raw_record)
+        except (TypeError, json.JSONDecodeError) as exc:
+            raise ValueError("persisted lifecycle record must be valid JSON") from exc
+        if not isinstance(value, dict):
+            raise ValueError("persisted lifecycle record must be a JSON object")
+        record = LifecycleRecordV1.from_mapping(value, expected_run_id=str(run_id))
+        if record.revision != revision or record.updated_at != updated_at:
+            raise ValueError(f"invalid persisted lifecycle row metadata: {run_id}")
+
+
+def _validate_memory_database(root: Path) -> None:
+    path = root / "decision-memory.sqlite3"
+    if not path.exists():
+        return
+    uri = f"{path.resolve().as_uri()}?mode=ro"
+    try:
+        with closing(sqlite3.connect(uri, uri=True, timeout=1.0)) as connection:
+            tables = {
+                str(row[0])
+                for row in connection.execute("SELECT name FROM sqlite_master WHERE type = 'table'").fetchall()
+            }
+            required = {"decisions", "outcomes", "stockresearchagents_metadata"}
+            if not required <= tables:
+                raise ValueError("decision memory SQLite schema is invalid")
+            metadata = connection.execute(
+                "SELECT value FROM stockresearchagents_metadata WHERE key = 'schema_version'"
+            ).fetchone()
+            if metadata != ("1.0.0",):
+                raise ValueError("decision memory schema version is unsupported")
+            duplicate = connection.execute(
+                "SELECT run_id FROM decisions GROUP BY run_id HAVING COUNT(*) > 1 LIMIT 1"
+            ).fetchone()
+            if duplicate is not None:
+                raise ValueError("decision memory contains duplicate run_id entries")
+            json_rows = connection.execute("SELECT decision_json, context_json FROM decisions").fetchall()
+            outcome_rows = connection.execute("SELECT outcome_json FROM outcomes").fetchall()
+    except sqlite3.Error as exc:
+        raise ValueError("decision memory SQLite database failed semantic validation") from exc
+    try:
+        for decision, context in json_rows:
+            if not isinstance(json.loads(decision), dict) or not isinstance(json.loads(context), dict):
+                raise ValueError("decision memory records must contain JSON objects")
+        for (outcome,) in outcome_rows:
+            if not isinstance(json.loads(outcome), dict):
+                raise ValueError("decision memory outcomes must contain JSON objects")
+    except (TypeError, json.JSONDecodeError) as exc:
+        raise ValueError("decision memory record must be valid JSON") from exc
+
+
+def _validate_semantic_state(root: Path) -> None:
+    _validate_run_state(root)
+    _validate_lifecycle_database(root)
+    _validate_memory_database(root)
+    quality = QualityStore(root / "quality")
+    quality._ensure_loaded()
 
 
 def plan_state_migration(state_root: str | os.PathLike[str]) -> StateMigrationPlan:
@@ -108,6 +281,7 @@ def plan_state_migration(state_root: str | os.PathLike[str]) -> StateMigrationPl
     manifest = _manifest(root / _MANIFEST_NAME)
     json_count = _validate_json_artifacts(root)
     sqlite_count = _validate_sqlite_databases(root)
+    _validate_semantic_state(root)
     if manifest is not None:
         return StateMigrationPlan(
             "current",
@@ -185,4 +359,23 @@ def migrate_state(
     return replace(plan, status="migrated", backup_required=False)
 
 
-__all__ = ["STATE_SCHEMA_VERSION", "StateMigrationPlan", "migrate_state", "plan_state_migration"]
+def ensure_runtime_state(state_root: str | os.PathLike[str]) -> None:
+    """Require current compatible durable state, initializing only a new/empty root."""
+    root = Path(state_root).expanduser().resolve(strict=False)
+    plan = plan_state_migration(root)
+    if plan.status == "current":
+        return
+    if plan.status == "migration_required":
+        raise ValueError(
+            "unversioned non-empty state is not supported at runtime; run the backup-first state migration first"
+        )
+    _atomic_manifest(root, None)
+
+
+__all__ = [
+    "STATE_SCHEMA_VERSION",
+    "StateMigrationPlan",
+    "ensure_runtime_state",
+    "migrate_state",
+    "plan_state_migration",
+]

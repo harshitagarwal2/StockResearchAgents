@@ -53,6 +53,7 @@ jobs:
           python scripts/build_release_sbom.py
           release/packages/*.whl
           release/packages/*.tar.gz
+          --lock-file uv.lock
           --output release/sbom.spdx.json
       - name: Create checksums
         working-directory: release

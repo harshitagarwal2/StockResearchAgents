@@ -20,6 +20,7 @@ from .serialization import (
     serialize_run_result,
 )
 from .state import DEFAULT_STATE_LAYOUT
+from .state_write_lock import state_write_lock
 
 _RUN_ID_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}\Z")
 
@@ -139,7 +140,6 @@ class RunStore:
             return
         state_dir = self._state_path()
         if state_dir is not None and state_dir.exists():
-            self._recover_direct_put(state_dir)
             self._load_events(state_dir / "events")
             self._load_bundles(state_dir / "bundles")
             self._load_results(state_dir / "results")
@@ -151,6 +151,32 @@ class RunStore:
                 self._current_run_id = run_id
         self._loaded = True
 
+    def _refresh_before_mutation(self) -> None:
+        """Reload the durable snapshot while the shared writer lock is held."""
+        state_dir = self._state_path()
+        if state_dir is None:
+            self._ensure_loaded()
+            return
+        if state_dir.exists():
+            self._recover_direct_put(state_dir)
+        self._results.clear()
+        self._events.clear()
+        self._staged.clear()
+        self._current_run_id = None
+        self._loaded = False
+        self._ensure_loaded()
+
+    def _recover_before_initial_read(self) -> None:
+        """Recover an interrupted direct put once, without serializing normal reads."""
+        if self._loaded:
+            return
+        state_dir = self.state_dir
+        if state_dir is None or not (state_dir / "direct-put.json").is_file():
+            return
+        with state_write_lock(state_dir), self._lock:
+            if not self._loaded and (state_dir / "direct-put.json").is_file():
+                self._recover_direct_put(state_dir)
+
     def _load_single_durable_bundle(
         self,
         requested_run_id: str,
@@ -159,7 +185,6 @@ class RunStore:
         state_dir = self._state_path()
         if state_dir is None or not state_dir.exists():
             return None
-        self._recover_direct_put(state_dir)
         if requested_run_id == "current":
             current_path = state_dir / "current.json"
             if not current_path.is_file():
@@ -295,13 +320,13 @@ class RunStore:
         _atomic_write(state_dir / "current.json", json.dumps({"run_id": run_id}, sort_keys=True))
 
     def put(self, result: StoredResult, events: tuple[RunEvent, ...]) -> None:
-        with self._lock:
-            self._ensure_loaded()
-            detached_result = _detach_result(result)
-            detached_events = _detach_events(tuple(events))
-            run_id = _validate_run_id(detached_result.run_id)
-            validate_completed_publication(detached_result, detached_events)
-            state_dir = self._state_path()
+        detached_result = _detach_result(result)
+        detached_events = _detach_events(tuple(events))
+        run_id = _validate_run_id(detached_result.run_id)
+        validate_completed_publication(detached_result, detached_events)
+        state_dir = self.state_dir
+        with state_write_lock(state_dir), self._lock:
+            self._refresh_before_mutation()
             if state_dir is not None:
                 self._publish_durable_bundle(state_dir, detached_result, detached_events, write_intent=True)
             self._results[run_id] = detached_result
@@ -310,13 +335,13 @@ class RunStore:
 
     def stage(self, result: StoredResult, events: tuple[RunEvent, ...]) -> None:
         """Persist a hidden finalization bundle without exposing it to readers."""
-        with self._lock:
-            self._ensure_loaded()
-            detached_result = _detach_result(result)
-            detached_events = _detach_events(tuple(events))
-            run_id = _validate_run_id(detached_result.run_id)
-            validate_completed_publication(detached_result, detached_events)
-            state_dir = self._state_path()
+        detached_result = _detach_result(result)
+        detached_events = _detach_events(tuple(events))
+        run_id = _validate_run_id(detached_result.run_id)
+        validate_completed_publication(detached_result, detached_events)
+        state_dir = self.state_dir
+        with state_write_lock(state_dir), self._lock:
+            self._refresh_before_mutation()
             if state_dir is not None:
                 _atomic_write(
                     state_dir / "staged" / f"{run_id}.json",
@@ -326,6 +351,7 @@ class RunStore:
 
     def get_staged(self, run_id: str) -> tuple[StoredResult, tuple[RunEvent, ...]] | None:
         """Return a hidden finalization bundle for recovery, if one exists."""
+        self._recover_before_initial_read()
         with self._lock:
             self._ensure_loaded()
             safe_run_id = _validate_run_id(run_id)
@@ -348,7 +374,9 @@ class RunStore:
 
     def publish_staged(self, run_id: str) -> tuple[StoredResult, tuple[RunEvent, ...]]:
         """Idempotently publish a hidden bundle after lifecycle completion."""
-        with self._lock:
+        state_dir = self.state_dir
+        with state_write_lock(state_dir), self._lock:
+            self._refresh_before_mutation()
             safe_run_id = _validate_run_id(run_id)
             staged = self.get_staged(safe_run_id)
             if staged is None:
@@ -359,7 +387,6 @@ class RunStore:
                 return result, events
             result, events = staged
             self.put(result, events)
-            state_dir = self._state_path()
             if state_dir is not None:
                 staged_path = state_dir / "staged" / f"{safe_run_id}.json"
                 try:
@@ -371,14 +398,14 @@ class RunStore:
 
     def put_events(self, run_id: str, events: Iterable[RunEvent]) -> None:
         """Publish an event-only partial run, replacing its current event stream."""
-        with self._lock:
-            self._ensure_loaded()
-            safe_run_id = _validate_run_id(run_id)
+        safe_run_id = _validate_run_id(run_id)
+        detached_events = _detach_events(tuple(events))
+        self._validate_events(safe_run_id, detached_events)
+        state_dir = self.state_dir
+        with state_write_lock(state_dir), self._lock:
+            self._refresh_before_mutation()
             if safe_run_id in self._results or self.get_staged(safe_run_id) is not None:
                 raise ValueError("event-only partial storage cannot replace a completed publication")
-            detached_events = _detach_events(tuple(events))
-            self._validate_events(safe_run_id, detached_events)
-            state_dir = self._state_path()
             if state_dir is not None:
                 _atomic_write(
                     state_dir / "events" / f"{safe_run_id}.json",
@@ -392,15 +419,15 @@ class RunStore:
         """Atomically append one event to an in-memory or durable partial run."""
         if not isinstance(event, RunEvent):
             raise TypeError("event must be a RunEvent")
-        with self._lock:
-            self._ensure_loaded()
-            detached_event = _detach_events((event,))[0]
-            run_id = _validate_run_id(detached_event.run_id)
+        detached_event = _detach_events((event,))[0]
+        run_id = _validate_run_id(detached_event.run_id)
+        state_dir = self.state_dir
+        with state_write_lock(state_dir), self._lock:
+            self._refresh_before_mutation()
             if run_id in self._results or self.get_staged(run_id) is not None:
                 raise ValueError("event-only partial storage cannot extend a completed publication")
             events = (*self._events.get(run_id, ()), detached_event)
             self._validate_events(run_id, events)
-            state_dir = self._state_path()
             if state_dir is not None:
                 _atomic_write(state_dir / "events" / f"{run_id}.json", serialize_run_events(events))
                 self._write_current(state_dir, run_id)
@@ -408,45 +435,93 @@ class RunStore:
             self._current_run_id = run_id
 
     def current_run_id(self) -> str | None:
+        self._recover_before_initial_read()
         with self._lock:
             if not self._loaded:
                 publication = self._load_single_durable_bundle("current")
                 if publication is not None:
                     return publication[0].run_id
             self._ensure_loaded()
+            state_dir = self._state_path()
+            if state_dir is not None:
+                if (state_dir / "direct-put.json").is_file():
+                    return self._current_run_id
+                current_path = state_dir / "current.json"
+                if not current_path.is_file():
+                    self._current_run_id = None
+                    return None
+                run_id = _read_current_run_id(current_path)
+                publication = self._load_single_durable_bundle(run_id)
+                event_path = state_dir / "events" / f"{run_id}.json"
+                if publication is None and not event_path.is_file():
+                    raise ValueError("current run pointer references an unknown run")
+                self._current_run_id = run_id
             return self._current_run_id
 
     def resolve_run_id(self, run_id: str) -> str | None:
         """Resolve the Research Dossier Viewer's stable ``current`` alias under the store lock."""
+        if run_id == "current":
+            return self.current_run_id()
+        self._recover_before_initial_read()
         with self._lock:
             if not self._loaded:
                 publication = self._load_single_durable_bundle(run_id)
                 if publication is not None:
                     return publication[0].run_id
             self._ensure_loaded()
-            if run_id == "current":
-                return self._current_run_id
             safe_run_id = _validate_run_id(run_id)
+            if safe_run_id not in self._results and safe_run_id not in self._events:
+                state_dir = self._state_path()
+                if state_dir is not None and (state_dir / "direct-put.json").is_file():
+                    return None
+                self._load_single_durable_bundle(safe_run_id)
+                event_path = None if state_dir is None else state_dir / "events" / f"{safe_run_id}.json"
+                if event_path is not None and event_path.is_file():
+                    events = deserialize_run_events(_read_json(event_path, "run_events"))
+                    self._validate_events(safe_run_id, events)
+                    self._events[safe_run_id] = events
             return safe_run_id if safe_run_id in self._results or safe_run_id in self._events else None
 
     def get_result(self, run_id: str) -> StoredResult | None:
+        self._recover_before_initial_read()
         with self._lock:
             if not self._loaded:
                 publication = self._load_single_durable_bundle(run_id)
                 if publication is not None:
                     return _detach_result(publication[0])
             self._ensure_loaded()
-            result = self._results.get(_validate_run_id(run_id))
+            safe_run_id = _validate_run_id(run_id)
+            result = self._results.get(safe_run_id)
+            if result is None:
+                state_dir = self._state_path()
+                if state_dir is None or not (state_dir / "direct-put.json").is_file():
+                    publication = self._load_single_durable_bundle(safe_run_id)
+                    result = None if publication is None else publication[0]
             return None if result is None else _detach_result(result)
 
     def get_events(self, run_id: str) -> tuple[RunEvent, ...] | None:
+        self._recover_before_initial_read()
         with self._lock:
             if not self._loaded:
                 publication = self._load_single_durable_bundle(run_id)
                 if publication is not None:
                     return _detach_events(publication[1])
             self._ensure_loaded()
-            events = self._events.get(_validate_run_id(run_id))
+            safe_run_id = _validate_run_id(run_id)
+            events = self._events.get(safe_run_id)
+            if safe_run_id not in self._results:
+                state_dir = self._state_path()
+                event_path = None if state_dir is None else state_dir / "events" / f"{safe_run_id}.json"
+                has_pending_put = state_dir is not None and (state_dir / "direct-put.json").is_file()
+                if not has_pending_put and event_path is not None and event_path.is_file():
+                    events = deserialize_run_events(_read_json(event_path, "run_events"))
+                    self._validate_events(safe_run_id, events)
+                    self._events[safe_run_id] = events
+            if events is None:
+                state_dir = self._state_path()
+                if state_dir is None or not (state_dir / "direct-put.json").is_file():
+                    publication = self._load_single_durable_bundle(safe_run_id)
+                    events = None if publication is None else publication[1]
             return None if events is None else _detach_events(events)
 
     def get_events_after(
@@ -460,17 +535,18 @@ class RunStore:
             raise ValueError("after_sequence must be a non-negative integer")
         if not isinstance(limit, int) or isinstance(limit, bool) or not 1 <= limit <= 1000:
             raise ValueError("limit must be an integer between 1 and 1000")
-        with self._lock:
-            self._ensure_loaded()
-            events = self._events.get(_validate_run_id(run_id))
-            if events is None:
-                return None
-            page = tuple(event for event in events if event.sequence > after_sequence)[:limit]
-            return _detach_events(page)
+        events = self.get_events(run_id)
+        if events is None:
+            return None
+        return tuple(event for event in events if event.sequence > after_sequence)[:limit]
 
     def list_results(self) -> tuple[StoredResult, ...]:
+        self._recover_before_initial_read()
         with self._lock:
             self._ensure_loaded()
+            state_dir = self._state_path()
+            if state_dir is not None:
+                self._load_bundles(state_dir / "bundles")
             return tuple(_detach_result(result) for result in self._results.values())
 
 

@@ -15,6 +15,7 @@ from pathlib import Path
 EXPECTED_PACKAGE_ASSETS = (
     "web/index.html",
     "web/app.js",
+    "web/favicon.svg",
     "web/styles.css",
     "workflow/company-analytics.v1.json",
 )

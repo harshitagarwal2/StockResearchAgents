@@ -4,11 +4,9 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import cast
 
 from .application import StockResearchApplication
 from .application_ports import (
-    CompletedPresenter,
     LifecycleRepository,
     QualityIndexPort,
     QualitySidecarPort,
@@ -21,6 +19,7 @@ from .lifecycle_profiles import CompanyAnalyticsLifecycleProfile, WorkflowDefini
 from .memory import ResearchHistoryRepository
 from .research_quality_v1 import QUALITY_STORE, QualityStore
 from .state import DEFAULT_STATE_LAYOUT, StateLayout
+from .state_migrations import ensure_runtime_state
 from .store import RUN_STORE, RunStore
 
 
@@ -50,7 +49,7 @@ class ApplicationRuntime:
             coordinator=self.coordinator,
             result_store=self.result_store,
             quality_store=self.quality_store,
-            presenter=cast(CompletedPresenter, present_completed_run),
+            presenter=present_completed_run,
             view_builder=build_run_view,
             state_layout=self.state_layout,
         )
@@ -87,6 +86,7 @@ def create_company_analytics_coordinator(
 
 def create_runtime(state_layout: StateLayout) -> ApplicationRuntime:
     """Compose an isolated application runtime from one immutable state layout."""
+    ensure_runtime_state(state_layout.root)
     lifecycle_store = LifecycleStore(state_layout.root)
     result_store = RunStore(state_layout.root)
     quality_store = QualityStore(state_layout.quality_dir)
@@ -117,6 +117,14 @@ DEFAULT_RUNTIME = ApplicationRuntime(
     ),
     state_layout=DEFAULT_STATE_LAYOUT,
 )
+
+
+def ensure_default_runtime_state() -> None:
+    """Gate the shared default runtime before any operational adapter exposes it."""
+    if DEFAULT_RUNTIME.state_layout is None:  # pragma: no cover - composition invariant
+        raise RuntimeError("default runtime requires an explicit state layout")
+    ensure_runtime_state(DEFAULT_RUNTIME.state_layout.root)
+
 
 # Compatibility export for existing Python callers.
 COMPANY_ANALYTICS_COORDINATOR = DEFAULT_RUNTIME.coordinator

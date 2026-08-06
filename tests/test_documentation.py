@@ -56,6 +56,11 @@ def test_architecture_posters_use_checked_in_sources() -> None:
         assert (ROOT / "assets" / "architecture" / f"{name}.png").is_file()
 
 
+def test_architecture_render_manifest_binds_sources_to_checked_assets() -> None:
+    check_docs = _load_check_docs()
+    assert check_docs.architecture_render_manifest_errors() == []
+
+
 def test_nested_image_link_target_is_validated(tmp_path, monkeypatch) -> None:
     check_docs = _load_check_docs()
     markdown = tmp_path / "README.md"

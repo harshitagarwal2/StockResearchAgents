@@ -43,7 +43,7 @@ uv run python scripts/check_docs.py
 uv run --with build python -m build
 uv run --with twine twine check --strict dist/*
 uv run python scripts/smoke_installed_distribution.py dist/*.whl dist/*.tar.gz
-uv run python scripts/build_release_sbom.py dist/*.whl dist/*.tar.gz --output dist/sbom.spdx.json
+uv run python scripts/build_release_sbom.py dist/*.whl dist/*.tar.gz --lock-file uv.lock --output dist/sbom.spdx.json
 ```
 
 6. Commit the version and changelog, create an annotated tag, and push it:

@@ -41,7 +41,7 @@ Prefer targeted tests while iterating, then run the complete validation set befo
 ## Documentation changes
 
 - Update the canonical owner document instead of copying rules.
-- Keep Mermaid sources and SVG renders in sync with `./scripts/render_architecture_diagrams.sh`.
+- Keep Mermaid sources, SVG/PNG renders, and their digest manifest in sync with `./scripts/render_architecture_diagrams.sh`.
 - Use stable human-facing vocabulary from [Glossary](docs/GLOSSARY.md).
 - Mark planned behavior explicitly; never present a design as implemented proof.
 

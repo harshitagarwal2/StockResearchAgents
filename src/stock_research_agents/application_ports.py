@@ -68,9 +68,6 @@ class LifecycleRepository(LifecycleReader, LifecycleWriter, Protocol):
 
 
 class CompletedResultReader(Protocol):
-    @property
-    def state_dir(self) -> Path | None: ...
-
     def get_result(self, run_id: str) -> StoredResult | None: ...
 
     def get_events(self, run_id: str) -> tuple[RunEvent, ...] | None: ...

@@ -118,6 +118,7 @@ def test_release_validates_each_distribution_and_attests_release_evidence() -> N
 
     assert "scripts/smoke_installed_distribution.py" in workflow
     assert "scripts/build_release_sbom.py" in workflow
+    assert "--lock-file uv.lock" in workflow
     assert "SOURCE_DATE_EPOCH" in workflow
     assert "actions/attest-build-provenance@" in workflow
     assert "actions/attest-sbom@" in workflow

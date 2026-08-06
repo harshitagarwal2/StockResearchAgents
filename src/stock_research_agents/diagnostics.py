@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Literal
 
 from .state import StateLayout
-from .state_migrations import StateMigrationPlan, plan_state_migration
+from .state_migrations import plan_state_migration
 
 _DETAIL_KEY = re.compile(r"[a-z][a-z0-9_]{0,63}\Z")
 _SECRET_TERMS = ("authorization", "cookie", "credential", "password", "secret", "token")
@@ -76,14 +76,13 @@ def _root_check(root: Path) -> DiagnosticCheck:
     )
 
 
-def _artifact_checks(root: Path) -> tuple[DiagnosticCheck, DiagnosticCheck, StateMigrationPlan | None]:
+def _artifact_checks(root: Path) -> tuple[DiagnosticCheck, DiagnosticCheck]:
     try:
         plan = plan_state_migration(root)
     except ValueError:
         return (
             DiagnosticCheck("artifact_integrity", "failed", "A durable state artifact failed validation.", {}),
             DiagnosticCheck("state_schema", "warning", "State schema status is unavailable.", {}),
-            None,
         )
     integrity = DiagnosticCheck(
         "artifact_integrity",
@@ -101,7 +100,7 @@ def _artifact_checks(root: Path) -> tuple[DiagnosticCheck, DiagnosticCheck, Stat
         "State schema is current." if current else "State schema is uninitialized or requires backup-first adoption.",
         {"current": current},
     )
-    return integrity, schema, plan
+    return integrity, schema
 
 
 def _pending_artifacts(root: Path) -> DiagnosticCheck:
@@ -155,7 +154,7 @@ def run_state_diagnostics(layout: StateLayout) -> StateDiagnosticsReport:
     """Inspect state without creating files, opening providers, or exposing identifiers."""
     root = layout.root
     root_check = _root_check(root)
-    integrity, schema, _ = _artifact_checks(root)
+    integrity, schema = _artifact_checks(root)
     checks = (root_check, integrity, schema, _pending_artifacts(root), _viewer_registry(root))
     if any(check.status == "failed" for check in checks):
         status: Literal["ok", "degraded", "error"] = "error"

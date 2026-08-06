@@ -15,7 +15,7 @@ from .application import (
     StockResearchApplication,
 )
 from .application_ports import CompletedPresenter, ResultPublicationPort
-from .bootstrap import DEFAULT_RUNTIME
+from .bootstrap import DEFAULT_RUNTIME, ensure_default_runtime_state
 from .capabilities import discovery, feature_matrix
 from .company_analytics import get_company_research_quality as execute_quality_query
 from .company_analytics import prepare_company_analytics as prepare_company_analytics_request
@@ -656,6 +656,7 @@ mcp = create_server()
 
 
 def main() -> None:
+    ensure_default_runtime_state()
     mcp.run("stdio")
 
 

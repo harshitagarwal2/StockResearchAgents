@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import contextlib
+import hashlib
 import io
+import json
 import re
 import shlex
 import struct
@@ -80,6 +82,8 @@ TECHNICAL_DIAGRAMS = (
     "company-analytics-lifecycle",
 )
 POSTERS = ("system-overview", "portable-patterns", "research-quality")
+ARCHITECTURE_RENDER_MANIFEST = ROOT / "assets" / "architecture" / "render-manifest.json"
+ARCHITECTURE_RENDERER = "@mermaid-js/mermaid-cli@11.12.0"
 DIAGRAM_GALLERY = ROOT / "docs" / "diagrams" / "README.md"
 
 
@@ -325,6 +329,46 @@ def diagram_errors() -> list[str]:
     return errors
 
 
+def architecture_render_manifest_errors() -> list[str]:
+    """Require checked renders to remain bound to their Mermaid source digests."""
+    if not ARCHITECTURE_RENDER_MANIFEST.is_file():
+        return ["missing architecture render manifest: assets/architecture/render-manifest.json"]
+    try:
+        manifest = json.loads(ARCHITECTURE_RENDER_MANIFEST.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as exc:
+        return [f"invalid architecture render manifest: {exc}"]
+    if not isinstance(manifest, dict):
+        return ["architecture render manifest must be a JSON object"]
+    if manifest.get("schema") != "architecture-render-manifest.v1":
+        return ["architecture render manifest has an unsupported schema"]
+    if manifest.get("renderer") != ARCHITECTURE_RENDERER:
+        return ["architecture render manifest does not use the pinned Mermaid renderer"]
+    diagrams = manifest.get("diagrams")
+    if not isinstance(diagrams, dict) or set(diagrams) != set(TECHNICAL_DIAGRAMS):
+        return ["architecture render manifest does not cover the exact technical diagram set"]
+
+    errors: list[str] = []
+    for name in TECHNICAL_DIAGRAMS:
+        record = diagrams.get(name)
+        if not isinstance(record, dict):
+            errors.append(f"architecture render manifest entry is invalid: {name}")
+            continue
+        for kind, suffix in (("source", "mmd"), ("svg", "svg"), ("png", "png")):
+            expected = (
+                ROOT / "docs" / "diagrams" / f"{name}.{suffix}"
+                if kind == "source"
+                else ROOT / "assets" / "architecture" / f"{name}.{suffix}"
+            )
+            relative = expected.relative_to(ROOT).as_posix()
+            if record.get(kind) != relative:
+                errors.append(f"architecture render manifest path mismatch: {name} {kind}")
+                continue
+            digest = hashlib.sha256(expected.read_bytes()).hexdigest() if expected.is_file() else None
+            if record.get(f"{kind}_sha256") != digest:
+                errors.append(f"architecture render is stale or changed without regeneration: {name} {kind}")
+    return errors
+
+
 def check() -> list[str]:
     errors = [f"missing canonical document: {path.relative_to(ROOT)}" for path in REQUIRED_DOCS if not path.exists()]
     for path in markdown_files():
@@ -334,6 +378,7 @@ def check() -> list[str]:
     errors.extend(license_consistency_errors())
     errors.extend(contributor_bootstrap_errors())
     errors.extend(diagram_errors())
+    errors.extend(architecture_render_manifest_errors())
     return errors
 
 

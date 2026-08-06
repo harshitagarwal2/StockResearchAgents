@@ -1,0 +1,62 @@
+{
+  "diagrams": {
+    "company-analytics-lifecycle": {
+      "png": "assets/architecture/company-analytics-lifecycle.png",
+      "png_sha256": "062622ec0ffafc9b4509d3f1704dd719cf37e3e48325de937d5af8b9fa65565f",
+      "source": "docs/diagrams/company-analytics-lifecycle.mmd",
+      "source_sha256": "9827237edb5da8a2f5660d202ddbdc7dd978b917d0707adfcb6b86b306dc8059",
+      "svg": "assets/architecture/company-analytics-lifecycle.svg",
+      "svg_sha256": "3f1543cd98794eb762d6f6d3d7370447038ad60fc0b60f963ff02c066f3c52e7"
+    },
+    "completed-publication": {
+      "png": "assets/architecture/completed-publication.png",
+      "png_sha256": "51eee5c5503e433cae7d745f0b0a372f8ad05362ee18b411995e36a715642569",
+      "source": "docs/diagrams/completed-publication.mmd",
+      "source_sha256": "383f7d1ab8318d03cfed0f8803a4bfb787f552c6664a42150aea21c22bf151fe",
+      "svg": "assets/architecture/completed-publication.svg",
+      "svg_sha256": "93ec59454d3fe5168f2e9e002f344e5508a55ffc35a9417624bfeac2c3bf1a71"
+    },
+    "portable-components": {
+      "png": "assets/architecture/portable-components.png",
+      "png_sha256": "84556c6f81b480f36a2fa3ff816bce326868ea2ab0830ea93b37de8c33ec4c2e",
+      "source": "docs/diagrams/portable-components.mmd",
+      "source_sha256": "42b86f9a0348d0343ead64a240725ccc949e54833b5bf7ae3f8bfd6dd28c850f",
+      "svg": "assets/architecture/portable-components.svg",
+      "svg_sha256": "22701d2260ae39aa870b2d722d23a55687697e3baa4d63c675cd93b9e0cdc416"
+    },
+    "research-quality-lineage": {
+      "png": "assets/architecture/research-quality-lineage.png",
+      "png_sha256": "64dc2bc553c7958135a7319d8dc27f6035b7e9f47d3d49c26a576e9affdab713",
+      "source": "docs/diagrams/research-quality-lineage.mmd",
+      "source_sha256": "c08a851675b3c98dc5287d1ff8d9d7e5598d054c7383b44bc99ba329647be813",
+      "svg": "assets/architecture/research-quality-lineage.svg",
+      "svg_sha256": "d71b680028bfff8b2ad2989728d4991c89b0f49097c27ed5c6d5d9f5c65f4bfd"
+    },
+    "solid-ports-adapters": {
+      "png": "assets/architecture/solid-ports-adapters.png",
+      "png_sha256": "92ce7db321e055413fd9a25f62e88b188ad73fe5607be4e6f2eb97f9307b0e9d",
+      "source": "docs/diagrams/solid-ports-adapters.mmd",
+      "source_sha256": "215f9d0d5f7c2dec63208b3f43e9b91e09ff346db39e585ac0ba0e50aa63832e",
+      "svg": "assets/architecture/solid-ports-adapters.svg",
+      "svg_sha256": "989acdd0e1beef844845b18326d298dc36fccd1f665a7a035c1c1dba1fcacf42"
+    },
+    "source-to-dossier": {
+      "png": "assets/architecture/source-to-dossier.png",
+      "png_sha256": "5972c47cc58bfe0cbc4d63f7bcfdab39e57c66065b62958d56b9dba9476444a0",
+      "source": "docs/diagrams/source-to-dossier.mmd",
+      "source_sha256": "c460c0ac691085f0a0ce6969215fce89a0be10e1c0f2c30cd7485c0d22abf98d",
+      "svg": "assets/architecture/source-to-dossier.svg",
+      "svg_sha256": "8e307861387e0272034d93a0c0506d4f034b950310b2e13e0ce40eabccb7d0b7"
+    },
+    "system-context": {
+      "png": "assets/architecture/system-context.png",
+      "png_sha256": "2b83e8d7e4462fcc43d08c2cfb7b995be60bd5218d5b4e305f11f703bdf05fc7",
+      "source": "docs/diagrams/system-context.mmd",
+      "source_sha256": "7c018885a20d16373ccad22b3b6956bda564ee1ba1ad276046607160715c72d1",
+      "svg": "assets/architecture/system-context.svg",
+      "svg_sha256": "ec556600bd78d37002c2a53cc3c683982c443a81fda59e9cab6214ce5085480c"
+    }
+  },
+  "renderer": "@mermaid-js/mermaid-cli@11.12.0",
+  "schema": "architecture-render-manifest.v1"
+}

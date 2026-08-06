@@ -15,7 +15,7 @@ from .application import (
     StockResearchApplication,
 )
 from .application_ports import CompletedPresenter
-from .bootstrap import DEFAULT_RUNTIME
+from .bootstrap import DEFAULT_RUNTIME, ensure_default_runtime_state
 from .company_analytics import (
     get_company_research_quality,
     prepare_company_analytics,
@@ -232,8 +232,18 @@ def _completed_run_query(
     )
 
 
-def _serve_report(host: str, port: int, run_id: str | None = None) -> None:
-    server = create_report_server(host, port)
+def _serve_report(
+    host: str,
+    port: int,
+    run_id: str | None = None,
+    *,
+    application: StockResearchApplication | None = None,
+) -> None:
+    store = RUN_STORE if application is None else application.result_store
+    if not isinstance(store, RunStore):
+        raise ValueError("foreground report serving requires the bundled RunStore adapter")
+    coordinator = COMPANY_ANALYTICS_COORDINATOR if application is None else application.coordinator
+    server = create_report_server(host, port, store=store, coordinator=coordinator)
     bound_host = str(server.server_address[0])
     bound_port = int(server.server_address[1])
     suffix = f"?run={run_id}" if run_id else ""
@@ -323,7 +333,7 @@ def _analytics_import(
     )
     _emit(response, args.output)
     if args.report:
-        _serve_report(args.host, args.port, result.run_id)
+        _serve_report(args.host, args.port, result.run_id, application=application)
     return 0
 
 
@@ -469,7 +479,7 @@ def _lifecycle_command(args: argparse.Namespace, application: StockResearchAppli
                 ),
             }
         elif args.command == "run-export":
-            run_id, export_result, export_events = _completed_run_query(coordinator).require(args.run_id)
+            run_id, export_result, export_events = _completed_run_query(application=application).require(args.run_id)
             if not isinstance(export_result, CompanyAnalyticsResultV1) or export_events is None:
                 raise ValueError(f"completed run not found: {run_id}")
             lifecycle_run_id = publication_lifecycle_run_id(export_events)
@@ -489,7 +499,9 @@ def _lifecycle_command(args: argparse.Namespace, application: StockResearchAppli
             )
             response = {"ok": True, "export": export_receipt.to_dict()}
         elif args.command == "run-validate":
-            run_id, validation_result, validation_events = _completed_run_query(coordinator).require(args.run_id)
+            run_id, validation_result, validation_events = _completed_run_query(application=application).require(
+                args.run_id
+            )
             if not isinstance(validation_result, CompanyAnalyticsResultV1) or validation_events is None:
                 raise ValueError(f"completed run not found: {run_id}")
             report = evaluate_validation(validation_result, validation_events)
@@ -499,7 +511,9 @@ def _lifecycle_command(args: argparse.Namespace, application: StockResearchAppli
                 "digest": validation_digest(report),
             }
         elif args.command == "run-semantics":
-            run_id, semantics_result, semantics_events = _completed_run_query(coordinator).require(args.run_id)
+            run_id, semantics_result, semantics_events = _completed_run_query(application=application).require(
+                args.run_id
+            )
             if not isinstance(semantics_result, CompanyAnalyticsResultV1) or semantics_events is None:
                 raise ValueError(f"completed run not found: {run_id}")
             response = build_completed_run_semantics(semantics_result, semantics_events).to_dict()
@@ -562,9 +576,12 @@ def main(
 ) -> int:
     parser = _parser()
     args = parser.parse_args(argv)
-    active_application = application or _default_application()
     if args.command == "analytics-plan":
         return _analytics_plan(args)
+
+    if application is None and args.command != "doctor":
+        ensure_default_runtime_state()
+    active_application = application or _default_application()
 
     if args.command == "analytics-import":
         return _analytics_import(args, active_application, injected=application is not None)
@@ -614,7 +631,7 @@ def main(
             )
             return 2
 
-    _serve_report(args.host, args.port)
+    _serve_report(args.host, args.port, application=active_application)
     return 0
 
 

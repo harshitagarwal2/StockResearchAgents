@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -13,14 +14,120 @@ from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
 from threading import RLock
-from typing import Any
+from typing import Any, cast
 
+from .company_analytics_v1 import CompanyAnalyticsSubmissionV1, analytics_run_id
+from .contracts import reject_secret_shaped_keys
 from .memory import ResearchHistoryRepository
+from .research_contracts import CompanyResearchRequest
+from .research_lab_v1 import StageCommitmentV1
+from .serialization import deserialize_run_events
 from .state import DEFAULT_STATE_LAYOUT
+from .state_write_lock import state_write_lock
 
 LIFECYCLE_SCHEMA_VERSION = "1.0.0"
 _RUN_ID_PATTERN = re.compile(r"analytics-[a-f0-9]{12}\Z")
 _MAX_LIFECYCLE_RECORD_BYTES = 16_000_000
+_MAX_TOTAL_RECEIPTS = 2048
+_MAX_EVIDENCE_IDS_PER_RECEIPT = 256
+_MAX_RECEIPT_DURATION_MS = 7 * 24 * 60 * 60 * 1000
+_MAX_CANCEL_REASON_CHARS = 1000
+_SAFE_ID_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\Z")
+_DIGEST_PATTERN = re.compile(r"[a-f0-9]{64}\Z")
+_STATUS_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,63}\Z")
+_RECEIPT_KINDS = frozenset(
+    {"stage_started", "stage_completed", "stage_progress", "tool_started", "tool_completed", "tool_failed", "warning"}
+)
+_RECEIPT_FIELDS = frozenset(
+    {
+        "receipt_id",
+        "observed_at",
+        "kind",
+        "stage_id",
+        "attempt",
+        "capability_id",
+        "execution_call_id",
+        "status",
+        "duration_ms",
+        "input_digest",
+        "output_digest",
+        "evidence_ids",
+        "safe_summary",
+    }
+)
+_RECORD_FIELDS = frozenset(
+    {
+        "schema_version",
+        "workflow_profile",
+        "workflow_id",
+        "run_id",
+        "status",
+        "revision",
+        "request",
+        "topology",
+        "system_boundary",
+        "research_pack_id",
+        "execution_mode",
+        "execution_mode_readiness",
+        "execution_mode_locally_ready",
+        "completed_stage_ids",
+        "stage_outputs",
+        "stage_commitments",
+        "attempts",
+        "active_stage_id",
+        "active_attempt",
+        "receipts",
+        "receipt_ids",
+        "memory_context",
+        "memory_recall",
+        "decision_memory_enabled",
+        "memory_stage_receipt",
+        "memory_write_receipt",
+        "final_submission",
+        "result_run_id",
+        "finalization_completed_at",
+        "cancel_reason",
+        "cancel_ack_receipt_id",
+        "failure",
+        "events",
+        "created_at",
+        "updated_at",
+    }
+)
+_STAGE_FIELDS = frozenset(
+    {"id", "ordinal", "role", "objective", "depends_on", "capabilities", "output_refs", "completion_criteria"}
+)
+_REFERENCE_FIELDS = frozenset({"reference_id", "media_type", "sha256", "byte_length", "summary"})
+
+
+def _canonical_digest(value: object) -> str:
+    encoded = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=True, allow_nan=False)
+    return hashlib.sha256(encoded.encode()).hexdigest()
+
+
+def _stage_commitment_envelope_digest(output: Mapping[str, object], *, terminal: bool) -> str:
+    candidate = _json_copy(dict(output))
+    if terminal:
+        refs = candidate.get("output_refs")
+        if isinstance(refs, dict) and len(refs) == 1:
+            submission = next(iter(refs.values()))
+            if isinstance(submission, dict):
+                run_card = submission.get("run_card")
+                if isinstance(run_card, dict):
+                    run_card["coordinator_commitments"] = []
+                    stages = run_card.get("stages")
+                    if isinstance(stages, list):
+                        for stage in stages:
+                            if isinstance(stage, dict):
+                                stage["output_digest"] = "0" * 64
+                quality = submission.get("quality_receipt")
+                if isinstance(quality, dict) and isinstance(quality.get("stage_digests"), list):
+                    quality["stage_digests"] = [
+                        [item[0], "0" * 64]
+                        for item in quality["stage_digests"]
+                        if isinstance(item, list | tuple) and len(item) == 2
+                    ]
+    return _canonical_digest(candidate)
 
 
 def is_lifecycle_run_id(run_id: object) -> bool:
@@ -86,11 +193,29 @@ class LifecycleRecordV1:
         updated_at = cls._timestamp(payload.get("updated_at"), "updated_at")
         if datetime.fromisoformat(updated_at) < datetime.fromisoformat(created_at):
             raise ValueError("lifecycle updated_at cannot precede created_at")
+        cls._validate_fields(payload)
         cls._validate_identity(payload)
+        cls._validate_request(payload)
         cls._validate_topology(payload)
+        cls._validate_supporting_state(payload)
         cls._validate_state(payload, status)
         cls._validate_events(payload, str(run_id))
         return cls(str(run_id), revision, status, created_at, updated_at, payload)
+
+    @staticmethod
+    def _validate_fields(payload: Mapping[str, Any]) -> None:
+        fields = set(payload)
+        unknown = sorted(fields - _RECORD_FIELDS)
+        missing = sorted(_RECORD_FIELDS - fields)
+        if unknown or missing:
+            raise ValueError(f"lifecycle record fields are invalid: missing={missing}, unknown={unknown}")
+
+    @staticmethod
+    def _validate_request(payload: Mapping[str, Any]) -> None:
+        try:
+            CompanyResearchRequest.from_dict(payload.get("request"))
+        except (TypeError, ValueError) as exc:
+            raise ValueError("lifecycle request is invalid") from exc
 
     @staticmethod
     def _timestamp(value: object, field: str) -> str:
@@ -113,14 +238,37 @@ class LifecycleRecordV1:
     @staticmethod
     def _validate_topology(payload: Mapping[str, Any]) -> None:
         topology = payload.get("topology")
-        if not isinstance(topology, Mapping) or not isinstance(topology.get("stages"), list):
+        if (
+            not isinstance(topology, Mapping)
+            or set(topology) != {"stages", "terminal_stage"}
+            or not isinstance(topology.get("stages"), list)
+        ):
             raise ValueError("lifecycle topology.stages must be an array")
-        stage_ids = [stage.get("id") for stage in topology["stages"] if isinstance(stage, Mapping)]
+        stages = topology["stages"]
+        if any(not isinstance(stage, Mapping) or set(stage) != _STAGE_FIELDS for stage in stages):
+            raise ValueError("lifecycle topology stages have invalid fields")
+        stage_ids = [stage.get("id") for stage in stages if isinstance(stage, Mapping)]
         invalid_stage_id = any(not isinstance(item, str) or not item for item in stage_ids)
-        if len(stage_ids) != len(topology["stages"]) or invalid_stage_id:
+        if len(stage_ids) != len(stages) or invalid_stage_id:
             raise ValueError("lifecycle topology stages must have non-empty string IDs")
         if len(stage_ids) != len(set(stage_ids)):
             raise ValueError("lifecycle topology stage IDs must be unique")
+        for ordinal, stage in enumerate(stages, start=1):
+            assert isinstance(stage, Mapping)
+            if stage.get("ordinal") != ordinal:
+                raise ValueError("lifecycle topology stage ordinals must be contiguous")
+            for field in ("role", "objective"):
+                if not isinstance(stage.get(field), str) or not stage[field]:
+                    raise ValueError(f"lifecycle topology stage {field} must be a non-empty string")
+            for field in ("depends_on", "capabilities", "output_refs", "completion_criteria"):
+                values = stage.get(field)
+                if not isinstance(values, list) or any(not isinstance(item, str) or not item for item in values):
+                    raise ValueError(f"lifecycle topology stage {field} must be an array of non-empty strings")
+            if any(dependency not in stage_ids[: ordinal - 1] for dependency in stage["depends_on"]):
+                raise ValueError("lifecycle topology dependencies must reference earlier stages")
+        terminal_stage = topology.get("terminal_stage")
+        if terminal_stage != (stage_ids[-1] if stage_ids else None):
+            raise ValueError("lifecycle topology terminal_stage must reference the final stage")
         completed = payload.get("completed_stage_ids")
         if not isinstance(completed, list) or any(not isinstance(item, str) for item in completed):
             raise ValueError("lifecycle completed_stage_ids must be an array of strings")
@@ -139,28 +287,405 @@ class LifecycleRecordV1:
             raise ValueError("lifecycle active_attempt must be a positive integer")
 
     @staticmethod
+    def _validate_supporting_state(payload: Mapping[str, Any]) -> None:
+        for field in ("research_pack_id", "execution_mode", "execution_mode_readiness"):
+            if not isinstance(payload.get(field), str) or not payload[field]:
+                raise ValueError(f"lifecycle {field} must be a non-empty string")
+        for field in ("execution_mode_locally_ready", "decision_memory_enabled"):
+            if not isinstance(payload.get(field), bool):
+                raise ValueError(f"lifecycle {field} must be a boolean")
+        boundary = payload.get("system_boundary")
+        if not isinstance(boundary, Mapping) or set(boundary) != {"caller_owns", "core_owns", "forbidden"}:
+            raise ValueError("lifecycle system_boundary has invalid fields")
+        if any(
+            not isinstance(boundary[field], list)
+            or any(not isinstance(item, str) or not item for item in boundary[field])
+            for field in boundary
+        ):
+            raise ValueError("lifecycle system_boundary values must be arrays of non-empty strings")
+        reject_secret_shaped_keys(payload.get("memory_context"), ("memory_context",))
+        memory_context = payload.get("memory_context")
+        if memory_context is not None and not isinstance(memory_context, dict):
+            raise ValueError("lifecycle memory_context must be an object or null")
+        LifecycleRecordV1._validate_memory_recall(payload.get("memory_recall"))
+        LifecycleRecordV1._validate_memory_receipt(payload.get("memory_stage_receipt"), "memory_stage_receipt")
+        LifecycleRecordV1._validate_memory_receipt(payload.get("memory_write_receipt"), "memory_write_receipt")
+        final_submission = payload.get("final_submission")
+        if final_submission is not None:
+            try:
+                CompanyAnalyticsSubmissionV1.from_dict(final_submission)
+            except (TypeError, ValueError) as exc:
+                raise ValueError("lifecycle final_submission is invalid") from exc
+        if payload.get("failure") is not None:
+            raise ValueError("lifecycle failure must be null for the current schema")
+        cancel_reason = payload.get("cancel_reason")
+        if cancel_reason is not None and (
+            not isinstance(cancel_reason, str)
+            or not cancel_reason.strip()
+            or cancel_reason != cancel_reason.strip()
+            or len(cancel_reason) > _MAX_CANCEL_REASON_CHARS
+        ):
+            raise ValueError(
+                f"lifecycle cancel_reason must contain 1 to {_MAX_CANCEL_REASON_CHARS} non-whitespace characters"
+            )
+        cancel_ack_receipt_id = payload.get("cancel_ack_receipt_id")
+        if cancel_ack_receipt_id is not None and (
+            not isinstance(cancel_ack_receipt_id, str) or _SAFE_ID_PATTERN.fullmatch(cancel_ack_receipt_id) is None
+        ):
+            raise ValueError("lifecycle cancel_ack_receipt_id must be a safe identifier or null")
+
+        stages = payload["topology"]["stages"]
+        stage_ids = [str(stage["id"]) for stage in stages]
+        completed = payload["completed_stage_ids"]
+        attempts = payload.get("attempts")
+        if not isinstance(attempts, dict) or any(
+            key not in stage_ids or not isinstance(value, int) or isinstance(value, bool) or value < 1
+            for key, value in attempts.items()
+        ):
+            raise ValueError("lifecycle attempts must map topology stage IDs to positive integers")
+        if any(stage_id not in attempts for stage_id in completed):
+            raise ValueError("lifecycle attempts must include every completed stage")
+
+        outputs = payload.get("stage_outputs")
+        if not isinstance(outputs, list) or len(outputs) != len(completed):
+            raise ValueError("lifecycle stage_outputs must align with completed_stage_ids")
+        for stage_id, output in zip(completed, outputs, strict=True):
+            if not isinstance(output, Mapping) or set(output) != {"schema_version", "stage_id", "output_refs"}:
+                raise ValueError("lifecycle stage output has invalid fields")
+            if output.get("schema_version") != LIFECYCLE_SCHEMA_VERSION or output.get("stage_id") != stage_id:
+                raise ValueError("lifecycle stage output identity is invalid")
+            refs = output.get("output_refs")
+            if not isinstance(refs, Mapping) or not refs:
+                raise ValueError("lifecycle stage output_refs must be a non-empty object")
+            topology_stage = next(stage for stage in stages if stage["id"] == stage_id)
+            if set(refs) != set(topology_stage["output_refs"]):
+                raise ValueError("lifecycle stage output_refs must match the topology")
+            if stage_id != payload["topology"]["terminal_stage"]:
+                for descriptor in refs.values():
+                    if not isinstance(descriptor, Mapping) or set(descriptor) != _REFERENCE_FIELDS:
+                        raise ValueError("lifecycle nonterminal output reference has invalid fields")
+                    if (
+                        not isinstance(descriptor["reference_id"], str)
+                        or _SAFE_ID_PATTERN.fullmatch(descriptor["reference_id"]) is None
+                        or not isinstance(descriptor["media_type"], str)
+                        or "/" not in descriptor["media_type"]
+                        or not isinstance(descriptor["sha256"], str)
+                        or _DIGEST_PATTERN.fullmatch(descriptor["sha256"]) is None
+                        or not isinstance(descriptor["byte_length"], int)
+                        or isinstance(descriptor["byte_length"], bool)
+                        or descriptor["byte_length"] < 0
+                        or not isinstance(descriptor["summary"], str)
+                        or not descriptor["summary"]
+                    ):
+                        raise ValueError("lifecycle nonterminal output reference is invalid")
+
+        commitments = payload.get("stage_commitments")
+        if not isinstance(commitments, list) or len(commitments) != len(completed):
+            raise ValueError("lifecycle stage_commitments must align with completed_stage_ids")
+        parsed_commitments = tuple(StageCommitmentV1.from_dict(item) for item in commitments)
+        if any(item.stage_id != stage_id for item, stage_id in zip(parsed_commitments, completed, strict=True)):
+            raise ValueError("lifecycle stage_commitments must align with completed_stage_ids")
+        LifecycleRecordV1._validate_stage_commitment_digests(
+            payload,
+            tuple(outputs),
+            parsed_commitments,
+        )
+
+        receipts = payload.get("receipts")
+        receipt_ids = payload.get("receipt_ids")
+        if not isinstance(receipts, list) or not isinstance(receipt_ids, list):
+            raise ValueError("lifecycle receipts and receipt_ids must be arrays")
+        if len(receipts) > _MAX_TOTAL_RECEIPTS:
+            raise ValueError(f"lifecycle receipts cannot exceed {_MAX_TOTAL_RECEIPTS} items")
+        validated_ids: list[str] = []
+        for receipt in receipts:
+            if not isinstance(receipt, Mapping) or set(receipt) - _RECEIPT_FIELDS:
+                raise ValueError("lifecycle receipt has invalid fields")
+            receipt_id = receipt.get("receipt_id")
+            kind = receipt.get("kind")
+            if not isinstance(receipt_id, str) or _SAFE_ID_PATTERN.fullmatch(receipt_id) is None:
+                raise ValueError("lifecycle receipt_id is invalid")
+            if kind not in _RECEIPT_KINDS:
+                raise ValueError("lifecycle receipt kind is invalid")
+            observed_at = receipt.get("observed_at")
+            if observed_at is not None:
+                LifecycleRecordV1._timestamp(observed_at, "receipt.observed_at")
+            stage_id = receipt.get("stage_id")
+            if stage_id is not None and stage_id not in stage_ids:
+                raise ValueError("lifecycle receipt stage_id is invalid")
+            for field in ("stage_id", "capability_id", "execution_call_id"):
+                identifier = receipt.get(field)
+                if identifier is not None and (
+                    not isinstance(identifier, str) or _SAFE_ID_PATTERN.fullmatch(identifier) is None
+                ):
+                    raise ValueError(f"lifecycle receipt {field} is invalid")
+            capability_id = receipt.get("capability_id")
+            if capability_id is not None:
+                stage = next((item for item in stages if item["id"] == stage_id), None)
+                if stage is None or capability_id not in stage["capabilities"]:
+                    raise ValueError("lifecycle receipt capability_id is invalid for its stage")
+            attempt = receipt.get("attempt")
+            if attempt is not None and (not isinstance(attempt, int) or isinstance(attempt, bool) or attempt < 1):
+                raise ValueError("lifecycle receipt attempt is invalid")
+            status = receipt.get("status")
+            if status is not None and (not isinstance(status, str) or _STATUS_PATTERN.fullmatch(status) is None):
+                raise ValueError("lifecycle receipt status is invalid")
+            duration = receipt.get("duration_ms")
+            if duration is not None and (
+                not isinstance(duration, int)
+                or isinstance(duration, bool)
+                or not 0 <= duration <= _MAX_RECEIPT_DURATION_MS
+            ):
+                raise ValueError("lifecycle receipt duration_ms is invalid")
+            for field in ("input_digest", "output_digest"):
+                digest = receipt.get(field)
+                if digest is not None and (not isinstance(digest, str) or _DIGEST_PATTERN.fullmatch(digest) is None):
+                    raise ValueError(f"lifecycle receipt {field} is invalid")
+            evidence_ids = receipt.get("evidence_ids")
+            if evidence_ids is not None and (
+                not isinstance(evidence_ids, list)
+                or len(evidence_ids) > _MAX_EVIDENCE_IDS_PER_RECEIPT
+                or any(not isinstance(item, str) or _SAFE_ID_PATTERN.fullmatch(item) is None for item in evidence_ids)
+            ):
+                raise ValueError("lifecycle receipt evidence_ids are invalid")
+            safe_summary = receipt.get("safe_summary")
+            if safe_summary is not None and (not isinstance(safe_summary, str) or len(safe_summary) > 1000):
+                raise ValueError("lifecycle receipt safe_summary is invalid")
+            if kind in {"stage_started", "stage_completed"} and (not isinstance(stage_id, str) or attempt is None):
+                raise ValueError(f"lifecycle {kind} receipt requires stage_id and attempt")
+            if kind == "stage_completed" and receipt.get("output_digest") is None:
+                raise ValueError("lifecycle stage_completed receipt requires output_digest")
+            validated_ids.append(receipt_id)
+        if receipt_ids != validated_ids or len(receipt_ids) != len(set(receipt_ids)):
+            raise ValueError("lifecycle receipt_ids must exactly index unique receipts")
+
+    @staticmethod
+    def _validate_stage_commitment_digests(
+        payload: Mapping[str, Any],
+        outputs: tuple[Mapping[str, object], ...],
+        commitments: tuple[StageCommitmentV1, ...],
+    ) -> None:
+        terminal_stage = payload["topology"]["terminal_stage"]
+        topology_by_id = {stage["id"]: stage for stage in payload["topology"]["stages"]}
+        attempts = payload["attempts"]
+        for output, commitment in zip(outputs, commitments, strict=True):
+            stage_id = commitment.stage_id
+            envelope_digest = _stage_commitment_envelope_digest(
+                output,
+                terminal=stage_id == terminal_stage,
+            )
+            if commitment.envelope_digest != envelope_digest:
+                raise ValueError(
+                    f"lifecycle stage_commitments envelope_digest does not match stage_output for {stage_id}"
+                )
+            receipt = {
+                "schema_version": "coordinator-stage-commit.v1",
+                "stage_id": stage_id,
+                "ordinal": topology_by_id[stage_id]["ordinal"],
+                "attempt": attempts[stage_id],
+                "envelope_digest": envelope_digest,
+            }
+            if commitment.receipt_digest != _canonical_digest(receipt):
+                raise ValueError(
+                    f"lifecycle stage_commitments receipt_digest does not match stage identity for {stage_id}"
+                )
+
+    @staticmethod
+    def _validate_final_submission_binding(
+        payload: Mapping[str, Any],
+        commitments: tuple[StageCommitmentV1, ...],
+    ) -> None:
+        final_value = payload.get("final_submission")
+        if final_value is None:
+            return
+        final_submission = CompanyAnalyticsSubmissionV1.from_dict(final_value)
+        if _json_copy(final_submission.company_research.request.to_dict()) != payload.get("request"):
+            raise ValueError("lifecycle final_submission request must exactly match the lifecycle request")
+        if final_submission.run_card.execution_mode != payload.get("execution_mode"):
+            raise ValueError("lifecycle final_submission execution_mode must match the lifecycle execution_mode")
+        if final_submission.run_card.coordinator_commitments != commitments:
+            raise ValueError("lifecycle final_submission commitments must match lifecycle stage_commitments")
+
+        outputs = payload["stage_outputs"]
+        terminal_output = outputs[-1] if outputs else None
+        refs = terminal_output.get("output_refs") if isinstance(terminal_output, Mapping) else None
+        if not isinstance(refs, Mapping) or len(refs) != 1:
+            raise ValueError("lifecycle terminal stage output must contain exactly one submission")
+        terminal_value = next(iter(refs.values()))
+        try:
+            terminal_submission = CompanyAnalyticsSubmissionV1.from_dict(terminal_value)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("lifecycle terminal stage output submission is invalid") from exc
+        if _json_copy(terminal_submission.company_research.request.to_dict()) != payload.get("request"):
+            raise ValueError("lifecycle terminal stage output request must exactly match the lifecycle request")
+        if terminal_submission.run_card.execution_mode != payload.get("execution_mode"):
+            raise ValueError("lifecycle terminal stage output execution_mode must match the lifecycle execution_mode")
+
+        rebound = cast(dict[str, Any], terminal_submission.to_dict())
+        rebound["run_card"]["coordinator_commitments"] = [item.to_dict() for item in commitments]
+        committed_digests = {item.stage_id: item.envelope_digest for item in commitments}
+        rebound_stages = rebound["run_card"]["stages"]
+        for stage_receipt in rebound_stages:
+            stage_receipt["output_digest"] = committed_digests[stage_receipt["stage_id"]]
+        rebound["quality_receipt"]["stage_digests"] = [
+            {"stage_id": stage_receipt["stage_id"], "sha256": stage_receipt["output_digest"]}
+            for stage_receipt in rebound_stages
+        ]
+        previous_run_id = terminal_submission.run_card.run_id
+        rebound_run_id = analytics_run_id(rebound)
+        rebound = LifecycleRecordV1._rebind_run_id(rebound, previous_run_id, rebound_run_id)
+        expected = CompanyAnalyticsSubmissionV1.from_dict(rebound).to_dict()
+        if _json_copy(final_submission.to_dict()) != _json_copy(expected):
+            raise ValueError("lifecycle final_submission must match the committed terminal stage output")
+
+    @staticmethod
+    def _rebind_run_id(value: object, previous_run_id: str, run_id: str) -> Any:
+        if isinstance(value, dict):
+            return {key: LifecycleRecordV1._rebind_run_id(item, previous_run_id, run_id) for key, item in value.items()}
+        if isinstance(value, list):
+            return [LifecycleRecordV1._rebind_run_id(item, previous_run_id, run_id) for item in value]
+        if isinstance(value, str):
+            return value.replace(previous_run_id, run_id)
+        return value
+
+    @staticmethod
+    def _validate_memory_receipt(value: object, field: str) -> None:
+        if value is None:
+            return
+        expected = {"schema_version", "operation", "memory_id", "run_id", "symbol", "persisted_at", "outcome_id"}
+        if not isinstance(value, Mapping) or set(value) != expected:
+            raise ValueError(f"lifecycle {field} is not a DecisionMemoryReceipt")
+        if value.get("schema_version") != LIFECYCLE_SCHEMA_VERSION:
+            raise ValueError(f"lifecycle {field} has an unsupported schema_version")
+        operation = value.get("operation")
+        expected_operation = "decision_staged" if field == "memory_stage_receipt" else "decision_appended"
+        if operation != expected_operation:
+            raise ValueError(f"lifecycle {field} has an invalid operation")
+        for key in ("memory_id", "run_id", "symbol"):
+            item = value.get(key)
+            if not isinstance(item, str) or not item or len(item) > 128:
+                raise ValueError(f"lifecycle {field}.{key} must be a bounded non-empty string")
+        LifecycleRecordV1._timestamp(value.get("persisted_at"), f"{field}.persisted_at")
+        outcome_id = value.get("outcome_id")
+        if outcome_id is not None and (not isinstance(outcome_id, str) or not outcome_id or len(outcome_id) > 128):
+            raise ValueError(f"lifecycle {field}.outcome_id must be a bounded string or null")
+
+    @staticmethod
+    def _validate_memory_recall(value: object) -> None:
+        if value is None:
+            return
+        if not isinstance(value, Mapping) or set(value) != {
+            "schema_version",
+            "symbol",
+            "same_symbol",
+            "cross_symbol",
+        }:
+            raise ValueError("lifecycle memory_recall has invalid fields")
+        if value.get("schema_version") != LIFECYCLE_SCHEMA_VERSION or not isinstance(value.get("symbol"), str):
+            raise ValueError("lifecycle memory_recall identity is invalid")
+        for collection_name in ("same_symbol", "cross_symbol"):
+            entries = value.get(collection_name)
+            if not isinstance(entries, list):
+                raise ValueError(f"lifecycle memory_recall.{collection_name} must be an array")
+            for entry in entries:
+                LifecycleRecordV1._validate_memory_entry(entry)
+
+    @staticmethod
+    def _validate_memory_entry(value: object) -> None:
+        fields = {"memory_id", "run_id", "symbol", "as_of_date", "decision", "context", "created_at", "outcomes"}
+        if not isinstance(value, Mapping) or set(value) != fields:
+            raise ValueError("lifecycle memory_recall entry has invalid fields")
+        for field in ("memory_id", "run_id", "symbol", "as_of_date"):
+            if not isinstance(value.get(field), str) or not value[field]:
+                raise ValueError(f"lifecycle memory_recall entry {field} must be a non-empty string")
+        LifecycleRecordV1._timestamp(value.get("created_at"), "memory_recall.created_at")
+        for field in ("decision", "context"):
+            if not isinstance(value.get(field), dict):
+                raise ValueError(f"lifecycle memory_recall entry {field} must be an object")
+        outcomes = value.get("outcomes")
+        if not isinstance(outcomes, list):
+            raise ValueError("lifecycle memory_recall entry outcomes must be an array")
+        for outcome in outcomes:
+            if not isinstance(outcome, Mapping) or set(outcome) != {
+                "outcome_id",
+                "outcome",
+                "reflection",
+                "observed_at",
+            }:
+                raise ValueError("lifecycle memory_recall outcome has invalid fields")
+            for field in ("outcome_id", "reflection"):
+                if not isinstance(outcome.get(field), str) or not outcome[field]:
+                    raise ValueError(f"lifecycle memory_recall outcome {field} must be a non-empty string")
+            LifecycleRecordV1._timestamp(outcome.get("observed_at"), "memory_recall.outcome.observed_at")
+
+    @staticmethod
     def _validate_state(payload: Mapping[str, Any], status: LifecycleStatus) -> None:
         final_submission = payload.get("final_submission")
         finalization_at = payload.get("finalization_completed_at")
         result_run_id = payload.get("result_run_id")
+        completed_stage_ids = payload["completed_stage_ids"]
+        topology_stage_ids = [stage["id"] for stage in payload["topology"]["stages"]]
+        terminal_stage = payload["topology"]["terminal_stage"]
+
+        if final_submission is not None and terminal_stage not in completed_stage_ids:
+            raise ValueError("lifecycle final_submission requires the terminal stage to be completed")
         if status in {LifecycleStatus.FINALIZING, LifecycleStatus.COMPLETED}:
             if not isinstance(final_submission, dict):
                 raise ValueError("finalizing lifecycle records require final_submission")
             LifecycleRecordV1._timestamp(finalization_at, "finalization_completed_at")
-        if status is LifecycleStatus.COMPLETED and not isinstance(result_run_id, str):
-            raise ValueError("completed lifecycle records require result_run_id")
-        if result_run_id is not None and not isinstance(result_run_id, str):
-            raise ValueError("lifecycle result_run_id must be a string or null")
+            if completed_stage_ids != topology_stage_ids:
+                raise ValueError("finalizing lifecycle records require every stage to be completed")
+            if payload.get("active_stage_id") is not None or payload.get("active_attempt") is not None:
+                raise ValueError("finalizing lifecycle records cannot retain an active stage")
+        elif finalization_at is not None:
+            raise ValueError("lifecycle finalization_completed_at requires finalizing or completed status")
+
+        if status is LifecycleStatus.COMPLETED:
+            if not isinstance(result_run_id, str):
+                raise ValueError("completed lifecycle records require result_run_id")
+            assert isinstance(final_submission, dict)
+            if result_run_id != analytics_run_id(final_submission):
+                raise ValueError("completed lifecycle result_run_id must match final_submission")
+        elif result_run_id is not None:
+            raise ValueError("lifecycle result_run_id requires completed status")
+        if final_submission is not None:
+            commitments = tuple(StageCommitmentV1.from_dict(item) for item in payload["stage_commitments"])
+            LifecycleRecordV1._validate_final_submission_binding(payload, commitments)
+
+        cancel_reason = payload.get("cancel_reason")
+        cancel_ack_receipt_id = payload.get("cancel_ack_receipt_id")
+        if status in {LifecycleStatus.CANCEL_REQUESTED, LifecycleStatus.CANCELLED}:
+            if not isinstance(cancel_reason, str):
+                raise ValueError("cancelled lifecycle states require cancel_reason")
+        elif cancel_reason is not None:
+            raise ValueError("lifecycle cancel_reason requires cancel_requested or cancelled status")
+        if status is LifecycleStatus.CANCELLED:
+            if not isinstance(cancel_ack_receipt_id, str):
+                raise ValueError("cancelled lifecycle records require cancel_ack_receipt_id")
+        elif cancel_ack_receipt_id is not None:
+            raise ValueError("lifecycle cancel_ack_receipt_id requires cancelled status")
+
+        if status is LifecycleStatus.PREPARED and (
+            completed_stage_ids
+            or payload["stage_outputs"]
+            or payload["stage_commitments"]
+            or payload["attempts"]
+            or payload["active_stage_id"] is not None
+            or payload["active_attempt"] is not None
+            or payload["receipts"]
+            or payload["receipt_ids"]
+            or final_submission is not None
+        ):
+            raise ValueError("prepared lifecycle records cannot contain execution progress")
 
     @staticmethod
     def _validate_events(payload: Mapping[str, Any], run_id: str) -> None:
         events = payload.get("events")
         if not isinstance(events, list):
             raise ValueError("lifecycle events must be an array")
-        for sequence, event in enumerate(events, start=1):
-            if not isinstance(event, Mapping):
-                raise ValueError("lifecycle events must contain JSON objects")
-            if event.get("run_id") != run_id or event.get("sequence") != sequence:
+        typed_events = deserialize_run_events(json.dumps(events, ensure_ascii=False, allow_nan=False))
+        for sequence, event in enumerate(typed_events, start=1):
+            if event.run_id != run_id or event.sequence != sequence:
                 raise ValueError("lifecycle events must have contiguous sequence values for run_id")
 
     def to_dict(self) -> dict[str, Any]:
@@ -253,7 +778,7 @@ class LifecycleStore:
         run_id = aggregate.run_id
         if aggregate.revision != 0:
             raise ValueError("new lifecycle records must start at revision 0")
-        with self._lock:
+        with state_write_lock(self.state_dir), self._lock:
             if self.database_path is None:
                 if run_id in self._records:
                     raise ValueError(f"lifecycle run already exists: {run_id}")
@@ -308,7 +833,7 @@ class LifecycleStore:
         safe_run_id = self._validate_run_id(run_id)
         if not isinstance(expected_revision, int) or isinstance(expected_revision, bool) or expected_revision < 0:
             raise ValueError("expected_revision must be a non-negative integer")
-        with self._lock:
+        with state_write_lock(self.state_dir), self._lock:
             if self.database_path is None:
                 original = self._records.get(safe_run_id)
                 if original is None:

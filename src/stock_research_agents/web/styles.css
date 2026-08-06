@@ -1051,12 +1051,17 @@ main {
 }
 
 .analytics-card > .value-list,
-.analytics-card > .nested-record,
-.analytics-card > span {
+.analytics-card > .nested-record {
   display: block;
   max-height: 340px;
   overflow: auto;
   scrollbar-color: var(--line-strong) transparent;
+}
+
+.analytics-card > span {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .run-meta {

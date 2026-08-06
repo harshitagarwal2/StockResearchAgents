@@ -51,6 +51,9 @@ def test_browser_smoke_script_exercises_viewer_security_and_accessibility_bounda
     ):
         assert required in script
 
+    assert 'waitUntil: "networkidle"' not in script
+    assert script.count('waitUntil: "domcontentloaded"') == 2
+
 
 def test_browser_smoke_script_starts_only_a_loopback_viewer() -> None:
     script = SCRIPT.read_text(encoding="utf-8")
