@@ -9,24 +9,44 @@ from stock_research_agents.application import CompletedPublicationService, Compl
 from stock_research_agents.bootstrap import create_company_analytics_coordinator
 from stock_research_agents.company_lifecycle import CompanyAnalyticsCoordinator
 from stock_research_agents.lifecycle import LifecycleStore
+from stock_research_agents.research_quality_v1 import QualityStore
 from stock_research_agents.store import RunStore
 
 
 def test_composition_root_builds_coordinator_from_explicit_ports(tmp_path) -> None:
     lifecycle_store = LifecycleStore(tmp_path / "lifecycle")
     result_store = RunStore(tmp_path / "runs")
+    quality_store = QualityStore(tmp_path / "quality")
     memory_store = SimpleNamespace()
 
     coordinator = create_company_analytics_coordinator(
         lifecycle_store=lifecycle_store,
         result_store=result_store,
+        quality_store=quality_store,
         memory_store=memory_store,
     )
 
     assert isinstance(coordinator, CompanyAnalyticsCoordinator)
     assert coordinator.lifecycle_store is lifecycle_store
     assert coordinator.result_store is result_store
+    assert coordinator.profile.quality_store is quality_store
     assert coordinator.memory_store is memory_store
+
+
+def test_pre_refactor_python_imports_remain_compatible() -> None:
+    from stock_research_agents.company_analytics import PROFILE_REGISTRY
+    from stock_research_agents.memory import DecisionMemory, DecisionMemoryStore
+    from stock_research_agents.research_contracts import (
+        FactorExposure,
+        FactorSnapshot,
+        ResearchDossier,
+        ResearchDossierV1,
+    )
+
+    assert DecisionMemory is DecisionMemoryStore
+    assert FactorExposure is FactorSnapshot
+    assert ResearchDossier is ResearchDossierV1
+    assert PROFILE_REGISTRY.get("company-analytics.v1").descriptor.profile == "company-analytics.v1"
 
 
 def test_completed_publication_service_preserves_event_order_and_injected_presentation() -> None:

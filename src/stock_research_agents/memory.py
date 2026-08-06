@@ -621,3 +621,6 @@ class ResearchHistoryRepository:
 
 # Compatibility export for integrations using the original storage-oriented name.
 DecisionMemoryStore = ResearchHistoryRepository
+
+# Compatibility name retained for callers using the original concise alias.
+DecisionMemory = DecisionMemoryStore

@@ -10,7 +10,6 @@ from .company_analytics import build_company_analytics_draft, prepare_company_an
 from .company_analytics_v1 import CompanyAnalyticsSubmissionV1, parse_company_analytics_submission_v1
 from .publication import PublicationDraft
 from .research_contracts import CompanyResearchRequest
-from .research_quality_v1 import QUALITY_STORE
 
 
 class WorkflowPlanner(Protocol):
@@ -81,7 +80,7 @@ class CompanyAnalyticsLifecycleProfile:
         "completed_report_bundle",
     )
 
-    def __init__(self, quality_store: QualityIndexPort = QUALITY_STORE) -> None:
+    def __init__(self, quality_store: QualityIndexPort) -> None:
         self.quality_store = quality_store
 
     def prepare(
@@ -125,6 +124,3 @@ class CompanyAnalyticsLifecycleProfile:
             return False
         submission = self.parse_terminal(payload)
         return self.quality_store.is_published(submission.quality_receipt.run_id)
-
-
-COMPANY_ANALYTICS_LIFECYCLE_PROFILE = CompanyAnalyticsLifecycleProfile()

@@ -25,10 +25,7 @@ from .lifecycle import (
     RevisionConflict,
     is_lifecycle_run_id,
 )
-from .lifecycle_profiles import (
-    COMPANY_ANALYTICS_LIFECYCLE_PROFILE,
-    WorkflowDefinition,
-)
+from .lifecycle_profiles import WorkflowDefinition
 from .research_contracts import CompanyResearchRequest, StrictModel
 from .research_lab_v1 import StageCommitmentV1
 
@@ -74,7 +71,6 @@ _RECEIPT_FIELDS = frozenset(
         "safe_summary",
     }
 )
-_DEFAULT_LIFECYCLE_PROFILE = COMPANY_ANALYTICS_LIFECYCLE_PROFILE
 _PUBLICATION_ORIGIN_KEY = "publication_origin"
 _LIFECYCLE_PUBLICATION_KIND = "durable_lifecycle"
 
@@ -373,7 +369,7 @@ class CompanyAnalyticsCoordinator:
         *,
         memory_store: ResearchHistoryPort | None = None,
         memory_store_factory: Callable[[], ResearchHistoryPort] | None = None,
-        profile: WorkflowDefinition = _DEFAULT_LIFECYCLE_PROFILE,
+        profile: WorkflowDefinition,
     ) -> None:
         if memory_store is not None and memory_store_factory is not None:
             raise ValueError("memory_store and memory_store_factory are mutually exclusive")
@@ -1110,6 +1106,9 @@ class CompanyAnalyticsCoordinator:
 
     def lifecycle_log(self, run_id: str) -> tuple[dict[str, Any], ...]:
         return tuple(deepcopy(self._get(run_id)["receipts"]))
+
+
+COMPANY_ANALYTICS_COORDINATOR: CompanyAnalyticsCoordinator
 
 
 def __getattr__(name: str) -> object:

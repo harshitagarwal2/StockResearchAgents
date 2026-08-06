@@ -22,6 +22,7 @@ from .presentation import (
     _viewer_identity,
     _viewer_lease,
 )
+from .research_quality_v1 import QualityStore
 from .store import RunStore
 from .viewer_server import create_viewer_server
 
@@ -42,6 +43,7 @@ class _DurablePublicationCoordinator:
         analytics = create_company_analytics_coordinator(
             lifecycle_store=lifecycle_store,
             result_store=result_store,
+            quality_store=QualityStore(self.state_dir / "quality"),
             memory_store_factory=memory_store_factory,
         )
         try:

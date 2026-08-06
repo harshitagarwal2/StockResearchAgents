@@ -11,6 +11,7 @@ from .company_lifecycle import CompanyAnalyticsCoordinator
 from .contracts import RunEvent, reject_secret_shaped_keys
 from .lifecycle import LifecycleStatus, LifecycleStore
 from .research_contracts import CompanyResearchRequest
+from .research_quality_v1 import QualityStore
 from .store import RunStore
 
 
@@ -48,6 +49,7 @@ def run_sequential_company_lifecycle(
         coordinator = create_company_analytics_coordinator(
             lifecycle_store=LifecycleStore(),
             result_store=RunStore(),
+            quality_store=QualityStore(),
             use_default_memory=False,
         )
 

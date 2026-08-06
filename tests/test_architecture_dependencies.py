@@ -58,6 +58,9 @@ def test_lifecycle_domain_does_not_compose_default_infrastructure() -> None:
     assert "RUN_STORE" not in source
     assert "default_decision_memory_store" not in source
 
+    profile_source = (PACKAGE / "lifecycle_profiles.py").read_text(encoding="utf-8")
+    assert "QUALITY_STORE" not in profile_source
+
 
 def test_default_coordinator_is_constructed_only_in_bootstrap() -> None:
     constructors: list[str] = []

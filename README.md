@@ -13,7 +13,7 @@ Evidence-first company research for agent harnesses, with versioned contracts, d
 
 StockResearchAgents gives an MCP-capable harness or custom application a strict research workflow without choosing its model provider, prompt runtime, retrieval stack, or agent scheduler. The caller supplies evidence and reasoning; the core validates the typed result, preserves provenance and limitations, and publishes only a completed dossier.
 
-[![StockResearchAgents system overview: caller-owned evidence and execution pass through versioned validation before completed-only publication](assets/architecture/system-overview.png)](assets/architecture/system-overview.svg)
+[![StockResearchAgents system overview: caller-owned evidence and execution pass through versioned validation before completed-only publication](assets/architecture/system-overview.png)](assets/architecture/system-overview.png)
 
 ## Verify it locally
 

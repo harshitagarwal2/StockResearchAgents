@@ -89,3 +89,13 @@ def test_source_checkout_launchers_and_host_adapters_stay_thin() -> None:
     assert "skills/stock-research-agents/SKILL.md" in claude
     assert "mcp_servers:" in hermes
     assert "/absolute/path/to/StockResearchAgents" in hermes
+
+
+def test_ci_installs_uv_before_source_launcher_smoke() -> None:
+    workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    compatibility_job = workflow.split("  python-compatibility:", maxsplit=1)[1]
+
+    install_step, smoke_steps = compatibility_job.split("      - name: Compile Python", maxsplit=1)
+    assert 'python -m pip install -e ".[dev]" uv' in install_step
+    assert "pytest -q" in smoke_steps
+    assert "python scripts/smoke_mcp.py" in smoke_steps

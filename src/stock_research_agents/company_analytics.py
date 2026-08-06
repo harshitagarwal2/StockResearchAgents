@@ -13,6 +13,7 @@ from .application_ports import (
 )
 from .company_analytics_v1 import CompanyAnalyticsResultV1, CompanyAnalyticsWorkflowDefinition
 from .contracts import RunEvent
+from .profiles import ProfileRegistry
 from .publication import PublicationDraft, PublicationService
 from .research_contracts import CompanyResearchRequest
 from .research_lab_v1 import research_pack_catalog
@@ -27,6 +28,10 @@ from .research_quality_v1 import (
 from .store import RUN_STORE
 
 _WORKFLOW = CompanyAnalyticsWorkflowDefinition()
+
+# Compatibility registry retained for callers that discover the original profile
+# through this module. New composition code should depend on the workflow directly.
+PROFILE_REGISTRY = ProfileRegistry((_WORKFLOW,))
 
 
 class AnalyticsPublicationService:
