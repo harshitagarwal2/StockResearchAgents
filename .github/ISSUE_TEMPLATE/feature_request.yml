@@ -45,4 +45,3 @@ body:
           required: true
         - label: This request preserves explicit fixture, replay, live-data, provenance, and coverage status.
           required: true
-
