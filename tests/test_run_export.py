@@ -8,29 +8,32 @@ from dataclasses import replace
 from pathlib import Path
 
 import pytest
+from company_analytics_fixtures import complete_analytics_submission
 
-from tradingagents_portable.contracts import RunRequest
-from tradingagents_portable.export import export_run_bundle
-from tradingagents_portable.fixture import run_fixture
-from tradingagents_portable.store import RunStore
+from stock_research_agents.company_analytics import submit_company_analytics
+from stock_research_agents.contracts import EventKind
+from stock_research_agents.export import export_run_bundle
+from stock_research_agents.research_quality_v1 import QualityStore
+from stock_research_agents.store import RunStore
 
 EXPECTED_REPORTS = {
-    "1_analysts/market.md",
-    "1_analysts/sentiment.md",
-    "1_analysts/news.md",
-    "1_analysts/fundamentals.md",
-    "2_research/bull.md",
-    "2_research/bear.md",
-    "2_research/manager.md",
-    "3_trading/trader.md",
-    "4_risk/aggressive.md",
-    "4_risk/conservative.md",
-    "4_risk/neutral.md",
-    "5_portfolio/decision.md",
+    "1_executive-summary.md",
+    "2_evidence-and-claims.md",
+    "3_analytics-and-valuation.md",
+    "4_risks-and-counterevidence.md",
+    "5_monitoring-and-quality.md",
     "complete_report.md",
 }
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def _analytics_result(symbol: str = "ORCL"):
+    return submit_company_analytics(
+        complete_analytics_submission(symbol),
+        store=RunStore(),
+        quality_store=QualityStore(),
+    )
 
 
 def _crash_overwrite_between_renames(target: Path) -> subprocess.CompletedProcess[str]:
@@ -40,10 +43,12 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path.cwd() / "src"))
-import tradingagents_portable.export as export_module
-from tradingagents_portable.contracts import RunRequest
-from tradingagents_portable.fixture import run_fixture
-from tradingagents_portable.store import RunStore
+sys.path.insert(0, str(Path.cwd() / "tests"))
+import stock_research_agents.export as export_module
+from company_analytics_fixtures import complete_analytics_submission
+from stock_research_agents.company_analytics import submit_company_analytics
+from stock_research_agents.research_quality_v1 import QualityStore
+from stock_research_agents.store import RunStore
 
 target = Path(sys.argv[1])
 real_replace = export_module.os.replace
@@ -55,7 +60,11 @@ def crash_before_publish(source, destination):
     return real_replace(source, destination)
 
 export_module.os.replace = crash_before_publish
-result, events = run_fixture(RunRequest(), RunStore())
+result, events = submit_company_analytics(
+    complete_analytics_submission("ORCL"),
+    store=RunStore(),
+    quality_store=QualityStore(),
+)
 export_module.export_run_bundle(
     result,
     events,
@@ -73,8 +82,8 @@ export_module.export_run_bundle(
     )
 
 
-def test_export_writes_atomic_upstream_compatible_bundle_with_verified_manifest(tmp_path: Path) -> None:
-    result, events = run_fixture(RunRequest(symbol="ORCL"), RunStore())
+def test_export_writes_atomic_standalone_bundle_with_verified_manifest(tmp_path: Path) -> None:
+    result, events = _analytics_result("ORCL")
     target = tmp_path / "bundle"
     receipt = export_run_bundle(
         result,
@@ -101,7 +110,7 @@ def test_export_writes_atomic_upstream_compatible_bundle_with_verified_manifest(
 
 
 def test_export_refuses_existing_target_without_leaving_staging_directory(tmp_path: Path) -> None:
-    result, events = run_fixture(RunRequest(), RunStore())
+    result, events = _analytics_result()
     target = tmp_path / "bundle"
     target.mkdir()
     marker = target / "owned.txt"
@@ -115,7 +124,7 @@ def test_export_refuses_existing_target_without_leaving_staging_directory(tmp_pa
 
 
 def test_export_overwrite_refuses_arbitrary_directory_and_preserves_contents(tmp_path: Path) -> None:
-    result, events = run_fixture(RunRequest(), RunStore())
+    result, events = _analytics_result()
     target = tmp_path / "bundle"
     target.mkdir()
     marker = target / "owned.txt"
@@ -129,7 +138,7 @@ def test_export_overwrite_refuses_arbitrary_directory_and_preserves_contents(tmp
 
 
 def test_export_rejects_symlink_destination_without_touching_referent(tmp_path: Path) -> None:
-    result, events = run_fixture(RunRequest(), RunStore())
+    result, events = _analytics_result()
     referent = tmp_path / "referent"
     referent.mkdir()
     marker = referent / "owned.txt"
@@ -146,14 +155,14 @@ def test_export_rejects_symlink_destination_without_touching_referent(tmp_path: 
 
 @pytest.mark.parametrize("target", (Path.home(), Path.cwd(), Path.cwd().parent))
 def test_export_rejects_protected_broad_destination(target: Path) -> None:
-    result, events = run_fixture(RunRequest(), RunStore())
+    result, events = _analytics_result()
 
     with pytest.raises(ValueError, match="protected"):
         export_run_bundle(result, events, target, overwrite=True)
 
 
 def test_export_overwrite_refuses_tampered_prior_bundle(tmp_path: Path) -> None:
-    result, events = run_fixture(RunRequest(), RunStore())
+    result, events = _analytics_result()
     target = tmp_path / "bundle"
     export_run_bundle(result, events, target)
     report = target / "complete_report.md"
@@ -166,7 +175,7 @@ def test_export_overwrite_refuses_tampered_prior_bundle(tmp_path: Path) -> None:
 
 
 def test_export_overwrite_replaces_valid_prior_bundle(tmp_path: Path) -> None:
-    result, events = run_fixture(RunRequest(), RunStore())
+    result, events = _analytics_result()
     target = tmp_path / "bundle"
     export_run_bundle(result, events, target)
 
@@ -185,7 +194,7 @@ def test_export_overwrite_replaces_valid_prior_bundle(tmp_path: Path) -> None:
 
 
 def test_export_recovers_process_crash_between_overwrite_renames(tmp_path: Path) -> None:
-    result, events = run_fixture(RunRequest(), RunStore())
+    result, events = _analytics_result()
     target = tmp_path / "bundle"
     export_run_bundle(result, events, target)
 
@@ -212,7 +221,7 @@ def test_export_recovers_process_crash_between_overwrite_renames(tmp_path: Path)
 
 
 def test_crash_recovery_never_removes_tampered_staging_data(tmp_path: Path) -> None:
-    result, events = run_fixture(RunRequest(), RunStore())
+    result, events = _analytics_result()
     target = tmp_path / "bundle"
     export_run_bundle(result, events, target)
     crashed = _crash_overwrite_between_renames(target)
@@ -230,7 +239,7 @@ def test_crash_recovery_never_removes_tampered_staging_data(tmp_path: Path) -> N
 
 
 def test_export_rejects_mismatched_events_and_secret_shaped_lifecycle_keys(tmp_path: Path) -> None:
-    first, first_events = run_fixture(RunRequest(symbol="ORCL"), RunStore())
+    first, first_events = _analytics_result("ORCL")
     mismatched_events = (replace(first_events[0], run_id="another-run"),)
 
     with pytest.raises(ValueError, match="result.run_id"):
@@ -243,3 +252,22 @@ def test_export_rejects_mismatched_events_and_secret_shaped_lifecycle_keys(tmp_p
             lifecycle_log=({"api_key": "forbidden"},),
         )
     assert not (tmp_path / "secret").exists()
+
+
+def test_export_rejects_incomplete_event_stream_before_creating_target(tmp_path: Path) -> None:
+    result, events = _analytics_result()
+
+    with pytest.raises(ValueError, match="terminal event stream"):
+        export_run_bundle(result, (), tmp_path / "empty")
+    with pytest.raises(ValueError, match="unique and ordered"):
+        export_run_bundle(result, (events[1], events[0], *events[2:]), tmp_path / "unordered")
+    with pytest.raises(ValueError, match="final publication event"):
+        export_run_bundle(result, events[:-1], tmp_path / "unterminated")
+    forged_terminal = replace(events[-1], kind=EventKind.STAGE, stage_id="publish.completed")
+    with pytest.raises(ValueError, match="terminal run event"):
+        export_run_bundle(result, (*events[:-1], forged_terminal), tmp_path / "forged-terminal")
+
+    assert not (tmp_path / "empty").exists()
+    assert not (tmp_path / "unordered").exists()
+    assert not (tmp_path / "unterminated").exists()
+    assert not (tmp_path / "forged-terminal").exists()

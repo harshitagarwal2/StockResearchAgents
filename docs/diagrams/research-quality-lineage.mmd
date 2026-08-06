@@ -1,7 +1,7 @@
 %%{init: {"theme":"base","fontFamily":"Avenir Next, Segoe UI, sans-serif","themeVariables":{"fontFamily":"Avenir Next, Segoe UI, sans-serif","primaryColor":"#eef3ff","primaryTextColor":"#071c26","primaryBorderColor":"#2257ff","lineColor":"#516a75","secondaryColor":"#e5f7f5","tertiaryColor":"#fff4df","background":"#f5f8f9","clusterBkg":"#ffffff","clusterBorder":"#96aab2"},"flowchart":{"curve":"basis","htmlLabels":true}}}%%
 flowchart TB
   accTitle: Research Quality information lineage
-  accDescr: Canonical RunResult artifacts contain issued forecasts and the quality receipt. A recoverable index is derived from them. Later outcomes are append-only and scorecards never mutate the completed result.
+  accDescr: The canonical CompanyAnalyticsResultV1 contains the exact submission and seven authoritative artifacts, including issued forecasts and the quality receipt. A recoverable index is derived from them. Later outcomes are append-only and scorecards never mutate the completed result.
 
   subgraph I["Immutable at completed publication"]
     direction LR
@@ -17,7 +17,7 @@ flowchart TB
     F --> Q
   end
 
-  A[["Authoritative RunResult.artifacts"]]
+  A[["CompanyAnalyticsResultV1<br/><small>seven authoritative artifacts</small>"]]
   D --> A
   Q --> A
   F --> A

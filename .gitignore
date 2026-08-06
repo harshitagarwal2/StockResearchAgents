@@ -8,5 +8,4 @@ __pycache__/
 .omx/
 dist/
 build/
-.upstream/
 *.egg-info/

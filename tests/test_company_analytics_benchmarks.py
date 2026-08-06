@@ -8,7 +8,7 @@ from typing import Any
 
 import pytest
 
-from tradingagents_portable.analytics_v1 import (
+from stock_research_agents.analytics_v1 import (
     CapitalBridge,
     DcfModelSpec,
     FinancialFact,
@@ -17,8 +17,8 @@ from tradingagents_portable.analytics_v1 import (
     RestatementLink,
     SplitManifest,
 )
-from tradingagents_portable.analytics_v1.calculators import calculate_dcf, standard_ratio_calculator
-from tradingagents_portable.research_quality_v1 import Forecast, OutcomeLedger, OutcomeObservation, score_forecast
+from stock_research_agents.analytics_v1.calculators import calculate_dcf, standard_ratio_calculator
+from stock_research_agents.research_quality_v1 import Forecast, OutcomeLedger, OutcomeObservation, score_forecast
 
 BENCHMARKS = Path(__file__).parents[1] / "benchmarks"
 

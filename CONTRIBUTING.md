@@ -23,7 +23,7 @@ Prefer targeted tests while iterating, then run the complete validation set befo
 
 ## Release changes
 
-- Keep `src/tradingagents_portable/_version.py`, `.codex-plugin/plugin.json`, and `server.json` aligned for a stable release.
+- Keep `src/stock_research_agents/_version.py`, `.codex-plugin/plugin.json`, and `server.json` aligned for a stable release.
 - Run `uv run python scripts/verify_release_metadata.py --tag v<VERSION> --require-stable` before creating a release tag.
 - Follow [Releasing](docs/RELEASING.md); do not add package-index tokens, registry credentials, or live-provider credentials to the repository or workflow inputs.
 

@@ -3,7 +3,7 @@
 - **Purpose:** create reproducible, harness-neutral public releases without putting credentials or live-provider authority in the package.
 - **Audience:** release owners and reviewers.
 - **Canonical for:** package, GitHub Release, TestPyPI, and MCP Registry release operations.
-- **Not canonical for:** legacy-removal gates, live-provider proof, or contract migration policy.
+- **Not canonical for:** live-provider proof or contract evolution policy.
 
 ## Release model
 
@@ -17,7 +17,7 @@ The package is the primary artifact. GitHub Releases provide human-readable note
 
 ## One-time repository setup
 
-1. Confirm that the `tradingagents-portable` name is available on PyPI and that the public repository URL remains `https://github.com/harshitagarwal2/StockResearchAgents`.
+1. Confirm that the `stock-research-agents` name is available on PyPI and that the public repository URL remains `https://github.com/harshitagarwal2/StockResearchAgents`.
 2. In PyPI, configure a Trusted Publisher for repository owner `harshitagarwal2`, repository `StockResearchAgents`, workflow file `release.yml`, and GitHub environment `pypi`.
 3. In TestPyPI, configure the analogous Trusted Publisher with workflow file `testpypi.yml` and environment `testpypi`.
 4. Create protected GitHub environments named `pypi` and `testpypi`. Require a release-owner approval for production. No PyPI API token belongs in GitHub Secrets.
@@ -27,10 +27,10 @@ Trusted Publishing uses GitHub OIDC and short-lived credentials. The MCP Registr
 
 ## Prepare a stable release
 
-1. Update `src/tradingagents_portable/_version.py` to `MAJOR.MINOR.PATCH`.
-2. Update `.codex-plugin/plugin.json` and `server.json` to the same version. These optional discovery/compatibility adapters must not drift from the package.
+1. Update `src/stock_research_agents/_version.py` to `MAJOR.MINOR.PATCH`.
+2. Update `.codex-plugin/plugin.json` and `server.json` to the same version. These optional discovery adapters must not drift from the package.
 3. Add a concise user-facing entry to [Changelog](../CHANGELOG.md), including fixture/live-data status and the non-executable analytical-scenario boundary.
-4. Review [Feature parity](FEATURE_PARITY.md), [Validation](VALIDATION.md), and [Legacy transition](LEGACY_TRANSITION.md). A packaging release does not certify incomplete live-provider or legacy-removal gates.
+4. Review [Capability status](FEATURE_PARITY.md) and [Validation](VALIDATION.md). A packaging release does not certify incomplete live-provider evidence.
 5. Run the release checks:
 
 ```bash

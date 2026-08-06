@@ -1,6 +1,6 @@
 {
   "schema_version": "synthetic-ratio-valuation-conformance.v1",
-  "provenance": "Original synthetic fixture authored for tradingagents-portable; no external company data.",
+  "provenance": "Original synthetic fixture authored for stock-research-agents; no external company data.",
   "calculated_at": "2026-08-01T12:00:00+00:00",
   "period": {
     "period_id": "synthetic-2026-q2",

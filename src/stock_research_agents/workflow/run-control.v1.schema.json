@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stock-research-agents.local/schemas/run-control.v1.json",
+  "title": "StockResearchAgents analytics run control v1",
+  "description": "Strict caller-facing projection of a durable company-analytics.v1 lifecycle checkpoint.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "workflow_profile",
+    "run_id",
+    "research_pack_id",
+    "decision_memory_enabled",
+    "execution_mode",
+    "execution_mode_readiness",
+    "execution_mode_locally_ready",
+    "status",
+    "storage_status",
+    "publication_pending",
+    "result_ready",
+    "memory_ready",
+    "sidecars_ready",
+    "revision",
+    "next_stage_id",
+    "completed_stage_ids",
+    "active_stage_id",
+    "active_attempt",
+    "cancel_requested",
+    "cancel_reason",
+    "result_run_id",
+    "checkpoint",
+    "created_at",
+    "updated_at"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "workflow_profile": {"const": "company-analytics.v1"},
+    "run_id": {"type": "string", "pattern": "^analytics-[a-f0-9]{12}$"},
+    "research_pack_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"},
+    "decision_memory_enabled": {"type": "boolean"},
+    "execution_mode": {"enum": ["native", "sequential", "import"]},
+    "execution_mode_readiness": {
+      "enum": ["executor_required", "locally_ready", "adapter_required", "partial_adapter_required"]
+    },
+    "execution_mode_locally_ready": {"type": "boolean"},
+    "status": {
+      "enum": ["prepared", "running", "paused", "cancel_requested", "cancelled", "finalizing", "completed", "failed"]
+    },
+    "storage_status": {
+      "enum": ["prepared", "running", "paused", "cancel_requested", "cancelled", "finalizing", "completed", "failed"]
+    },
+    "publication_pending": {"type": "boolean"},
+    "result_ready": {"type": "boolean"},
+    "memory_ready": {"type": "boolean"},
+    "sidecars_ready": {"type": "boolean"},
+    "revision": {"type": "integer", "minimum": 0},
+    "next_stage_id": {
+      "type": ["string", "null"],
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+    },
+    "completed_stage_ids": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"},
+      "uniqueItems": true
+    },
+    "active_stage_id": {
+      "type": ["string", "null"],
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+    },
+    "active_attempt": {"type": ["integer", "null"], "minimum": 1},
+    "cancel_requested": {"type": "boolean"},
+    "cancel_reason": {"type": ["string", "null"], "maxLength": 1000},
+    "result_run_id": {
+      "type": ["string", "null"],
+      "pattern": "^analytics-[a-f0-9]{12}$"
+    },
+    "checkpoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["request_hash", "topology_hash", "last_completed_ordinal"],
+      "properties": {
+        "request_hash": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "topology_hash": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "last_completed_ordinal": {"type": "integer", "minimum": 0}
+      }
+    },
+    "created_at": {"type": "string", "format": "date-time"},
+    "updated_at": {"type": "string", "format": "date-time"}
+  }
+}

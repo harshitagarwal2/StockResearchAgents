@@ -1,25 +1,25 @@
 %%{init: {"theme":"base","fontFamily":"Avenir Next, Segoe UI, sans-serif","themeVariables":{"fontFamily":"Avenir Next, Segoe UI, sans-serif","primaryColor":"#eef3ff","primaryTextColor":"#071c26","primaryBorderColor":"#2257ff","lineColor":"#516a75","secondaryColor":"#e5f7f5","tertiaryColor":"#fff4df","background":"#f5f8f9","clusterBkg":"#ffffff","clusterBorder":"#96aab2"},"flowchart":{"curve":"basis","htmlLabels":true}}}%%
 flowchart TB
   accTitle: Durable Company Analytics lifecycle
-  accDescr: The coordinator fixes an execution mode before a run begins and accepts only the first incomplete stage. The host may do parallel preparation, but commits remain ordered. Each accepted commit creates a durable revision; pause and crash recovery resume from the first incomplete stage, while acknowledged cancellation is terminal. A valid terminal v4 submission enters a recoverable finalizing phase before canonical result publication.
+  accDescr: The coordinator fixes an execution mode before a run begins and accepts only the first incomplete stage. The caller runtime may do parallel preparation, but commits remain ordered. Each accepted commit creates a durable revision; pause and crash recovery resume from the first incomplete stage, while acknowledged cancellation is terminal. A valid terminal analytics submission enters a recoverable finalizing phase before canonical CompanyAnalyticsResultV1 publication.
 
-  PLAN["Prepare request + 26-stage manifest<br/><small>roles · dependencies · output schemas</small>"]
-  START(["Create PREPARED run<br/><small>request + fixed execution mode</small>"])
+  PLAN["Prepare company-analytics.v1 + 26-stage manifest<br/><small>roles · dependencies · output schemas</small>"]
+  START(["Create PREPARED lifecycle<br/><small>control run_id + fixed execution mode</small>"])
   RUN["Start RUNNING<br/><small>first stage becomes available</small>"]
   NEXT{"First incomplete stage"}
 
-  WORK["Host executes current stage<br/><small>native agents, tools, or sequential fallback</small>"]
+  WORK["Caller executes current stage<br/><small>native runtime or supplied sequential executor</small>"]
   ENVELOPE["Bounded stage envelope<br/><small>stage id + output references</small>"]
   COMMIT{"Validate ordered commit<br/><small>current stage · revision · output refs</small>"}
   SAVE["Persist SQLite/WAL revision<br/><small>checkpoint + lifecycle event</small>"]
   ALL{"All 26 stages committed?"}
-  FINAL{"Validate terminal v4 bundle<br/><small>lineage · analytics · quality · safety</small>"}
-  FINALIZING["FINALIZING<br/><small>stage result · quality · memory sidecars</small>"]
-  PUBLISH[["Atomic completed publication<br/><small>RunResult artifacts + reports</small>"]]
+  FINAL{"Validate CompanyAnalyticsSubmissionV1<br/><small>embedded dossier · lineage · analytics · quality · safety</small>"}
+  FINALIZING["FINALIZING<br/><small>canonical result · derived indexes</small>"]
+  PUBLISH[["CompanyAnalyticsResultV1<br/><small>exact submission + seven artifacts · result_run_id alias</small>"]]
 
   REJECT["Typed failure or unchanged state"]
   CANCEL["CANCELLED<br/><small>acknowledged cancellation is terminal</small>"]
-  READ["Completed-only RunView<br/><small>viewer · exports · MCP</small>"]
+  READ["Projection-only RunView<br/><small>five report groups · viewer · exports · MCP</small>"]
 
   PLAN --> START --> RUN --> NEXT
   NEXT -->|stage 1–26| WORK --> ENVELOPE --> COMMIT

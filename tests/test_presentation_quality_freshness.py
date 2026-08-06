@@ -6,13 +6,13 @@ from pathlib import Path
 from urllib.parse import parse_qs, quote, urlsplit
 from urllib.request import Request, urlopen
 
-from company_analytics_fixtures import complete_v4_submission
+from company_analytics_fixtures import complete_analytics_submission
 
-from tradingagents_portable.company_analytics import submit_company_analytics
-from tradingagents_portable.company_analytics_v1 import HostSubmissionV4
-from tradingagents_portable.presentation import ViewerDaemonPresenter
-from tradingagents_portable.research_quality_v1 import OutcomeObservation, QualityStore
-from tradingagents_portable.store import RunStore
+from stock_research_agents.company_analytics import submit_company_analytics
+from stock_research_agents.company_analytics_v1 import CompanyAnalyticsSubmissionV1
+from stock_research_agents.presentation import ViewerDaemonPresenter
+from stock_research_agents.research_quality_v1 import OutcomeObservation, QualityStore
+from stock_research_agents.store import RunStore
 
 
 def _append_outcome_in_child(quality_dir: str, payload: dict[str, object]) -> None:
@@ -25,7 +25,7 @@ def _authenticated_view(presentation_url: str, run_id: str) -> dict[str, object]
     token = parse_qs(parsed.fragment)["access_token"][0]
     request = Request(
         f"{parsed.scheme}://{parsed.netloc}/api/runs/{quote(run_id, safe='')}/view",
-        headers={"X-TradingAgents-Viewer-Token": token},
+        headers={"X-StockResearchAgents-Viewer-Token": token},
     )
     with urlopen(request, timeout=5) as response:  # noqa: S310 - authenticated loopback URL
         payload = json.load(response)
@@ -33,12 +33,12 @@ def _authenticated_view(presentation_url: str, run_id: str) -> dict[str, object]
     return payload
 
 
-def test_long_lived_viewer_reloads_v4_quality_outcomes_written_by_another_process(tmp_path: Path) -> None:
+def test_long_lived_viewer_reloads_analytics_quality_outcomes_written_by_another_process(tmp_path: Path) -> None:
     state_dir = tmp_path / "state"
     run_store = RunStore(state_dir)
     quality_dir = state_dir / "quality"
-    submission_payload = complete_v4_submission("ADBE")
-    submission = HostSubmissionV4.from_dict(submission_payload)
+    submission_payload = complete_analytics_submission("ADBE")
+    submission = CompanyAnalyticsSubmissionV1.from_dict(submission_payload)
     result, _ = submit_company_analytics(
         submission_payload,
         store=run_store,

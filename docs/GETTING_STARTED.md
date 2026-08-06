@@ -1,11 +1,11 @@
 # Getting started
 
-- **Purpose:** prove the portable boundary locally by producing and inspecting one safe completed result in under five minutes.
+- **Purpose:** verify the StockResearchAgents boundary locally by producing and inspecting one safe test result in under five minutes.
 - **Audience:** first-time users and contributors.
 - **Canonical for:** the first local success path.
 - **Not canonical for:** live-provider behavior or host-adapter implementation.
 
-This page exercises the local CLI adapter because it is deterministic and credential-free. It is a conformance and development path, not the primary research runtime. For live or historical research, first choose a host integration: [Codex](INTEGRATION.md#codex-plugin), [MCP](INTEGRATION.md#mcp), [Python](INTEGRATION.md#python), or a [custom harness adapter](INTEGRATION.md#generic-host-adapter-checklist).
+This page exercises the deterministic, credential-free ORCL fixture. It is test-only verification, not a public product profile or a research runtime. For live or historical research, use the public `company-analytics.v1` profile through [Codex](INTEGRATION.md#codex-plugin), [MCP](INTEGRATION.md#mcp), [Python](INTEGRATION.md#python), or a [custom harness adapter](INTEGRATION.md#generic-host-adapter-checklist).
 
 ## Prerequisites
 
@@ -32,7 +32,7 @@ uv run stock-research-agents report --fixture
 
 This foreground command remains useful for diagnostics or an explicitly selected port. Normal completion adapters,
 including CLI and MCP, ensure the shared viewer automatically and return the URL without blocking. The preferred
-human-facing name is **Research Dossier Viewer**; `dashboard` remains a compatibility command.
+human-facing name is **Research Dossier Viewer**.
 
 The viewer:
 
@@ -41,15 +41,15 @@ The viewer:
 - performs no retrieval, reasoning, calculation, lifecycle mutation, or order action; and
 - remains empty when no completed dossier is available.
 
-## Inspect a host plan through the CLI adapter
+## Inspect a caller plan through the CLI adapter
 
 ```bash
 uv run stock-research-agents analytics-plan \
-  --input examples/company-request.v3.json \
+  --input examples/company-request.v1.json \
   --output plan.json
 ```
 
-The output tells a host which 26 stages to execute, which capability IDs each stage may use, which research pack applies, and includes a self-contained bundled v4 schema with typed analytics records. It does not run models or retrieve company data. Strict Python validation remains authoritative for cross-field rules such as the `<quality_run_id>.` forecast namespace.
+The output tells a caller which 26 stages to execute, which capability IDs each stage may use, which research pack applies, and includes a self-contained bundled analytics schema with typed analytics records. It does not run models or retrieve company data. Strict Python validation remains authoritative for cross-field rules such as the `<quality_run_id>.` forecast namespace.
 
 ## Inspect MCP discovery
 
@@ -64,7 +64,7 @@ An MCP client should call `discover_capability` before assuming a tool, workflow
 - Research mode is visibly `fixture`, `live`, or `historical_replay`.
 - Investment-style output says `non_executable`.
 - Missing or licensed evidence remains visible.
-- No portable payload contains credentials or provider configuration.
+- No StockResearchAgents payload contains credentials or provider configuration.
 - The viewer cannot see partial stage output.
 
 ## Troubleshooting
@@ -74,6 +74,4 @@ viewer URL intentionally resolves the durable `current` alias. See [Operations](
 
 **`analytics-plan` rejects the example.** Run `uv sync`, verify Python 3.11+, and run the targeted tests in [Validation](VALIDATION.md).
 
-**The plugin can plan but not retrieve live data.** That is the product boundary. The active Codex task or other host must retrieve and reason over evidence, then submit the typed result.
-
-**The optional `research` command asks for credentials.** That command delegates to upstream TradingAgents and is outside the default credential-free plugin server.
+**The plugin can plan but not retrieve live data.** That is the product boundary. The active Codex task or other caller runtime must retrieve and reason over evidence, then submit the typed result.

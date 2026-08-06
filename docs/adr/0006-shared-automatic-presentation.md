@@ -33,7 +33,7 @@ rolls back or downgrades a valid completed research publication.
 
 This decision governs completed-result discovery and local viewer process lifetime. It does not add research logic,
 partial-stage streaming, credentials, provider access, lifecycle controls, broker authority, or browser automation to
-the viewer. It does not make an absolute loopback URL portable across machines or runtimes.
+the viewer. An absolute loopback URL is runtime-local and is never stored as a cross-machine identifier.
 
 ## Consequences
 
@@ -43,7 +43,7 @@ the viewer. It does not make an absolute loopback URL portable across machines o
 - A small private daemon registry, concurrency lock, readiness protocol, and idle lifecycle must be maintained.
 - Ready receipts declare that URLs are scoped to the presenter host's loopback namespace and report their idle TTL;
   remote/headless MCP callers select `path_only` per completion call.
-- `dashboard_path` remains a compatibility alias for the versioned presentation path.
+- The versioned presentation path remains deterministic for a completed run.
 
 ## Alternatives considered
 
@@ -53,11 +53,9 @@ the viewer. It does not make an absolute loopback URL portable across machines o
 - Always return a fixed port: rejected because the URL may be dead or belong to another process.
 - Make the browser own publication or retrieval: rejected because it violates the completed-only authority boundary.
 
-## Compatibility impact
+## Contract impact
 
-Existing foreground `report` and compatibility `dashboard` commands remain available. `launch_research_report` remains
-an explicit ensure/retry operation. Completed import/finalize responses add `presentation` and retain
-`dashboard_path`.
+`launch_research_report` is an explicit ensure/retry operation. Completed import/finalize responses carry a versioned `presentation` receipt for the exact published run.
 
 ## Validation evidence
 

@@ -1,12 +1,11 @@
 # StockResearchAgents — repository guidance
 
-This repository is the independent implementation environment for the harness-neutral StockResearchAgents capability. It must validate on its own. Any upstream proposal or compatibility integration is optional and does not define the product architecture.
+This repository is the complete implementation environment for the standalone, harness-neutral StockResearchAgents capability. It must build, test, package, and operate on its own.
 
 ## Boundaries
 
-- Treat TauricResearch/TradingAgents as a pinned, read-only conformance reference and optional compatibility dependency, not as the portable core.
-- Do not copy or fork its prompts, workflow business logic, provider implementations, or persistence internals when an adapter can call them.
-- Keep portable contracts, fixture execution, MCP tools, plugin metadata, and UI projections independent of LangGraph and any specific harness.
+- Keep StockResearchAgents contracts, analytics, lifecycle control, MCP tools, plugin metadata, and UI projections self-contained and independent of any external agent framework or project.
+- Keep deterministic sample submissions inside offline verification; the public product surface is `company-analytics.v1`.
 - No broker integration, order placement, simulated fills, portfolio mutation, or executable trading action.
 - Trade-like outputs must be labeled `non_executable_analytical_scenario` and fixture/live-data status must always be visible.
 - Never put credentials in MCP inputs/results, state, events, artifacts, logs, browser storage, or UI payloads.
@@ -23,9 +22,9 @@ This repository is the independent implementation environment for the harness-ne
 ## Verification
 
 - Tests run without network access or real credentials.
-- The deterministic ORCL fixture is the local end-to-end demonstration.
-- Validate exact debate/risk turn counts, complete result sections, plugin manifests, MCP launch, loopback-only UI serving, and static UI safety.
-- Keep the generated dashboard a projection of typed state/events; do not add analysis business logic to browser code.
+- The deterministic ORCL analytics submission is the local end-to-end demonstration.
+- Validate the exact 26-stage run card, `CompanyAnalyticsResultV1`, plugin manifests, MCP launch, loopback-only UI serving, and static UI safety.
+- Keep the Research Dossier Viewer a projection of typed state/events; do not add analysis business logic to browser code.
 
 ## Collaboration
 

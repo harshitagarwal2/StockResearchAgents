@@ -5,21 +5,28 @@ from dataclasses import replace
 from pathlib import Path
 
 import pytest
+from company_analytics_fixtures import complete_analytics_submission
 
-import tradingagents_portable.store as store_module
-from tradingagents_portable.contracts import EventKind, RunEvent, RunRequest, RunResult
-from tradingagents_portable.fixture import run_fixture
-from tradingagents_portable.serialization import (
+import stock_research_agents.store as store_module
+from stock_research_agents.company_analytics import submit_company_analytics
+from stock_research_agents.company_analytics_v1 import CompanyAnalyticsResultV1
+from stock_research_agents.contracts import EventKind, RunEvent
+from stock_research_agents.research_quality_v1 import QualityStore
+from stock_research_agents.serialization import (
     deserialize_run_event,
     deserialize_run_result,
     serialize_run_event,
     serialize_run_result,
 )
-from tradingagents_portable.store import RunStore
+from stock_research_agents.store import RunStore
 
 
-def _completed_run() -> tuple[RunResult, tuple[RunEvent, ...]]:
-    return run_fixture(RunRequest(), RunStore())
+def _completed_run() -> tuple[CompanyAnalyticsResultV1, tuple[RunEvent, ...]]:
+    return submit_company_analytics(
+        complete_analytics_submission("ORCL"),
+        store=RunStore(),
+        quality_store=QualityStore(),
+    )
 
 
 def _event(run_id: str, sequence: int = 1) -> RunEvent:
@@ -43,7 +50,6 @@ def test_run_result_and_event_round_trip_through_strict_json() -> None:
 
     assert restored_result == result
     assert restored_event == events[0]
-    assert restored_result.request.legacy_config == result.request.legacy_config
 
 
 def test_deserialization_rejects_unknown_fields_and_wrong_schema() -> None:
@@ -53,7 +59,7 @@ def test_deserialization_rejects_unknown_fields_and_wrong_schema() -> None:
     result_payload["unexpected"] = "field"
     event_payload["schema_version"] = "1900-01-01"
 
-    with pytest.raises(ValueError, match="unsupported fields"):
+    with pytest.raises(ValueError, match="fields mismatch"):
         deserialize_run_result(json.dumps(result_payload))
     with pytest.raises(ValueError, match="schema_version"):
         deserialize_run_event(json.dumps(event_payload))
@@ -70,6 +76,79 @@ def test_durable_store_rehydrates_completed_run_after_restart(tmp_path: Path) ->
     assert restarted.get_result(result.run_id) == result
     assert restarted.get_events(result.run_id) == events
     assert restarted.list_results() == (result,)
+
+
+def test_completed_store_writes_require_a_complete_event_stream(tmp_path: Path) -> None:
+    result, events = _completed_run()
+    store = RunStore(state_dir=tmp_path / "state")
+
+    with pytest.raises(ValueError, match="terminal event stream"):
+        store.put(result, ())
+    with pytest.raises(ValueError, match="unique and ordered"):
+        store.stage(result, (events[1], events[0], *events[2:]))
+    with pytest.raises(ValueError, match="final publication event"):
+        store.put(result, events[:-1])
+    forged_terminal = replace(events[-1], kind=EventKind.STAGE, stage_id="publish.completed")
+    with pytest.raises(ValueError, match="terminal run event"):
+        store.put(result, (*events[:-1], forged_terminal))
+
+    assert store.get_result(result.run_id) is None
+    assert not (tmp_path / "state").exists()
+
+
+def test_store_detaches_nested_result_and_event_mutations() -> None:
+    result, events = _completed_run()
+    original_artifact_content = result.artifacts[0].content.copy()
+    original_event_data = events[0].data.copy()
+    store = RunStore()
+
+    store.put(result, events)
+    result.artifacts[0].content["mutated_after_put"] = True
+    events[0].data["mutated_after_put"] = True
+
+    first_result = store.get_result(result.run_id)
+    first_events = store.get_events(result.run_id)
+    assert first_result is not None
+    assert first_events is not None
+    assert first_result.artifacts[0].content == original_artifact_content
+    assert first_events[0].data == original_event_data
+
+    first_result.artifacts[0].content["mutated_after_read"] = True
+    first_events[0].data["mutated_after_read"] = True
+
+    second_result = store.get_result(result.run_id)
+    second_events = store.get_events(result.run_id)
+    assert second_result is not None
+    assert second_events is not None
+    assert second_result.artifacts[0].content == original_artifact_content
+    assert second_events[0].data == original_event_data
+
+
+def test_partial_event_store_detaches_nested_event_mutations() -> None:
+    event = _event("partial-safe")
+    store = RunStore()
+
+    store.put_events("partial-safe", (event,))
+    event.data["mutated_after_put"] = True
+    first_events = store.get_events("partial-safe")
+    assert first_events is not None
+    assert first_events[0].data == {"safe": True}
+
+    first_events[0].data["mutated_after_read"] = True
+    assert store.get_events("partial-safe") == (_event("partial-safe"),)
+
+
+def test_partial_event_path_cannot_mutate_a_completed_publication() -> None:
+    result, events = _completed_run()
+    store = RunStore()
+    store.put(result, events)
+
+    with pytest.raises(ValueError, match="cannot replace"):
+        store.put_events(result.run_id, (_event(result.run_id),))
+    with pytest.raises(ValueError, match="cannot extend"):
+        store.append_event(_event(result.run_id, sequence=events[-1].sequence + 1))
+
+    assert store.get_events(result.run_id) == events
 
 
 def test_exact_durable_lookup_does_not_scan_complete_run_history(tmp_path: Path, monkeypatch) -> None:
@@ -119,7 +198,7 @@ def test_event_cursor_is_exclusive_bounded_and_validated() -> None:
 
 def test_in_memory_store_does_not_create_default_state(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     configured = tmp_path / "must-not-exist"
-    monkeypatch.setenv("TRADINGAGENTS_PORTABLE_STATE_DIR", str(configured))
+    monkeypatch.setenv("STOCKRESEARCHAGENTS_STATE_DIR", str(configured))
 
     store = RunStore()
     assert store.state_dir is None
@@ -220,7 +299,7 @@ def test_lifecycle_stage_stays_hidden_across_restart_until_explicit_publish(tmp_
     assert published.get_events(result.run_id) == events
 
 
-def test_legacy_result_without_events_is_not_exposed(tmp_path: Path) -> None:
+def test_result_from_submission_without_events_is_not_exposed(tmp_path: Path) -> None:
     result, _events = _completed_run()
     state_dir = tmp_path / "state"
     result_path = state_dir / "results" / f"{result.run_id}.json"
@@ -237,8 +316,7 @@ def test_durable_store_detects_filename_payload_mismatch(tmp_path: Path) -> None
     state_dir = tmp_path / "state"
     results_dir = state_dir / "results"
     results_dir.mkdir(parents=True)
-    mismatched = replace(result, run_id="different-safe-id")
-    (results_dir / "expected-safe-id.json").write_text(serialize_run_result(mismatched), encoding="utf-8")
+    (results_dir / "expected-safe-id.json").write_text(serialize_run_result(result), encoding="utf-8")
 
     with pytest.raises(ValueError, match="does not match filename"):
         RunStore(state_dir=state_dir).list_results()

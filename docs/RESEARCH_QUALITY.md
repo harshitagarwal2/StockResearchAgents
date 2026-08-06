@@ -13,9 +13,9 @@ At completed publication, the request, policy identity, workflow/run manifest, d
 
 ## Implemented boundary
 
-`company-analytics.v1` publishes an immutable `research_quality.v1` receipt and explicit forecast set beside the unchanged v3 dossier. A durable quality store registers those records, appends typed outcome observations and corrections, and derives reproducible scorecards. CLI exposes `quality-outcome` and `quality-show`; MCP exposes `record_research_outcome` and `get_research_quality`.
+`company-analytics.v1` publishes an immutable `research_quality.v1` receipt and explicit forecast set beside the unchanged research dossier. A durable quality store registers those records, appends typed outcome observations and corrections, and derives reproducible scorecards. CLI exposes `quality-outcome` and `quality-show`; MCP exposes `record_research_outcome` and `get_research_quality`.
 
-The completed `RunResult` artifacts are the authoritative receipt and forecast sidecars. The outcome index is a recoverable derived store: durable finalization stages it invisibly, publishes it after canonical completion, and reconstructs it from completed artifacts after an interrupted boundary. This is not a distributed transaction across stores.
+The completed `CompanyAnalyticsResultV1` is authoritative and includes `research_quality.v1` and `forecast_set.v1` among its seven artifacts. The outcome index is a recoverable derived store: durable finalization stages it invisibly, publishes it after canonical completion, and reconstructs it from completed artifacts after an interrupted boundary. This is not a distributed transaction across stores.
 
 ## Bounded capability
 
@@ -105,13 +105,13 @@ These are individual-forecast scorecards, not cohort statistics. The current sco
 - Any future training or calibration observations must be available before the forecast being tested.
 - Future cohort evaluation must explicitly address issuer, horizon, and overlapping-window leakage.
 - A historical retrieval cutoff alone does not prove a causal backtest: a contemporary model may encode information that post-dates the simulated decision. Unless the host provides an independently supportable model knowledge-cutoff declaration, label the result a **historically grounded simulation**, not a temporally pure or causal backtest.
-- A host claiming temporal purity must retain the model identifier/version and declared knowledge cutoff, plus retrieval, embedding/reranking, memory, and outcome-data cutoff receipts. The portable core records no provider credentials, prompts, or model weights and cannot independently verify those host-owned claims.
+- A caller claiming temporal purity must retain the model identifier/version and declared knowledge cutoff, plus retrieval, embedding/reranking, memory, and outcome-data cutoff receipts. The StockResearchAgents core records no provider credentials, prompts, or model weights and cannot independently verify those caller-owned claims.
 - Licensed source bodies are not copied into evaluation datasets.
 - Any future benchmark manifest must be content-addressed and retain policy/model/source versions.
 
 ## Viewer contract
 
-The Research Dossier Viewer renders completed quality artifacts and, when available, outcome ledgers and scorecards. Scoring occurs in the portable service, not in browser JavaScript. The viewer never displays partial publication state or claims accuracy when observations are insufficient.
+The Research Dossier Viewer renders completed quality artifacts and, when available, outcome ledgers and scorecards. Scoring occurs in the StockResearchAgents service, not in browser JavaScript. The viewer never displays partial publication state or claims accuracy when observations are insufficient.
 
 ### Source-portfolio analysis
 
@@ -128,15 +128,15 @@ Every completed `RunView` now includes a deterministic `intelligence.source_anal
 - separate linked-source status counts for opened/attributable, primary-confirmed, multi-source-confirmed, single-source-reported, discovery-only, unverified, and blocked/access-unknown items; and
 - explicit gaps and the next missing source class.
 
-Publisher and hostname diversity are observable proxies, not proof of editorial independence. The strict v3 `SourceDocument` contract has no ownership or editorial-control field, so the viewer reports `unsupported_by_v3_contract`; it does not manufacture an independence assessment. A future versioned source-portfolio ownership/control receipt is required before that axis can be assessed. Discovery metadata such as GDELT publisher links remains distinct from an opened, attributable, and entitlement-checked source. The browser only renders this completed projection and never upgrades coverage or retrieves additional evidence.
+Publisher and hostname diversity are observable proxies, not proof of editorial independence. The strict v1 `SourceDocument` contract has no ownership or editorial-control field, so the viewer reports `unsupported_by_research_contract`; it does not manufacture an independence assessment. A future versioned source-portfolio ownership/control receipt is required before that axis can be assessed. Discovery metadata such as GDELT publisher links remains distinct from an opened, attributable, and entitlement-checked source. The browser only renders this completed projection and never upgrades coverage or retrieves additional evidence.
 
-The v3 compatibility bridge internally retains `SourceDocument.publisher` in a legacy `Provenance.provider` slot. Completed-view provider projections deliberately ignore that alias: the source-mix panel reports retrieval provider as undeclared until a real retrieval-provider receipt exists, while publisher remains available on its own axis. This preserves persisted run compatibility without presenting contradictory semantics.
+The research projection internally retains `SourceDocument.publisher` in the historical `Provenance.provider` slot. Completed-view provider projections deliberately ignore that alias: the source-mix panel reports retrieval provider as undeclared until a real retrieval-provider receipt exists, while publisher remains available on its own axis. This preserves persisted run readability without presenting contradictory semantics.
 
 This projection exposes current weaknesses but does not broaden retrieval. Better breadth requires the host to execute multiple explicit source routes, open discovery links where policy permits, retain separate child `SourceBatch` provenance and entitlement receipts, and publish an additive source-portfolio receipt. Heterogeneous provider batches must not be flattened into one misleading receipt, and paywalls or access controls must not be bypassed.
 
 ## Validation and remaining gates
 
-Implemented tests cover strict contracts, deterministic scoring by forecast kind, conformance, durable reload, correction supersession, CLI/MCP access, and completed-only projection.
+Implemented tests cover strict contracts, deterministic scoring by forecast kind, validation, durable reload, correction supersession, CLI/MCP access, and completed-only projection.
 
 Still required before making calibration or performance claims:
 

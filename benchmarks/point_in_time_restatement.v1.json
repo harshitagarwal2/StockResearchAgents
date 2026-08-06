@@ -1,6 +1,6 @@
 {
   "schema_version": "synthetic-point-in-time-conformance.v1",
-  "provenance": "Original synthetic fixture authored for tradingagents-portable; no external filing data.",
+  "provenance": "Original synthetic fixture authored for stock-research-agents; no external filing data.",
   "period": {
     "period_id": "synthetic-2025-annual",
     "fiscal_year": 2025,

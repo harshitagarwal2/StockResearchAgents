@@ -1,4 +1,0 @@
-interface:
-  display_name: "StockResearchAgents"
-  short_description: "Research companies with auditable analytics"
-  default_prompt: "Use $tradingagents-portable to run StockResearchAgents through the 26-stage analytics workflow and open its completed-only report."

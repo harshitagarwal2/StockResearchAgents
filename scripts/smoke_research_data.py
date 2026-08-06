@@ -14,8 +14,8 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Protocol
 
-from tradingagents_host.adapters.public import PublicResearchDataAdapter, UrllibHTTPTransport
-from tradingagents_host.contracts import (
+from stock_research_agents_host.adapters.public import PublicResearchDataAdapter, UrllibHTTPTransport
+from stock_research_agents_host.contracts import (
     CompanyNewsQuery,
     FinancialStatementsQuery,
     FundamentalsQuery,

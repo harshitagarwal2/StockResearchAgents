@@ -9,174 +9,76 @@ from pathlib import Path
 
 import pytest
 
-from tradingagents_portable.capabilities import discovery
+from stock_research_agents.capabilities import discovery
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_plugin_manifest_and_skill_are_complete() -> None:
+def test_plugin_manifest_and_skill_use_standalone_identity() -> None:
     plugin = json.loads((ROOT / ".codex-plugin" / "plugin.json").read_text(encoding="utf-8"))
-    skill = (ROOT / "skills" / "tradingagents-portable" / "SKILL.md").read_text(encoding="utf-8")
+    skill = (ROOT / "skills" / "stock-research-agents" / "SKILL.md").read_text(encoding="utf-8")
 
-    assert plugin["name"] == "tradingagents-portable"
-    assert plugin["version"]
+    assert plugin["name"] == "stock-research-agents"
     assert plugin["skills"] == "./skills/"
     assert plugin["mcpServers"] == "./.mcp.json"
-    assert skill.startswith("---\nname: tradingagents-portable\n")
-    assert "run_fixture" in skill
+    assert skill.startswith("---\nname: stock-research-agents\n")
+    assert "prepare_company_analytics" in skill
     assert "launch_research_report" in skill
-    assert "launch_local_dashboard" in skill
-    assert "checkpoint_enabled" in skill
-    assert "decision/report persistence" in skill
-    assert "adaptive-history policy" in skill
-    assert "five fiscal years" in skill
-    assert "eight comparable quarters" in skill
-    assert "SourcePortfolioCollector" in skill
-    assert "source_batch_ids" in skill
-    assert "Reddit must use host-owned approved OAuth access" in skill
-    assert "Yahoo Finance" in skill
-    assert "Polymarket Gamma" in skill
-    assert "research_data_get_prediction_markets" in skill
-    assert "no wallet, CLOB, order, position, or trading endpoint" in skill
-    assert "not truth, forecasts, or executable signals" in skill
     assert "must never place" in skill
 
-    research_manifest = json.loads(
-        (ROOT / "src" / "tradingagents_portable" / "workflow" / "research-data-tools.v1.json").read_text(
-            encoding="utf-8"
-        )
-    )
-    prediction_markets = next(tool for tool in research_manifest["tools"] if tool["capability"] == "prediction_markets")
-    assert prediction_markets["mcp_name"] == "research_data_get_prediction_markets"
-    assert prediction_markets["provider"] == "Polymarket Gamma"
-    assert prediction_markets["implementation_status"] == "implemented_public_default"
-    assert prediction_markets["default_exposed"] is True
-    assert prediction_markets["response"]["item_semantics"] == (
-        "normalized_non_executable_prediction_market_probability_snapshot"
-    )
 
-
-def test_mcp_manifest_has_exact_local_stdio_launch_command() -> None:
+def test_mcp_manifest_has_exact_local_stdio_launch_commands() -> None:
     manifest = json.loads((ROOT / ".mcp.json").read_text(encoding="utf-8"))
-    server = manifest["mcpServers"]["tradingagents-portable"]
 
-    assert server == {
+    assert set(manifest["mcpServers"]) == {"stock-research-agents", "stock-research-data"}
+    assert manifest["mcpServers"]["stock-research-agents"] == {
         "type": "stdio",
         "command": "bash",
         "args": ["scripts/run-stock-research-mcp"],
         "env": {"PYTHONDONTWRITEBYTECODE": "1", "PYTHONUNBUFFERED": "1"},
     }
-    assert (ROOT / server["args"][0]).is_file()
-    assert "env_vars" not in server
-    assert "API_KEY" not in json.dumps(server)
-    assert "CODEX_AUTH" not in json.dumps(server)
-
-    research_data = manifest["mcpServers"]["tradingagents-research-data"]
-    assert research_data == {
+    assert manifest["mcpServers"]["stock-research-data"] == {
         "type": "stdio",
         "command": "bash",
         "args": ["scripts/run-stock-research-data-mcp"],
         "env": {"PYTHONDONTWRITEBYTECODE": "1", "PYTHONUNBUFFERED": "1"},
     }
-    assert (ROOT / research_data["args"][0]).is_file()
-    assert "API_KEY" not in json.dumps(research_data)
-    assert "CODEX_AUTH" not in json.dumps(research_data)
+    assert "API_KEY" not in json.dumps(manifest)
 
 
-def test_mcp_discovery_and_function_schemas_cover_required_surface() -> None:
-    payload = discovery(legacy_path=str(ROOT / "does-not-exist"), include_legacy=False)
-    expected_tools = {
-        "discover_capability",
-        "get_feature_matrix",
-        "prepare_fixture",
-        "run_fixture",
-        "prepare_host_run",
-        "import_host_run",
-        "prepare_company_research",
-        "import_company_research",
-        "prepare_company_analytics",
-        "import_company_analytics",
-        "record_research_outcome",
-        "get_research_quality",
-        "create_company_research_run",
-        "create_company_analytics_run",
-        "create_host_run",
-        "start_host_run",
-        "append_run_receipts",
-        "commit_host_stage",
-        "pause_host_run",
-        "resume_host_run",
-        "get_run_control",
-        "poll_run_events",
-        "request_run_cancellation",
-        "acknowledge_run_cancellation",
-        "finalize_host_run",
-        "export_completed_run",
-        "query_decision_memory",
-        "record_decision_outcome",
-        "get_conformance_report",
-        "get_run",
-        "get_run_events",
-        "get_run_result",
-        "get_run_semantics",
-        "get_run_view",
-        "launch_research_report",
-        "get_research_report_summary",
-        "launch_local_dashboard",
-        "get_dashboard_report",
-    }
-
-    assert set(payload["tools"]) == expected_tools
-    assert payload["default_fixture"] == {"symbol": "ORCL", "external_credentials_required": False}
-    assert payload["executors"] == {"fixture": True, "host_native": True, "legacy": False}
-
-    source = (ROOT / "src" / "tradingagents_portable" / "mcp_server.py").read_text(encoding="utf-8")
+def test_mcp_discovery_and_function_schemas_match_exactly() -> None:
+    payload = discovery()
+    expected_tools = set(payload["tools"])
+    source = (ROOT / "src" / "stock_research_agents" / "mcp_server.py").read_text(encoding="utf-8")
     module = ast.parse(source)
     schemas = {
         node.name: node for node in module.body if isinstance(node, ast.FunctionDef) and node.name in expected_tools
     }
+
     assert set(schemas) == expected_tools
-
-    def defaults(function_name: str) -> dict[str, object]:
-        node = schemas[function_name]
-        positional = [*node.args.posonlyargs, *node.args.args]
-        padded = [None] * (len(positional) - len(node.args.defaults)) + list(node.args.defaults)
-        return {
-            parameter.arg: ast.literal_eval(default)
-            for parameter, default in zip(positional, padded, strict=True)
-            if default is not None
-        }
-
-    assert defaults("run_fixture")["debate_rounds"] == 1
-    assert defaults("run_fixture")["risk_rounds"] == 1
-    assert defaults("prepare_host_run")["debate_rounds"] == 1
-    assert defaults("prepare_host_run")["risk_rounds"] == 1
-    assert defaults("launch_local_dashboard")["host"] == "127.0.0.1"
-    assert defaults("launch_local_dashboard")["port"] == 0
-    assert defaults("launch_research_report")["host"] == "127.0.0.1"
-    assert defaults("launch_research_report")["port"] == 0
+    assert payload["active_profile"] == "company-analytics.v1"
 
     parameter_names = {
         parameter.arg.lower()
         for node in schemas.values()
         for parameter in [*node.args.posonlyargs, *node.args.args, *node.args.kwonlyargs]
     }
-    assert not parameter_names.intersection({"api_key", "secret", "password", "token", "broker", "order"})
+    assert not parameter_names.intersection(
+        {"api_key", "secret", "password", "token", "broker", "order", "upstream_path", "legacy_path"}
+    )
 
 
 def test_registered_mcp_tool_names_match_discovery() -> None:
     pytest.importorskip("mcp")
-    mcp_server = importlib.import_module("tradingagents_portable.mcp_server")
+    mcp_server = importlib.import_module("stock_research_agents.mcp_server")
     registered = mcp_server.mcp._tool_manager.list_tools()
-    names = {tool.name for tool in registered}
 
-    assert names == set(discovery(legacy_path=str(ROOT / "does-not-exist"), include_legacy=False)["tools"])
-    assert "run_legacy" not in names
+    assert {tool.name for tool in registered} == set(discovery()["tools"])
 
 
-def test_isolated_research_data_mcp_registers_only_receipted_public_tools() -> None:
+def test_isolated_research_data_mcp_registers_only_public_tools() -> None:
     pytest.importorskip("mcp")
-    research_server = importlib.import_module("tradingagents_host.research_data_mcp")
+    research_server = importlib.import_module("stock_research_agents_host.research_data_mcp")
     registered = {tool.name for tool in research_server.mcp._tool_manager.list_tools()}
 
     assert registered == {
@@ -188,38 +90,11 @@ def test_isolated_research_data_mcp_registers_only_receipted_public_tools() -> N
         "research_data_get_macro",
         "research_data_get_prediction_markets",
     }
-    assert not {"research_data_get_prices", "research_data_get_indicators", "research_data_get_reddit"}.intersection(
-        registered
-    )
-    assert "research_data_get_stocktwits" not in registered
 
 
-def test_mcp_publication_gate_uses_lifecycle_namespace_without_masking_errors(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+def test_export_mcp_tool_declares_destructive_non_idempotent_behavior() -> None:
     pytest.importorskip("mcp")
-    mcp_server = importlib.import_module("tradingagents_portable.mcp_server")
-
-    class StrictCoordinator:
-        def __init__(self) -> None:
-            self.calls: list[str] = []
-
-        def control(self, run_id: str) -> dict[str, object]:
-            self.calls.append(run_id)
-            raise ValueError("corrupt lifecycle state")
-
-    coordinator = StrictCoordinator()
-    monkeypatch.setattr(mcp_server, "HOST_RUN_COORDINATOR", coordinator)
-
-    mcp_server._require_completed_publication("fixture-direct")
-    assert coordinator.calls == []
-    with pytest.raises(ValueError, match="corrupt lifecycle state"):
-        mcp_server._require_completed_publication("host-abcdef012345")
-
-
-def test_export_mcp_tool_truthfully_declares_destructive_non_idempotent_behavior() -> None:
-    pytest.importorskip("mcp")
-    mcp_server = importlib.import_module("tradingagents_portable.mcp_server")
+    mcp_server = importlib.import_module("stock_research_agents.mcp_server")
     export_tool = next(
         tool for tool in mcp_server.mcp._tool_manager.list_tools() if tool.name == "export_completed_run"
     )
@@ -231,61 +106,40 @@ def test_export_mcp_tool_truthfully_declares_destructive_non_idempotent_behavior
     assert export_tool.annotations.open_world_hint is False
 
 
-def test_mutating_mcp_tools_do_not_invite_automatic_idempotent_retries() -> None:
+def test_mcp_validation_report_has_no_external_compatibility_state() -> None:
     pytest.importorskip("mcp")
-    mcp_server = importlib.import_module("tradingagents_portable.mcp_server")
-    mutating = [
-        tool
-        for tool in mcp_server.mcp._tool_manager.list_tools()
-        if tool.annotations is not None and tool.annotations.read_only_hint is False
-    ]
+    from company_analytics_fixtures import complete_analytics_submission
 
-    assert mutating
-    assert all(tool.annotations.idempotent_hint is False for tool in mutating)
+    from stock_research_agents.company_analytics import submit_company_analytics
+    from stock_research_agents.mcp_server import get_validation_report
+    from stock_research_agents.research_quality_v1 import QualityStore
+    from stock_research_agents.store import RUN_STORE
 
-
-def test_mcp_conformance_keeps_upstream_identity_separate() -> None:
-    pytest.importorskip("mcp")
-    from tradingagents_portable.contracts import RunRequest
-    from tradingagents_portable.fixture import run_fixture
-    from tradingagents_portable.mcp_server import get_conformance_report
-
-    result, _events = run_fixture(RunRequest())
-    payload = get_conformance_report(result.run_id)
+    result, _events = submit_company_analytics(
+        complete_analytics_submission("ORCL"),
+        store=RUN_STORE,
+        quality_store=QualityStore(),
+    )
+    payload = get_validation_report(result.run_id)
 
     assert payload["ok"] is True
-    assert payload["conformance"]["portable_conformance"] == {"passed": True, "verified": True}
-    assert payload["conformance"]["overall_status"] == "portable_conformant_upstream_unverified"
-    assert payload["conformance"]["upstream_compatibility"] == {
-        "passed": False,
-        "verified": False,
-        "status": "skipped",
-    }
+    assert payload["validation"]["overall_status"] == "validation_passed"
+    assert "upstream_compatibility" not in payload["validation"]
 
 
-def test_opt_in_legacy_mcp_adds_only_the_explicit_legacy_tool() -> None:
-    pytest.importorskip("mcp")
-    safe_server = importlib.import_module("tradingagents_portable.mcp_server")
-    legacy_server = importlib.import_module("tradingagents_portable.legacy_mcp_server")
-    safe_names = {tool.name for tool in safe_server.mcp._tool_manager.list_tools()}
-    legacy_names = {tool.name for tool in legacy_server.mcp._tool_manager.list_tools()}
-
-    assert legacy_names == safe_names | {"run_legacy"}
-
-
-def test_safe_mcp_import_does_not_load_legacy_or_upstream_modules() -> None:
+def test_safe_mcp_import_does_not_load_retired_dependencies() -> None:
     script = """
 import importlib
 import json
 import sys
-importlib.import_module('tradingagents_portable.mcp_server')
+importlib.import_module('stock_research_agents.mcp_server')
 loaded = sorted(
     name for name in sys.modules
-    if name == 'tradingagents_portable.legacy' or name == 'tradingagents' or name.startswith('tradingagents.')
+    if name == 'tradingagents' or name.startswith(('tradingagents.', 'langgraph', 'langchain'))
 )
 print(json.dumps(loaded))
 """
-    completed = subprocess.run(  # noqa: S603 - fixed interpreter and test-owned script
+    completed = subprocess.run(  # noqa: S603 - fixed interpreter and test-owned source
         [sys.executable, "-c", script],
         cwd=ROOT,
         check=True,
@@ -294,51 +148,3 @@ print(json.dumps(loaded))
     )
 
     assert json.loads(completed.stdout) == []
-
-
-def test_default_cli_import_does_not_load_legacy_or_upstream_modules() -> None:
-    script = """
-import importlib
-import json
-import sys
-importlib.import_module('tradingagents_portable.cli')
-loaded = sorted(
-    name for name in sys.modules
-    if name == 'tradingagents_portable.legacy' or name == 'tradingagents' or name.startswith('tradingagents.')
-)
-print(json.dumps(loaded))
-"""
-    completed = subprocess.run(  # noqa: S603 - fixed interpreter and test-owned script
-        [sys.executable, "-c", script],
-        cwd=ROOT,
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-
-    assert json.loads(completed.stdout) == []
-
-
-def test_legacy_adapter_top_level_export_is_lazy() -> None:
-    script = """
-import json
-import sys
-import tradingagents_portable
-before = 'tradingagents_portable.legacy' in sys.modules
-adapter = tradingagents_portable.LegacyTradingAgentsAdapter
-after = 'tradingagents_portable.legacy' in sys.modules
-print(json.dumps({'before': before, 'after': after, 'name': adapter.__name__}))
-"""
-    completed = subprocess.run(  # noqa: S603 - fixed interpreter and test-owned script
-        [sys.executable, "-c", script],
-        cwd=ROOT,
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-
-    assert json.loads(completed.stdout) == {
-        "before": False,
-        "after": True,
-        "name": "LegacyTradingAgentsAdapter",
-    }

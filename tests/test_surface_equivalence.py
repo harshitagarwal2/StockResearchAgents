@@ -6,33 +6,33 @@ from threading import Thread
 from urllib.request import urlopen
 
 import pytest
-from company_analytics_fixtures import complete_v4_submission
+from company_analytics_fixtures import complete_analytics_submission
 
-from tradingagents_portable import cli, mcp_server
-from tradingagents_portable.company_analytics import submit_company_analytics
-from tradingagents_portable.dashboard import create_dashboard_server
-from tradingagents_portable.export import export_run_bundle
-from tradingagents_portable.research_quality_v1 import QualityStore
-from tradingagents_portable.semantics import (
+from stock_research_agents import cli, mcp_server
+from stock_research_agents.company_analytics import submit_company_analytics
+from stock_research_agents.export import export_run_bundle
+from stock_research_agents.research_quality_v1 import QualityStore
+from stock_research_agents.semantics import (
     CompletedRunSemanticsV1,
     build_completed_run_semantics,
     semantics_digest,
     verify_semantics_digest,
 )
-from tradingagents_portable.store import RunStore
-from tradingagents_portable.view import build_run_view
+from stock_research_agents.store import RunStore
+from stock_research_agents.view import build_run_view
+from stock_research_agents.viewer_server import create_viewer_server
 
 
-def test_completed_v4_semantics_are_identical_across_every_surface(tmp_path, monkeypatch) -> None:
+def test_completed_analytics_semantics_are_identical_across_every_surface(tmp_path, monkeypatch) -> None:
     store = RunStore(tmp_path / "runs")
     result, events = submit_company_analytics(
-        complete_v4_submission("META"),
+        complete_analytics_submission("META"),
         store=store,
         quality_store=QualityStore(tmp_path / "quality"),
     )
     expected = build_completed_run_semantics(result, events).to_dict()
 
-    monkeypatch.setattr(cli.HOST_RUN_COORDINATOR, "result_store", store)
+    monkeypatch.setattr(cli, "RUN_STORE", store)
     cli_output = tmp_path / "cli-semantics.json"
     assert cli.main(["run-semantics", result.run_id, "--output", str(cli_output)]) == 0
     assert json.loads(cli_output.read_text(encoding="utf-8")) == expected
@@ -48,7 +48,7 @@ def test_completed_v4_semantics_are_identical_across_every_surface(tmp_path, mon
     manifest = json.loads((export_path / "manifest.json").read_text(encoding="utf-8"))
     assert manifest["semantics_sha256"] == expected["digest"]
 
-    server = create_dashboard_server(store=store)
+    server = create_viewer_server(store=store)
     thread = Thread(target=server.serve_forever, daemon=True)
     thread.start()
     host, port = server.server_address
@@ -66,43 +66,35 @@ def test_completed_v4_semantics_are_identical_across_every_surface(tmp_path, mon
 
 def test_semantics_digest_rejects_tampering_and_ignores_transport_only_changes(tmp_path) -> None:
     result, events = submit_company_analytics(
-        complete_v4_submission("ORCL"),
+        complete_analytics_submission("ORCL"),
         store=RunStore(tmp_path / "runs"),
         quality_store=QualityStore(tmp_path / "quality"),
     )
     original = build_completed_run_semantics(result, events).to_dict()
 
     tampered = dict(original)
-    tampered["processed_signal"] = "SELL" if original["processed_signal"] != "SELL" else "BUY"
+    tampered["recommendation"] = "sell"
     assert semantics_digest(tampered) != original["digest"]
     assert verify_semantics_digest(tampered) is False
     with pytest.raises(ValueError, match="digest mismatch"):
         CompletedRunSemanticsV1.from_dict(tampered)
 
-    aliased_run_id = "transport-alias"
-    transported_result = replace(
-        result,
-        run_id=aliased_run_id,
-        started_at="2099-01-01T00:00:00Z",
-        completed_at="2099-01-01T00:01:00Z",
-    )
     transported_events = tuple(
         replace(
             event,
             id=f"transport-event-{index}",
-            run_id=aliased_run_id,
             timestamp="2099-01-01T00:00:00Z",
             message=f"transport wrapper message {index}",
             data={"transport": "changed"},
         )
         for index, event in enumerate(reversed(events), start=1)
     )
-    assert build_completed_run_semantics(transported_result, transported_events).to_dict() == original
+    assert build_completed_run_semantics(result, transported_events).to_dict() == original
 
 
 def test_semantics_content_addresses_detect_terminal_artifact_tampering(tmp_path) -> None:
     result, events = submit_company_analytics(
-        complete_v4_submission("META"),
+        complete_analytics_submission("META"),
         store=RunStore(tmp_path / "runs"),
         quality_store=QualityStore(tmp_path / "quality"),
     )

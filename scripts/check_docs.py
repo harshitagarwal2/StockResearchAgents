@@ -10,6 +10,16 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 LINK_PATTERN = re.compile(r"!?\[[^\]]*\]\(([^)]+)\)")
 REMOTE_PREFIXES = ("http://", "https://", "mailto:", "plugin://", "subagent://")
+STALE_VOCABULARY = (
+    (re.compile(r"\bRunResult\b"), "retired RunResult contract"),
+    (re.compile(r"decision[-_ ]consistency", re.IGNORECASE), "retired decision-consistency projection"),
+    (re.compile(r"debate[-_ ]import(?:er)?", re.IGNORECASE), "retired debate-import path"),
+    (re.compile(r"\btrader proposal\b", re.IGNORECASE), "retired trader-stage semantics"),
+    (re.compile(r"\banalyst[- ]team\b", re.IGNORECASE), "retired analyst-team semantics"),
+    (re.compile(r"\bhost harness\b", re.IGNORECASE), "stale ownership wording"),
+    (re.compile(r"\bCompanyResearchCoordinator\b"), "retired coordinator name"),
+    (re.compile(r"\blocally ready\b", re.IGNORECASE), "incorrect executor readiness wording"),
+)
 
 REQUIRED_DOCS = (
     ROOT / "README.md",
@@ -27,8 +37,6 @@ REQUIRED_DOCS = (
     ROOT / "docs" / "COMPATIBILITY.md",
     ROOT / "docs" / "RESEARCH_QUALITY.md",
     ROOT / "docs" / "RESEARCH_DATA_MCP.md",
-    ROOT / "docs" / "LEGACY_TRANSITION.md",
-    ROOT / "docs" / "adr" / "0005-host-native-core-and-legacy-retirement.md",
 )
 
 TECHNICAL_DIAGRAMS = (
@@ -49,6 +57,30 @@ def markdown_files() -> list[Path]:
     for directory in (ROOT / "docs", ROOT / "examples", ROOT / "assets"):
         files.extend(path for path in directory.rglob("*.md") if path.is_file())
     return sorted(set(files))
+
+
+def documentation_text_files() -> list[Path]:
+    files = [
+        ROOT / "README.md",
+        ROOT / "DESIGN.md",
+        ROOT / "skills" / "stock-research-agents" / "SKILL.md",
+    ]
+    files.extend(
+        path for path in (ROOT / "docs").rglob("*") if path.is_file() and path.suffix in {".md", ".mmd", ".html"}
+    )
+    return sorted(set(files))
+
+
+def stale_vocabulary_errors() -> list[str]:
+    errors: list[str] = []
+    for path in documentation_text_files():
+        if not path.exists():
+            continue
+        for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+            for pattern, description in STALE_VOCABULARY:
+                if pattern.search(line):
+                    errors.append(f"{path.relative_to(ROOT)}:{line_number}: {description}")
+    return errors
 
 
 def _link_target(raw_target: str) -> str:
@@ -174,6 +206,7 @@ def check() -> list[str]:
     errors = [f"missing canonical document: {path.relative_to(ROOT)}" for path in REQUIRED_DOCS if not path.exists()]
     for path in markdown_files():
         errors.extend(broken_links(path))
+    errors.extend(stale_vocabulary_errors())
     errors.extend(diagram_errors())
     return errors
 

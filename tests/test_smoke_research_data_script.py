@@ -4,7 +4,7 @@ import importlib.util
 import json
 from pathlib import Path
 
-from tradingagents_host.adapters.public import HTTPResponse, PublicResearchDataAdapter
+from stock_research_agents_host.adapters.public import HTTPResponse, PublicResearchDataAdapter
 
 ROOT = Path(__file__).resolve().parents[1]
 CUTOFF = "2026-08-03T12:00:00+00:00"

@@ -1,6 +1,6 @@
 # Company analytics conformance benchmarks
 
-These fixtures are small, synthetic oracle cases for deterministic analytics behavior. They were authored specifically for `tradingagents-portable`, are released under the repository's MIT license, and contain no market data, proprietary research, or copied benchmark records.
+These fixtures are small, synthetic oracle cases for deterministic analytics behavior. They were authored specifically for `stock-research-agents`, are released under the repository's MIT license, and contain no market data, proprietary research, or copied benchmark records.
 
 In particular, no fixture or expected result was copied or derived from QF-Bench, Seeking Alpha, vendor feeds, or any other proprietary or restricted dataset. Company names and prices are intentionally fictional.
 

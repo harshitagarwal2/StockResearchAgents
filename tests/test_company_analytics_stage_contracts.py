@@ -6,23 +6,23 @@ from copy import deepcopy
 from pathlib import Path
 
 import pytest
-from company_analytics_fixtures import complete_v4_submission
+from company_analytics_fixtures import complete_analytics_submission
 
-from tradingagents_portable.company_analytics import prepare_company_analytics
-from tradingagents_portable.company_analytics_v1 import CompanyAnalyticsV1Provider
-from tradingagents_portable.company_analytics_v1 import provider as provider_module
-from tradingagents_portable.company_lifecycle import (
+from stock_research_agents.company_analytics import prepare_company_analytics
+from stock_research_agents.company_analytics_v1 import CompanyAnalyticsV1Provider
+from stock_research_agents.company_analytics_v1 import provider as provider_module
+from stock_research_agents.company_lifecycle import (
     STAGE_ENVELOPE_SCHEMA_VERSION,
-    CompanyResearchCoordinator,
+    CompanyAnalyticsCoordinator,
 )
-from tradingagents_portable.lifecycle import LifecycleStore
-from tradingagents_portable.lifecycle_profiles import CompanyAnalyticsLifecycleProfile
-from tradingagents_portable.research_quality_v1 import QualityStore
-from tradingagents_portable.store import RunStore
+from stock_research_agents.lifecycle import LifecycleStore
+from stock_research_agents.lifecycle_profiles import CompanyAnalyticsLifecycleProfile
+from stock_research_agents.research_quality_v1 import QualityStore
+from stock_research_agents.store import RunStore
 
 
-def _coordinator(tmp_path: Path) -> CompanyResearchCoordinator:
-    return CompanyResearchCoordinator(
+def _coordinator(tmp_path: Path) -> CompanyAnalyticsCoordinator:
+    return CompanyAnalyticsCoordinator(
         LifecycleStore(tmp_path / "lifecycle"),
         RunStore(tmp_path / "runs"),
         profile=CompanyAnalyticsLifecycleProfile(QualityStore(tmp_path / "quality")),
@@ -49,7 +49,7 @@ def _opaque_envelope(stage: dict[str, object]) -> dict[str, object]:
 
 
 def test_prepare_and_durable_next_stage_expose_all_portable_stage_instructions(tmp_path: Path) -> None:
-    submission = complete_v4_submission("ORCL")
+    submission = complete_analytics_submission("ORCL")
     request = submission["company_research"]["request"]  # type: ignore[index]
     plan = prepare_company_analytics(request)  # type: ignore[arg-type]
 
@@ -57,8 +57,8 @@ def test_prepare_and_durable_next_stage_expose_all_portable_stage_instructions(t
     assert isinstance(execution_contract, dict)
     assert execution_contract["schema_version"] == "stage-instructions.v1"
     assert set(execution_contract["global_policy"]) == {
-        "host_ownership",
-        "portable_semantics",
+        "caller_ownership",
+        "workflow_semantics",
         "tool_policy",
         "credential_policy",
         "evidence_policy",
@@ -97,7 +97,7 @@ def _mutate_manifest(manifest: dict[str, object], case: str) -> None:
     second = stages[1]
     assert isinstance(first, dict) and isinstance(second, dict)
     if case == "identity":
-        manifest["id"] = "tradingagents.company-analytics.v2"
+        manifest["id"] = "stockresearchagents.company-analytics.invalid"
     elif case == "stage_count":
         stages.pop()
     elif case == "ordinal":

@@ -1,5 +1,5 @@
 {
-  "name": "tradingagents-portable",
+  "name": "stock-research-agents",
   "version": "0.1.0",
   "description": "Run StockResearchAgents through any host and inspect the completed, auditable company dossier.",
   "author": {
@@ -9,7 +9,7 @@
   "interface": {
     "displayName": "StockResearchAgents",
     "shortDescription": "Evidence-first research and completed dossier.",
-    "longDescription": "A credential-free, harness-neutral company and security research capability. The research host owns reasoning, retrieval, entitlements, tools, authentication, and agent execution. StockResearchAgents owns exact-cutoff contracts, deterministic conformance, durable stage boundaries, atomic publication, portable exports, and the completed-only Research Dossier Viewer.",
+    "longDescription": "A credential-free, harness-neutral company and security research capability. The calling runtime owns reasoning, retrieval, entitlements, tools, authentication, and agent execution. StockResearchAgents owns exact-cutoff contracts, deterministic validation, durable stage boundaries, atomic publication, verified exports, and the completed-only Research Dossier Viewer.",
     "developerName": "StockResearchAgents contributors",
     "category": "Developer Tools",
     "capabilities": [
@@ -18,8 +18,8 @@
     ],
     "defaultPrompt": [
       "Prepare evidence-first company research for a supported instrument, use a truthful live, fixture, or historical-replay mode, and show only the completed dossier.",
-      "Research a company as of an exact cutoff with host-owned sources, explicit entitlement gaps, reproducible calculations, and no API keys in portable payloads.",
-      "Inspect a Completed Research Dossier with sources, claims, filings, peers, valuation, events, risks, monitoring, memory, and conformance receipts."
+      "Research a company as of an exact cutoff with caller-owned sources, explicit entitlement gaps, reproducible calculations, and no API keys in StockResearchAgents payloads.",
+      "Inspect a Completed Research Dossier with sources, claims, filings, peers, valuation, events, risks, monitoring, memory, and validation receipts."
     ],
     "brandColor": "#2563EB"
   },

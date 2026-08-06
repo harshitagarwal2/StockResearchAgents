@@ -6,8 +6,9 @@ from hashlib import sha256
 
 import pytest
 
-from tradingagents_host.adapters import FixtureSourceAdapter, ReplaySourceAdapter
-from tradingagents_host.contracts import (
+import stock_research_agents_host
+from stock_research_agents_host.adapters import FixtureSourceAdapter, ReplaySourceAdapter
+from stock_research_agents_host.contracts import (
     FilingQuery,
     NormalizedFact,
     SourceBatch,
@@ -17,10 +18,17 @@ from tradingagents_host.contracts import (
     SourcePagination,
     SourceProvenance,
 )
-from tradingagents_host.ports import SourcePort
-from tradingagents_host.source_router import SourceRouter
+from stock_research_agents_host.ports import SourcePort
+from stock_research_agents_host.source_router import SourceRouter
 
 CUTOFF = "2026-08-01T23:59:59+00:00"
+
+
+def test_host_package_exports_only_the_source_adapter_port() -> None:
+    assert stock_research_agents_host.SourcePort is SourcePort
+    for retired_name in ("ExperimentRunnerPort", "OutcomeResolverPort", "NotificationPort"):
+        assert retired_name not in stock_research_agents_host.__all__
+        assert not hasattr(stock_research_agents_host, retired_name)
 
 
 def _observation(**changes: object) -> SourceObservation:
@@ -36,6 +44,7 @@ def _observation(**changes: object) -> SourceObservation:
         "provider": "SEC EDGAR",
         "provider_version": "host-web-v1",
         "license_receipt_id": "license-sec-public",
+        "content_sha256_scope": "normalized_source_record",
         "facts": (NormalizedFact("revenue", "15900000000", "USD", "2026-Q2"),),
     }
     values.update(changes)
@@ -144,9 +153,10 @@ def test_source_batch_emits_authoritative_versioned_wire_model() -> None:
 def test_source_observation_digest_scope_is_explicit_and_bounded_extract_is_verifiable() -> None:
     assert _observation().content_sha256_scope == "normalized_source_record"
     assert _observation().to_dict()["content_sha256_scope"] == "normalized_source_record"
-    legacy_safe_payload = _observation().to_dict()
-    del legacy_safe_payload["content_sha256_scope"]
-    assert SourceObservation.from_dict(legacy_safe_payload).content_sha256_scope == "normalized_source_record"
+    missing_scope_payload = _observation().to_dict()
+    del missing_scope_payload["content_sha256_scope"]
+    with pytest.raises(ValueError, match="content_sha256_scope is required"):
+        SourceObservation.from_dict(missing_scope_payload)
 
     extract = "A bounded licensed extract."
     observation = _observation(

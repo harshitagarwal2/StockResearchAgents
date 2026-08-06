@@ -11,9 +11,9 @@ import tomllib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-PACKAGE_NAME = "tradingagents-portable"
+PACKAGE_NAME = "stock-research-agents"
 REGISTRY_NAME = "io.github.harshitagarwal2/stock-research-agents"
-VERSION_FILE = ROOT / "src" / "tradingagents_portable" / "_version.py"
+VERSION_FILE = ROOT / "src" / "stock_research_agents" / "_version.py"
 VERSION_PATTERN = re.compile(r'^__version__\s*=\s*"([^"]+)"\s*$', re.MULTILINE)
 STABLE_VERSION_PATTERN = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+\Z")
 
@@ -46,7 +46,7 @@ def validate_package_only(version: str, tag: str | None) -> list[str]:
     if not isinstance(dynamic, list) or "version" not in dynamic:
         errors.append("pyproject project.dynamic must include version")
     dynamic_config = pyproject.get("tool", {}).get("setuptools", {}).get("dynamic", {})
-    expected = "tradingagents_portable._version.__version__"
+    expected = "stock_research_agents._version.__version__"
     if not isinstance(dynamic_config, dict) or dynamic_config.get("version", {}).get("attr") != expected:
         errors.append(f"pyproject setuptools dynamic version must use {expected!r}")
     if tag is not None and tag.removeprefix("refs/tags/") != f"v{version}":
@@ -84,8 +84,8 @@ def validate_public_metadata(version: str) -> list[str]:
         errors.append("README.md must contain the exact MCP Registry mcp-name marker")
 
     for path in (
-        ROOT / "src" / "tradingagents_portable" / "mcp_server.py",
-        ROOT / "src" / "tradingagents_host" / "research_data_mcp.py",
+        ROOT / "src" / "stock_research_agents" / "mcp_server.py",
+        ROOT / "src" / "stock_research_agents_host" / "research_data_mcp.py",
     ):
         text = path.read_text(encoding="utf-8")
         if "version=__version__" not in text:

@@ -4,7 +4,7 @@ from hashlib import sha256
 
 from test_research_quality_v1_contracts import _forecast
 
-from tradingagents_portable.research_quality_v1 import (
+from stock_research_agents.research_quality_v1 import (
     OutcomeLedger,
     OutcomeObservation,
     QualityPolicy,
@@ -28,7 +28,7 @@ def _receipt() -> ResearchQualityReceipt:
         _sha("workflow"),
         _sha("request"),
         _sha("dossier"),
-        "tradingagents-portable",
+        "stock-research-agents",
         "0.1.0",
         (),
         (QualityRuleResult("rule-1", "pass", "ok"),),

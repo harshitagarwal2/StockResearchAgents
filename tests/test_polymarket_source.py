@@ -6,15 +6,15 @@ from typing import cast
 
 import pytest
 
-from tradingagents_host import PredictionMarketsQuery
-from tradingagents_host.adapters.public import (
+from stock_research_agents_host import PredictionMarketsQuery
+from stock_research_agents_host.adapters.public import (
     MAX_HTTP_RESPONSE_BYTES,
     HTTPResponse,
     ProviderTransportError,
     PublicResearchDataAdapter,
     UrllibHTTPTransport,
 )
-from tradingagents_host.contracts import source_query_from_dict
+from stock_research_agents_host.contracts import source_query_from_dict
 
 NOW = "2026-08-04T12:00:00+00:00"
 CUTOFF = NOW
@@ -441,7 +441,7 @@ def test_default_transport_bounds_response_body_reads(monkeypatch: pytest.Monkey
         assert timeout == 20
         return OversizedResponse()
 
-    monkeypatch.setattr("tradingagents_host.adapters.public.urlopen", fake_urlopen)
+    monkeypatch.setattr("stock_research_agents_host.adapters.public.urlopen", fake_urlopen)
     transport = UrllibHTTPTransport(max_attempts=1)
 
     with pytest.raises(ProviderTransportError, match="bounded size limit"):
@@ -467,7 +467,7 @@ def test_default_transport_rejects_unbounded_response_reader(monkeypatch: pytest
         assert timeout == 20
         return UnboundedOnlyResponse()
 
-    monkeypatch.setattr("tradingagents_host.adapters.public.urlopen", fake_urlopen)
+    monkeypatch.setattr("stock_research_agents_host.adapters.public.urlopen", fake_urlopen)
 
     with pytest.raises(ProviderTransportError, match="does not support bounded reads"):
         UrllibHTTPTransport(max_attempts=1).get_json(SEARCH_URL)

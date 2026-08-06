@@ -6,8 +6,8 @@ from typing import cast
 
 import pytest
 
-from tradingagents_host.adapters.public import HTTPResponse, PublicResearchDataAdapter, UrllibHTTPTransport
-from tradingagents_host.contracts import (
+from stock_research_agents_host.adapters.public import HTTPResponse, PublicResearchDataAdapter, UrllibHTTPTransport
+from stock_research_agents_host.contracts import (
     CompanyNewsQuery,
     FinancialStatementsQuery,
     FundamentalsQuery,
@@ -27,7 +27,7 @@ from tradingagents_host.contracts import (
     StockTwitsQuery,
     source_query_from_dict,
 )
-from tradingagents_host.research_data_mcp import (
+from stock_research_agents_host.research_data_mcp import (
     PUBLIC_ADAPTER_RECEIPT,
     TOOL_NAMES,
     AdapterConformanceReceipt,
@@ -600,7 +600,7 @@ def test_sec_companyfacts_ids_are_stable_when_provider_rows_are_reordered() -> N
 def test_sec_companyfacts_enforces_hard_item_cap_and_reports_partial_gap(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr("tradingagents_host.adapters.public.MAX_SEC_COMPANY_FACT_ITEMS", 2)
+    monkeypatch.setattr("stock_research_agents_host.adapters.public.MAX_SEC_COMPANY_FACT_ITEMS", 2)
     rows = [
         {
             "end": f"{year}-12-31",
@@ -797,7 +797,7 @@ def test_default_transport_has_bounded_retry_and_configurable_operator_identity(
         assert timeout == 20
         return Response(next(statuses))
 
-    monkeypatch.setattr("tradingagents_host.adapters.public.urlopen", fake_urlopen)
+    monkeypatch.setattr("stock_research_agents_host.adapters.public.urlopen", fake_urlopen)
     transport = UrllibHTTPTransport(
         operator_identity="Acme Research Adapter/1.0 (ops@example.com)",
         max_attempts=3,

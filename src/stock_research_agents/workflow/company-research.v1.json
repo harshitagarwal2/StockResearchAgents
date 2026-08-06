@@ -1,0 +1,46 @@
+{
+  "schema_version": "1.0.0",
+  "id": "stockresearchagents.company-research.v1",
+  "name": "Evidence-first point-in-time company research",
+  "terminal_artifact_kind": "research_dossier.v1",
+  "contracts": {
+    "submission_schema": "company-research-submission.v1.schema.json",
+    "request": "company-research-submission.v1.schema.json#/$defs/request",
+    "research_plan": "company-research-submission.v1.schema.json#/$defs/researchPlan",
+    "source_document": "company-research-submission.v1.schema.json#/$defs/document",
+    "metric": "company-research-submission.v1.schema.json#/$defs/metric",
+    "claim": "company-research-submission.v1.schema.json#/$defs/claim",
+    "calculation": "company-research-submission.v1.schema.json#/$defs/calculation",
+    "dossier": "company-research-submission.v1.schema.json#/$defs/dossier",
+    "terminal": "company-research-submission.v1.schema.json#/$defs/companyResearchSubmission"
+  },
+  "system_boundary": {
+    "caller_owns": ["model_reasoning", "retrieval", "provider_credentials", "native_agent_execution", "entitlement_checks"],
+    "core_owns": ["typed_contracts", "point_in_time_validation", "referential_integrity", "deterministic_calculation_receipts", "bounded_publication"],
+    "forbidden": ["credentials", "broker_or_order_execution", "raw_source_content", "silent_provider_fallback", "fabricated_completeness"]
+  },
+  "stages": [
+    {"ordinal": 1, "id": "research.plan", "depends_on": [], "capabilities": ["adaptive_planning"], "output_refs": ["company-research-submission.v1.schema.json#/$defs/researchPlan"]},
+    {"ordinal": 2, "id": "evidence.official", "depends_on": ["research.plan"], "capabilities": ["official_filings", "investor_relations", "exact_availability"], "output_refs": ["company-research-submission.v1.schema.json#/$defs/document", "company-research-submission.v1.schema.json#/$defs/filing"]},
+    {"ordinal": 3, "id": "evidence.market", "depends_on": ["research.plan"], "capabilities": ["market_history", "latest_session_check"], "output_refs": ["company-research-submission.v1.schema.json#/$defs/document", "company-research-submission.v1.schema.json#/$defs/metric"]},
+    {"ordinal": 4, "id": "analysis.financial", "depends_on": ["evidence.official"], "capabilities": ["filing_analysis", "guidance", "earnings_transcripts"], "output_refs": ["company-research-submission.v1.schema.json#/$defs/metric", "company-research-submission.v1.schema.json#/$defs/claim", "company-research-submission.v1.schema.json#/$defs/guidance", "company-research-submission.v1.schema.json#/$defs/transcript"]},
+    {"ordinal": 5, "id": "analysis.company", "depends_on": ["evidence.official", "evidence.market"], "capabilities": ["events", "peers", "factors"], "output_refs": ["company-research-submission.v1.schema.json#/$defs/event", "company-research-submission.v1.schema.json#/$defs/peer", "company-research-submission.v1.schema.json#/$defs/factor"]},
+    {"ordinal": 6, "id": "audit.evidence", "depends_on": ["analysis.financial", "analysis.company"], "capabilities": ["claim_grounding", "counterevidence", "coverage_audit", "temporal_audit"], "output_refs": ["company-research-submission.v1.schema.json#/$defs/claim", "company-research-submission.v1.schema.json#/$defs/coverage"]},
+    {"ordinal": 7, "id": "verify.numerical", "depends_on": ["audit.evidence"], "capabilities": ["deterministic_recalculation", "unit_period_reconciliation"], "output_refs": ["company-research-submission.v1.schema.json#/$defs/calculation", "company-research-submission.v1.schema.json#/$defs/metric"]},
+    {"ordinal": 8, "id": "debate.bull", "depends_on": ["verify.numerical"], "capabilities": ["constrained_debate"], "output_refs": ["company-research-submission.v1.schema.json#/$defs/claim"]},
+    {"ordinal": 9, "id": "debate.bear", "depends_on": ["debate.bull"], "capabilities": ["counterclaim", "counterevidence"], "output_refs": ["company-research-submission.v1.schema.json#/$defs/claim"]},
+    {"ordinal": 10, "id": "synthesis.valuation", "depends_on": ["debate.bear"], "capabilities": ["scenario_valuation"], "output_refs": ["company-research-submission.v1.schema.json#/$defs/valuation"]},
+    {"ordinal": 11, "id": "synthesis.risk", "depends_on": ["synthesis.valuation"], "capabilities": ["risk_scenarios", "portfolio_context_sanitization"], "output_refs": ["company-research-submission.v1.schema.json#/$defs/risk", "company-research-submission.v1.schema.json#/$defs/portfolioContext"]},
+    {"ordinal": 12, "id": "research.delta", "depends_on": ["synthesis.risk"], "capabilities": ["point_in_time_memory", "research_delta"], "output_refs": ["company-research-submission.v1.schema.json#/$defs/researchDelta"]},
+    {"ordinal": 13, "id": "research.monitor", "depends_on": ["research.delta"], "capabilities": ["monitoring_conditions"], "output_refs": ["company-research-submission.v1.schema.json#/$defs/monitoring"]},
+    {"ordinal": 14, "id": "evaluate.final", "depends_on": ["research.monitor"], "capabilities": ["evidence_audit", "numerical_verification", "temporal_audit", "completeness"], "output_refs": ["company-research-submission.v1.schema.json#/$defs/evaluation", "company-research-submission.v1.schema.json#/$defs/coverage"]},
+    {"ordinal": 15, "id": "publish.dossier", "depends_on": ["evaluate.final"], "capabilities": ["atomic_completed_publication"], "output_refs": ["company-research-submission.v1.schema.json#/$defs/companyResearchSubmission"]}
+  ],
+  "routing_semantics": {
+    "execution": "The caller runtime executes ordered stages and returns only schema-valid bounded outputs.",
+    "retrieval": "No provider is implicit; entitlement-blocked and unavailable sources remain explicit coverage states.",
+    "calculation": "StockResearchAgents verifies deterministic receipts; model prose cannot substitute for arithmetic.",
+    "publication": "publish.dossier is terminal and completed-only; partial state is never a research_dossier.v1 artifact."
+  },
+  "fallback": "sequential"
+}

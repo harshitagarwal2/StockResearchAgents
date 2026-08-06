@@ -64,7 +64,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: testpypi
-      url: https://test.pypi.org/p/tradingagents-portable
+      url: https://test.pypi.org/p/stock-research-agents
     permissions:
       id-token: write
     steps:
@@ -100,7 +100,7 @@ jobs:
             if "$smoke_dir/venv/bin/python" -m pip install \
               --index-url https://test.pypi.org/simple/ \
               --extra-index-url https://pypi.org/simple/ \
-              "tradingagents-portable==$PACKAGE_VERSION"; then
+              "stock-research-agents==$PACKAGE_VERSION"; then
               break
             fi
             if [ "$attempt" = 12 ]; then
@@ -109,6 +109,6 @@ jobs:
             sleep 10
           done
           STOCKRESEARCHAGENTS_STATE_DIR="$smoke_dir/state" \
-          STOCKRESEARCHAGENTS_PRESENTATION_MODE=path_only \
-          "$smoke_dir/venv/bin/stock-research-agents" fixture --events > "$smoke_dir/fixture.json"
-          test -s "$smoke_dir/fixture.json"
+          "$smoke_dir/venv/bin/python" -c 'from stock_research_agents import discovery; value = discovery(); assert value["active_profile"] == "company-analytics.v1"; print(value["name"])' \
+            > "$smoke_dir/discovery.txt"
+          test -s "$smoke_dir/discovery.txt"

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from test_research_quality_v1_contracts import _forecast
 
-from tradingagents_portable.research_quality_v1 import OutcomeLedger, OutcomeObservation, score_forecast
+from stock_research_agents.research_quality_v1 import OutcomeLedger, OutcomeObservation, score_forecast
 
 
 def _ledger(forecast, **changes):

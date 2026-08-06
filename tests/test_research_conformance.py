@@ -3,9 +3,9 @@ from __future__ import annotations
 from copy import deepcopy
 
 import pytest
-from research_v3_fixtures import complete_v3_submission
+from research_submission_fixtures import complete_research_submission
 
-from tradingagents_portable.research_conformance import (
+from stock_research_agents.research_conformance import (
     assert_research_dossier_conformant,
     validate_research_dossier,
 )
@@ -50,7 +50,7 @@ def _valid_dossier() -> dict[str, object]:
             }
         ],
         "debate": [{"id": "turn-1", "claim_ids": ["claim-1"], "evidence_ids": ["ev-1"]}],
-        "portfolio_context": {"sanitized": True, "executable": False, "submitted": False},
+        "portfolio_context": {"sanitized": True, "non_executable": True},
         "coverage": {"status": "complete", "gaps": []},
     }
 
@@ -79,7 +79,7 @@ def test_calculation_constants_participate_in_deterministic_recomputation() -> N
 
 
 def test_calculation_operation_cannot_contradict_formula_semantics() -> None:
-    dossier = complete_v3_submission("ORCL")["dossier"]
+    dossier = complete_research_submission("ORCL")["dossier"]
     dossier["calculations"][0]["operation"] = "discounted_cash_flow"
 
     report = validate_research_dossier(dossier)
@@ -87,8 +87,8 @@ def test_calculation_operation_cannot_contradict_formula_semantics() -> None:
     assert any(issue.check == "reproducibility" and issue.path.endswith(".result") for issue in report.issues)
 
 
-def test_canonical_v3_fixture_passes_generic_conformance() -> None:
-    submission = complete_v3_submission("ORCL")
+def test_canonical_research_fixture_passes_generic_validation() -> None:
+    submission = complete_research_submission("ORCL")
     dossier = submission["dossier"]
     assert isinstance(dossier, dict)
 
@@ -98,7 +98,7 @@ def test_canonical_v3_fixture_passes_generic_conformance() -> None:
 
 
 def test_generic_conformance_accepts_future_period_with_cutoff_safe_information_vintage() -> None:
-    dossier = complete_v3_submission("ORCL")["dossier"]
+    dossier = complete_research_submission("ORCL")["dossier"]
     dossier["metrics"][1]["period_end"] = "2027-07-31T00:00:00Z"
 
     report = validate_research_dossier(dossier)
@@ -107,7 +107,7 @@ def test_generic_conformance_accepts_future_period_with_cutoff_safe_information_
 
 
 def test_generic_conformance_rejects_post_cutoff_metric_information_vintage() -> None:
-    dossier = complete_v3_submission("ORCL")["dossier"]
+    dossier = complete_research_submission("ORCL")["dossier"]
     dossier["metrics"][1]["period_end"] = "2027-07-31T00:00:00Z"
     dossier["metrics"][1]["as_of_at"] = "2026-08-02T00:00:00Z"
 
@@ -116,7 +116,7 @@ def test_generic_conformance_rejects_post_cutoff_metric_information_vintage() ->
     assert any(issue.check == "temporal_safety" and issue.path.endswith(".as_of_at") for issue in report.issues)
 
 
-def test_contract_shaped_v3_dossier_allows_post_cutoff_processing_but_not_evidence_leakage() -> None:
+def test_contract_shaped_research_dossier_allows_post_cutoff_processing_but_not_evidence_leakage() -> None:
     dossier = _valid_dossier()
     dossier["as_of_at"] = dossier.pop("cutoff")
     dossier["completed_at"] = "2026-08-02T03:00:00Z"

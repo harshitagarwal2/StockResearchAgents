@@ -1,30 +1,34 @@
 %%{init: {"theme":"base","fontFamily":"Avenir Next, Segoe UI, sans-serif","themeVariables":{"fontFamily":"Avenir Next, Segoe UI, sans-serif","primaryColor":"#eef3ff","primaryTextColor":"#071c26","primaryBorderColor":"#2257ff","lineColor":"#516a75","secondaryColor":"#e5f7f5","tertiaryColor":"#fff4df","background":"#f5f8f9","clusterBkg":"#ffffff","clusterBorder":"#96aab2"},"flowchart":{"curve":"basis","htmlLabels":true}}}%%
 flowchart TB
   accTitle: StockResearchAgents system context
-  accDescr: A host harness retrieves evidence and runs agents. StockResearchAgents validates, persists, and publishes a completed dossier. The read-only viewer and exports can see only completed results.
+  accDescr: A caller runtime coordinates the public company-analytics.v1 profile through the coordination MCP and retrieves typed evidence through a separate stock-research-data MCP. StockResearchAgents validates the outer CompanyAnalyticsSubmissionV1, including its embedded CompanyResearchSubmissionV1 and ResearchDossierV1 foundation, before publishing CompanyAnalyticsResultV1 for projection-only viewers and exports.
 
-  S["External evidence<br/><small>filings · market · news · transcripts</small>"]
-  H["Research host<br/><small>retrieval · reasoning · credentials · entitlements</small>"]
+  S["External evidence<br/><small>filings · market · news · macro</small>"]
+  H["Caller runtime<br/><small>reasoning · credentials · entitlements · scheduling</small>"]
+  DATA["stock-research-data MCP<br/><small>typed SourceBatch retrieval · no coordination</small>"]
+  COORD["Coordination MCP<br/><small>company-analytics.v1 · run-control.v1</small>"]
 
   subgraph P["STOCKRESEARCHAGENTS · no credentials · no broker authority"]
     direction LR
-    C["Versioned contracts<br/><small>request · workflow · dossier</small>"]
-    V{"Conformance<br/>and publication gate"}
-    L["Durable lifecycle<br/><small>stage boundaries · recovery</small>"]
+    C["CompanyAnalyticsSubmissionV1<br/><small>outer public submission</small>"]
+    R["CompanyResearchSubmissionV1<br/><small>embedded ResearchDossierV1</small>"]
+    V{"Validation<br/>and publication gate"}
+    L["run-control.v1<br/><small>stage boundaries · recovery</small>"]
     Q["Research Quality<br/><small>policy · forecasts · outcomes · scoring</small>"]
     D[["Completed Research Dossier"]]
-    C --> V
+    C --> R --> V
     L --> V
     Q -. quality receipt .-> V
     V -->|accepted| D
   end
 
   U["Research Dossier Viewer<br/><small>completed only · read only</small>"]
-  X["Portable exports<br/><small>JSON · Markdown</small>"]
+  X["Completed exports<br/><small>JSON · Markdown</small>"]
 
-  S --> H
-  H -->|typed submission| C
-  H -->|opaque stage commits| L
+  S --> DATA --> H
+  H --> COORD
+  COORD -->|outer submission| C
+  COORD -->|ordered stage commits| L
   D --> U
   D --> X
 
@@ -33,8 +37,8 @@ flowchart TB
   classDef quality fill:#e5f7f5,stroke:#00746e,color:#071c26,stroke-width:2px;
   classDef artifact fill:#ffffff,stroke:#1231a6,color:#071c26,stroke-width:3px;
   classDef view fill:#ffffff,stroke:#516a75,color:#071c26,stroke-width:2px;
-  class S,H host;
-  class C,L,V port;
+  class S,H,DATA host;
+  class COORD,C,R,L,V port;
   class Q quality;
   class D artifact;
   class U,X view;

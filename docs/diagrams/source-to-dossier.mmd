@@ -1,12 +1,12 @@
 %%{init: {"theme":"base","fontFamily":"Avenir Next, Segoe UI, sans-serif","themeVariables":{"fontFamily":"Avenir Next, Segoe UI, sans-serif","primaryColor":"#eef3ff","primaryTextColor":"#071c26","primaryBorderColor":"#2257ff","lineColor":"#516a75","secondaryColor":"#e5f7f5","tertiaryColor":"#fff4df","background":"#f5f8f9","clusterBkg":"#ffffff","clusterBorder":"#96aab2"},"flowchart":{"curve":"basis","htmlLabels":true}}}%%
 flowchart TB
   accTitle: Evidence-to-dossier flow
-  accDescr: A host-owned source adapter normalizes public or entitled evidence through a provider-neutral SourcePort boundary. The host derives portable terminal lineage fields from retained batches, while sanitized failed attempts and coverage gaps remain host receipts that must be declared as limitations when decision-relevant. Portable validates provenance, time, licensing, claims, and calculations before a completed dossier is atomically published; a rejected terminal submission is not published.
+  accDescr: A caller-owned source adapter normalizes public or entitled evidence through a provider-neutral SourcePort boundary. The caller derives typed terminal lineage fields from retained batches, while sanitized failed attempts and coverage gaps remain caller receipts that must be declared as limitations when decision-relevant. StockResearchAgents validates provenance, time, licensing, claims, and calculations in the complete CompanyAnalyticsSubmissionV1 before publishing CompanyAnalyticsResultV1; a rejected terminal submission is not published.
 
-  subgraph H["Host-owned retrieval"]
+  subgraph H["Caller-owned retrieval"]
     direction LR
     SRC["Public or entitled source<br/><small>filing · market · publisher · macro</small>"]
-    ADAPTER["Host source adapter<br/><small>credentials · terms · pagination · retries</small>"]
+    ADAPTER["Caller source adapter<br/><small>credentials · terms · pagination · retries</small>"]
     PORT["SourcePort.fetch<br/><small>capability + typed query</small>"]
     COLLECT["SourcePortfolioCollector<br/><small>validate routes · isolate failures</small>"]
     BATCH["Retained SourceBatch<br/><small>bounded facts · provenance · entitlement</small>"]
@@ -16,12 +16,12 @@ flowchart TB
     COLLECT --> ATTEMPT
   end
 
-  subgraph P["Portable evidence and research contracts"]
+  subgraph P["StockResearchAgents evidence and research contracts"]
     direction LR
     LINEAGE["Source lineage crosswalk<br/><small>identity · digest scope · entitlement</small>"]
-    DOSSIER["Host research submission<br/><small>documents · claims · calculations</small>"]
+    DOSSIER["Caller analytics submission<br/><small>documents · claims · calculations</small>"]
     LIMIT["Declared coverage limitation<br/><small>partial · stale · blocked · missing</small>"]
-    GATE{"Conformance gate<br/><small>time · references · licensing · safety</small>"}
+    GATE{"Validation gate<br/><small>time · references · licensing · safety</small>"}
     DONE[["Completed Research Dossier<br/><small>immutable published artifact</small>"]]
     LINEAGE --> DOSSIER --> GATE
     LIMIT --> DOSSIER
@@ -36,8 +36,8 @@ flowchart TB
 
   REJECT["Typed terminal rejection<br/><small>no completed publication</small>"]
 
-  BATCH -->|host derives terminal lineage fields| LINEAGE
-  ATTEMPT -. host declares decision-relevant gap .-> LIMIT
+  BATCH -->|caller derives terminal lineage fields| LINEAGE
+  ATTEMPT -. caller declares decision-relevant gap .-> LIMIT
   GATE -->|rejected| REJECT
   DONE --> VIEW
   DONE --> EXPORT

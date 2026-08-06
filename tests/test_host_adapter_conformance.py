@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-import os
 import shutil
 import sys
 from pathlib import Path
@@ -67,7 +66,7 @@ def test_installed_package_templates_match_one_host_adapter_contract() -> None:
     assert contract["schema_version"] == "host-adapters.v1"
     assert contract["runtime"] == "installed_python_package"
     assert contract["workflow_profile"] == "company-analytics.v1"
-    assert contract["default_execution_mode"] == "compatible"
+    assert contract["default_execution_mode"] == "sequential"
     assert (ROOT / contract["canonical_skill"]).is_file()
 
     expected = _expected_servers(contract)
@@ -141,9 +140,9 @@ def test_optional_chrome_policy_is_host_owned_and_structured_routes_stay_preferr
         "approval_scope": "exact_run_and_domain",
         "approval_must_be_explicit": True,
         "approval_must_not_carry_between_runs": True,
-        "portable_may_launch_chrome": False,
-        "portable_may_install_chrome": False,
-        "portable_may_force_chrome": False,
+        "core_may_launch_chrome": False,
+        "core_may_install_chrome": False,
+        "core_may_force_chrome": False,
     }
     assert policy["routing"] == {
         "structured_routes_preferred": [
@@ -304,7 +303,7 @@ def test_optional_chrome_policy_allows_only_approved_read_only_public_https_retr
             },
             "raw_percent_encoded_hostname_syntax_rejected": True,
             "non_ascii_hostname_syntax_rejected": True,
-            "one_time_portable_dns_lookup_allowed": False,
+            "one_time_core_dns_lookup_allowed": False,
         },
         "authenticated_page_rule": "only_approved_domain_and_run_relevant_research_page",
         "denied_targets": [
@@ -344,8 +343,8 @@ def test_optional_chrome_policy_keeps_browser_state_private_and_cannot_bypass_co
     policy = _chrome_policy()
     assert policy["browser_state"] == {
         "host_only": ["cookies", "credentials", "history", "session_state", "raw_bodies"],
-        "portable_storage_allowed": False,
-        "portable_logging_allowed": False,
+        "core_storage_allowed": False,
+        "core_logging_allowed": False,
     }
     assert policy["access_controls"] == {
         "respect_paywalls": True,
@@ -405,9 +404,8 @@ def test_installed_and_source_launchers_have_equivalent_mcp_surfaces(tmp_path: P
     base_environment = {
         **contract["environment"],
         "STOCKRESEARCHAGENTS_PRESENTATION_MODE": "path_only",
+        "UV_CACHE_DIR": str(tmp_path / "uv-cache"),
     }
-    if uv_cache_dir := os.environ.get("UV_CACHE_DIR"):
-        base_environment["UV_CACHE_DIR"] = uv_cache_dir
 
     for key, expected_tool in (
         ("coordination", "discover_capability"),
@@ -446,7 +444,5 @@ def test_installed_and_source_launchers_have_equivalent_mcp_surfaces(tmp_path: P
         assert expected_tool in source_result[1]
         if key == "coordination":
             assert source_result[2] == installed_result[2]
-            assert source_result[2]["default_fixture"] == {
-                "symbol": "ORCL",
-                "external_credentials_required": False,
-            }
+            assert source_result[2]["active_profile"] == "company-analytics.v1"
+            assert source_result[2]["executor_states"]["company_analytics_v1"]["ready"] is True
