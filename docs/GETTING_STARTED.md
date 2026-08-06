@@ -9,7 +9,7 @@ This page exercises a public workflow plan and the deterministic, credential-fre
 
 ## Prerequisites
 
-- Python 3.11 or newer.
+- Python 3.11 through 3.14.
 - [`uv`](https://docs.astral.sh/uv/).
 - No API key or provider credential is needed for the deterministic fixture.
 
@@ -21,6 +21,18 @@ uv run python scripts/smoke_backend.py
 ```
 
 The command must print an `ok` line with a content-derived run ID, `stages=26`, and a positive event count. It uses the same deterministic backend smoke check as CI and asserts a completed `company-analytics-result.v1`, the exact canonical stage order, a non-executable result, and a completed terminal event. The in-memory fixture proves contract and publication behavior, not current research quality, and intentionally does not create durable local state.
+
+## Inspect the generated fixture demonstration
+
+![Fixture Research Dossier Viewer preview](../examples/generated/orcl-fixture/preview.svg)
+
+The committed ORCL result, events, completed view, preview, and digest manifest are generated from the deterministic contracts and checked byte-for-byte in CI. Regenerate them with:
+
+```bash
+uv run python scripts/generate_fixture_demo.py
+```
+
+Every artifact is visibly fixture-labeled and non-executable. This demonstrates the completed product projection; it is not current ORCL research, live-provider proof, investment advice, or a performance claim.
 
 ## Open the Research Dossier Viewer
 
@@ -70,6 +82,6 @@ An MCP client should call `discover_capability` before assuming a tool, workflow
 **The viewer shows an old run.** Open the exact `presentation.url` returned by the completed operation. The bare
 viewer URL intentionally resolves the durable `current` alias. See [Operations](OPERATIONS.md#state-directory).
 
-**`analytics-plan` rejects the example.** Run `uv sync`, verify Python 3.11+, and run the targeted tests in [Validation](VALIDATION.md).
+**`analytics-plan` rejects the example.** Run `uv sync`, verify Python 3.11–3.14, and run the targeted tests in [Validation](VALIDATION.md).
 
 **The plugin can plan but not retrieve live data.** That is the product boundary. The active Codex task or other caller runtime must retrieve and reason over evidence, then submit the typed result.

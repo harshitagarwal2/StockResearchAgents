@@ -77,7 +77,9 @@ def test_default_coordinator_is_constructed_only_in_bootstrap() -> None:
 def test_inbound_adapters_use_the_application_services_and_runtime() -> None:
     for name in ("cli.py", "mcp_server.py"):
         source = (PACKAGE / name).read_text(encoding="utf-8")
-        assert "from .application import CompletedPublicationService, CompletedRunQueryService" in source
+        assert "CompletedPublicationService" in source
+        assert "CompletedRunQueryService" in source
+        assert "StockResearchApplication" in source
         assert "from .bootstrap import DEFAULT_RUNTIME" in source
         assert "from .store import RUN_STORE" not in source
 

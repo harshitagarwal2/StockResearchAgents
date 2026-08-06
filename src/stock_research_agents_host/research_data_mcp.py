@@ -8,24 +8,19 @@ from dataclasses import dataclass
 from typing import Any
 
 from stock_research_agents._version import __version__
+from stock_research_agents_host.adapters.providers.catalog import (
+    CAPABILITY_SPECS,
+    capability_spec,
+    public_adapter_capabilities,
+)
 from stock_research_agents_host.adapters.public import PublicResearchDataAdapter, UrllibHTTPTransport
 from stock_research_agents_host.contracts import (
     SOURCE_BATCH_VERSION,
-    CompanyNewsQuery,
-    FinancialStatementsQuery,
-    FundamentalsQuery,
-    GlobalNewsQuery,
-    IndicatorsQuery,
-    MacroQuery,
-    PredictionMarketsQuery,
-    PricesQuery,
-    RedditQuery,
-    RegulatoryFilingsQuery,
     SourceQuery,
-    StockTwitsQuery,
     validate_source_response,
 )
 from stock_research_agents_host.ports import SourcePort
+from stock_research_agents_host.source_portfolio import SourcePortfolioCollector
 
 try:
     from mcp.server import MCPServer
@@ -46,6 +41,11 @@ TOOL_NAMES = {
     "stocktwits": "research_data_get_stocktwits",
     "reddit": "research_data_get_reddit",
 }
+PORTFOLIO_TOOL_NAME = "research_data_collect_source_portfolio"
+if set(TOOL_NAMES) != {spec.name for spec in CAPABILITY_SPECS}:  # pragma: no cover - import-time invariant
+    raise RuntimeError("research-data MCP tools and the capability catalog must match exactly")
+if PORTFOLIO_TOOL_NAME in TOOL_NAMES.values():  # pragma: no cover - import-time invariant
+    raise RuntimeError("the source portfolio tool name must be distinct from SourceBatch tools")
 
 
 @dataclass(frozen=True, slots=True)
@@ -68,15 +68,7 @@ PUBLIC_ADAPTER_RECEIPT = AdapterConformanceReceipt(
     receipt_id="public-adapters-source-batch-v1",
     adapter_id="PublicResearchDataAdapter",
     source_batch_version=SOURCE_BATCH_VERSION,
-    capabilities=(
-        "regulatory_filings",
-        "fundamentals",
-        "financial_statements",
-        "company_news",
-        "global_news",
-        "macro",
-        "prediction_markets",
-    ),
+    capabilities=public_adapter_capabilities(),
 )
 
 
@@ -91,6 +83,20 @@ class ResearchDataService:
         return validate_source_response(capability, query, self._adapter.fetch(capability, query)).to_dict()
 
 
+class SourcePortfolioService:
+    """Terminal additive surface over explicitly configured provider routes."""
+
+    def __init__(self, collector: SourcePortfolioCollector) -> None:
+        self._collector = collector
+
+    def execute(self, capability: str, fields: dict[str, object]) -> dict[str, object]:
+        capability_spec(capability)
+        route_ids = self._collector.route_ids(capability)
+        if len(route_ids) < 2:
+            raise ValueError("source portfolio collection requires at least two configured provider routes")
+        return self._collector.collect(capability, _query(capability, fields)).to_dict()
+
+
 def _query_id(capability: str, fields: dict[str, object]) -> str:
     digest = hashlib.sha256(json.dumps(fields, sort_keys=True, separators=(",", ":")).encode()).hexdigest()[:24]
     return f"{capability}-{digest}"
@@ -99,19 +105,6 @@ def _query_id(capability: str, fields: dict[str, object]) -> str:
 def _query(capability: str, fields: dict[str, object]) -> SourceQuery:
     query_id = _query_id(capability, fields)
     payload = {"query_id": query_id, **fields}
-    constructors: dict[str, type[SourceQuery]] = {
-        "prices": PricesQuery,
-        "indicators": IndicatorsQuery,
-        "regulatory_filings": RegulatoryFilingsQuery,
-        "fundamentals": FundamentalsQuery,
-        "financial_statements": FinancialStatementsQuery,
-        "company_news": CompanyNewsQuery,
-        "global_news": GlobalNewsQuery,
-        "macro": MacroQuery,
-        "prediction_markets": PredictionMarketsQuery,
-        "stocktwits": StockTwitsQuery,
-        "reddit": RedditQuery,
-    }
     for field in (
         "form_types",
         "metrics",
@@ -127,12 +120,14 @@ def _query(capability: str, fields: dict[str, object]) -> SourceQuery:
             if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
                 raise ValueError(f"{field} must be an array of strings")
             payload[field] = tuple(value)
-    return constructors[capability](**payload)  # type: ignore[arg-type]
+    return capability_spec(capability).query_type(**payload)  # type: ignore[arg-type]
 
 
 def create_server(
     adapter: SourcePort,
     receipts: tuple[AdapterConformanceReceipt, ...] = (),
+    *,
+    portfolio_collector: SourcePortfolioCollector | None = None,
 ) -> MCPServer:
     server = MCPServer(
         "StockResearchAgents Research Data",
@@ -291,6 +286,20 @@ def create_server(
                 description=f"Return a canonical SourceBatch v1 for {capability}; accepts no credentials.",
                 annotations=read,
             )(functions[capability])
+    if portfolio_collector is not None:
+        portfolio_service = SourcePortfolioService(portfolio_collector)
+
+        def collect_source_portfolio(capability: str, fields: dict[str, object]) -> dict[str, object]:
+            return portfolio_service.execute(capability, fields)
+
+        server.tool(
+            name=PORTFOLIO_TOOL_NAME,
+            description=(
+                "Return a terminal SourcePortfolioReceipt v1 across at least two explicitly configured routes; "
+                "provider batches and entitlements remain separate."
+            ),
+            annotations=read,
+        )(collect_source_portfolio)
     return server
 
 

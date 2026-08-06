@@ -6,8 +6,8 @@ from collections.abc import Mapping
 from typing import Protocol
 
 from .application_ports import QualityIndexPort
-from .company_analytics import build_company_analytics_draft, prepare_company_analytics
-from .company_analytics_v1 import CompanyAnalyticsSubmissionV1, parse_company_analytics_submission_v1
+from .company_analytics import COMPANY_ANALYTICS_WORKFLOW, prepare_company_analytics
+from .company_analytics_v1 import CompanyAnalyticsSubmissionV1
 from .publication import PublicationDraft
 from .research_contracts import CompanyResearchRequest
 
@@ -61,10 +61,10 @@ LifecycleProfileStrategy = WorkflowDefinition
 
 
 class CompanyAnalyticsLifecycleProfile:
-    """Company analytics workflow definition with an injectable quality index."""
+    """Compatibility facade combining the workflow and its quality sidecar."""
 
-    workflow_profile = "company-analytics.v1"
-    workflow_id = "stockresearchagents.company-analytics.v1"
+    workflow_profile = COMPANY_ANALYTICS_WORKFLOW.descriptor.profile
+    workflow_id = COMPANY_ANALYTICS_WORKFLOW.descriptor.workflow_id
     terminal_stage_id = "publish.completed"
     terminal_output_ref = "company-analytics-submission.v1.schema.json"
     terminal_kind = "company_analytics_submission_v1"
@@ -85,7 +85,13 @@ class CompanyAnalyticsLifecycleProfile:
             from .research_quality_v1 import QualityStore
 
             quality_store = QualityStore()
-        self.quality_store = quality_store
+        self.workflow = COMPANY_ANALYTICS_WORKFLOW
+        self.sidecar_publisher = CompanyAnalyticsQualitySidecarPublisher(quality_store)
+
+    @property
+    def quality_store(self) -> QualityIndexPort:
+        """Deprecated compatibility access; use ``sidecar_publisher``."""
+        return self.sidecar_publisher.quality_store
 
     def prepare(
         self,
@@ -107,26 +113,42 @@ class CompanyAnalyticsLifecycleProfile:
         return plan
 
     def parse_terminal(self, payload: object) -> CompanyAnalyticsSubmissionV1:
-        return parse_company_analytics_submission_v1(payload)
+        return self.workflow.parse_submission(payload)
 
     def request_from_submission(self, submission: CompanyAnalyticsSubmissionV1) -> CompanyResearchRequest:
         return submission.company_research.request
 
     def build_publication(self, payload: object) -> PublicationDraft:
-        return build_company_analytics_draft(payload)
+        return self.workflow.build_publication(payload)
 
     def stage_sidecars(self, payload: object) -> None:
-        submission = self.parse_terminal(payload)
+        self.sidecar_publisher.stage_sidecars(payload)
+
+    def publish_sidecars(self, payload: object) -> None:
+        self.sidecar_publisher.publish_sidecars(payload)
+
+    def sidecars_ready(self, payload: object | None) -> bool:
+        return self.sidecar_publisher.sidecars_ready(payload)
+
+
+class CompanyAnalyticsQualitySidecarPublisher:
+    """Publish research-quality state independently of workflow definition."""
+
+    def __init__(self, quality_store: QualityIndexPort) -> None:
+        self.quality_store = quality_store
+
+    def stage_sidecars(self, payload: object) -> None:
+        submission = COMPANY_ANALYTICS_WORKFLOW.parse_submission(payload)
         self.quality_store.stage_registration(submission.quality_receipt, submission.forecasts)
 
     def publish_sidecars(self, payload: object) -> None:
-        submission = self.parse_terminal(payload)
+        submission = COMPANY_ANALYTICS_WORKFLOW.parse_submission(payload)
         self.quality_store.publish_registration(submission.quality_receipt.run_id)
 
     def sidecars_ready(self, payload: object | None) -> bool:
         if payload is None:
             return False
-        submission = self.parse_terminal(payload)
+        submission = COMPANY_ANALYTICS_WORKFLOW.parse_submission(payload)
         return self.quality_store.is_published(submission.quality_receipt.run_id)
 
 

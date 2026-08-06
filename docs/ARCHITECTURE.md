@@ -23,7 +23,7 @@ The design is driven by five invariants:
 
 [![SOLID ports-and-adapters view of Company Analytics](../assets/architecture/solid-ports-adapters.png)](../assets/architecture/solid-ports-adapters.svg)
 
-External evidence enters only through a caller runtime, optionally through the separate `stock-research-data` MCP. The caller coordinates `company-analytics.v1` through the coordination MCP or another inbound adapter and sends typed submissions plus bounded stage descriptors across the trust boundary. StockResearchAgents validation and publication decide whether a Completed Research Dossier exists; the viewer and exports read completed results only.
+External evidence enters only through a caller runtime, optionally through the separate `stock-research-data` MCP. A normal capability tool calls one configured `SourcePort` and returns one `SourceBatch`; a separately configured, optional portfolio tool fans out across at least two routes and returns a `SourcePortfolioReceipt` without merging publisher batches or entitlements. The caller coordinates `company-analytics.v1` through the coordination MCP or another inbound adapter and sends typed submissions plus bounded stage descriptors across the trust boundary. StockResearchAgents validation and publication decide whether a Completed Research Dossier exists; the viewer and exports read completed results only.
 
 Validation reports describe StockResearchAgents' deterministic checks against its own versioned contracts. Provider availability, caller execution, and investment usefulness remain separate claims and cannot be inferred from contract validation.
 
@@ -31,7 +31,7 @@ Validation reports describe StockResearchAgents' deterministic checks against it
 
 [![Evidence-to-dossier flow showing the caller-owned SourcePort, typed lineage checks, explicit coverage limitations, the validation gate, and completed-only readers](../assets/architecture/source-to-dossier.png)](../assets/architecture/source-to-dossier.svg)
 
-The caller may retrieve public or entitled data through its `SourcePort`; `SourcePortfolioCollector` validates routes, isolates failures, and retains bounded `SourceBatch` records before the caller derives the typed terminal lineage fields carried by `CompanyAnalyticsSubmissionV1`. `SourceBatch` and `SourcePortfolioReceipt` types do not cross as core-domain types. The portfolio receipt keeps sanitized failed attempts and coverage gaps caller-side; the caller must carry decision-relevant gaps into the submission as explicit limitations. StockResearchAgents validates the crosswalk's identity, digest scope, and entitlement fields alongside the embedded `CompanyResearchSubmissionV1` and `ResearchDossierV1` provenance, then validates the resulting claims and calculations. A rejected terminal submission is not published. An accepted dossier may represent incomplete coverage only through an explicit limitation. Only an atomically published dossier reaches the viewer, MCP, or exports.
+The caller may retrieve public or entitled data directly through one `SourcePort.fetch(capability, typed_query)` call, producing one bounded `SourceBatch`. Portfolio collection is additive, not mandatory: only an explicitly configured `SourcePortfolioCollector` validates at least two routes, isolates failures, preserves each provider batch and entitlement, and returns a terminal `SourcePortfolioReceipt`. Both types remain host-side rather than becoming core-domain contracts. In either route, the caller derives the typed terminal lineage fields carried by `CompanyAnalyticsSubmissionV1`; a portfolio receipt additionally retains sanitized failed attempts and coverage gaps, and the caller must carry decision-relevant gaps into the submission as explicit limitations. StockResearchAgents validates the crosswalk's identity, digest scope, and entitlement fields alongside the embedded `CompanyResearchSubmissionV1` and `ResearchDossierV1` provenance, then validates the resulting claims and deterministic calculations. A rejected terminal submission is not published. An accepted dossier may represent incomplete coverage only through an explicit limitation. Only an atomically published dossier reaches the viewer, MCP, or exports.
 
 ## Architectural patterns
 
@@ -42,8 +42,9 @@ The caller may retrieve public or entitled data through its `SourcePort`; `Sourc
 | Pattern | Concrete use | Why it exists |
 | --- | --- | --- |
 | Ports and adapters | CLI, MCP, Python, Codex, caller submissions | Keeps harness and transport APIs replaceable |
-| Composition root | `bootstrap.py` default runtime and coordinator factory | Keeps infrastructure construction out of lifecycle and transport modules |
-| Application service | Completed-publication response and query services in `application.py` | Keeps CLI and MCP behavior equivalent without duplicating orchestration |
+| Composition root | `ApplicationRuntime` and `create_runtime(StateLayout)` in `bootstrap.py` | Builds and closes infrastructure without leaking construction into lifecycle or transport modules |
+| Application services | `StockResearchApplication` for completed reads, responses, cohort evaluation, and diagnostics; dedicated plan/import/lifecycle command functions | Keeps shared use cases transport-neutral without claiming one facade owns every command yet |
+| Publication saga | `CompletedPublicationSaga` behind `CompanyAnalyticsCoordinator` | Makes staged result, sidecar, memory, and final publication recovery explicit |
 | Anti-corruption layer | Strict analytics submission and `SourceBatch` parsing | Prevents caller and provider semantics from leaking into the domain |
 | Provider strategy/router | Capability-specific source providers behind `PublicResearchDataAdapter` | Adds or replaces providers without expanding one capability switch |
 | State machine | Lifecycle statuses, optimistic revisions, pause/resume, cancellation, finalization | Makes legal transitions and recovery boundaries explicit |
@@ -146,7 +147,7 @@ All IDs are local to the dossier and cross-references must resolve. Documents re
 
 For a stateless plan, the caller may execute dependency-ready work with native subagents and parallel tools before importing one complete payload. A durable `native` run still commits one current first-incomplete stage at a time; parallel retrieval does not relax coordinator ordering. Every primary stage carries a versioned role, objective, completion criteria, semantic capabilities, dependencies, and output references. The sequential runner drives those same coordinator boundaries for a one-agent caller and resumes from the first incomplete stage. Contract semantics and terminal information remain the same; exact prompt wording, agent spawning, and scheduling do not.
 
-The analytics-profile `CompanyAnalyticsCoordinator` provides the public 26-stage lifecycle through `analytics-init` / `create_company_analytics_run` and shared lifecycle controls. The default coordinator is assembled in `bootstrap.py`; lifecycle code itself depends only on application ports and a workflow definition. It checkpoints bounded stage descriptors and optional safe receipts, accepts only the current first-incomplete stage, validates the terminal analytics payload, and binds the final run card to coordinator-owned envelope and commit-receipt digests for all 26 stages. The terminal commitment uses a normalized publication-candidate digest so the contract is not circular. It also rejects a terminal run card whose execution mode differs from the mode fixed at run creation. The atomically published source of truth is `CompanyAnalyticsResultV1`, containing the exact `CompanyAnalyticsSubmissionV1` and seven authoritative artifacts. The separate quality outcome index uses hidden stage/publish steps and can be reconstructed from completed artifacts after a crash; the design does not claim a distributed transaction. Atomic complete import remains available when lifecycle state is unnecessary.
+The analytics-profile `CompanyAnalyticsCoordinator` provides the public 26-stage lifecycle through `analytics-init` / `create_company_analytics_run` and shared lifecycle controls. `ApplicationRuntime` is the composition root for a single immutable `StateLayout`; it constructs the SQLite/WAL lifecycle repository, result store, Research Quality store, memory repository factory, and coordinator. Its `StockResearchApplication` facade owns completed-result reads and responses, cohort evaluation, and diagnostics. CLI and MCP plan, import, and lifecycle mutations currently call dedicated application command functions or the injected coordinator directly; the diagrams show that separate path rather than treating the facade as broader than its implementation. Lifecycle code itself depends only on application ports and a workflow definition. It checkpoints bounded stage descriptors and optional safe receipts, accepts only the current first-incomplete stage, validates the terminal analytics payload, and binds the final run card to coordinator-owned envelope and commit-receipt digests for all 26 stages. The terminal commitment uses a normalized publication-candidate digest so the contract is not circular. It also rejects a terminal run card whose execution mode differs from the mode fixed at run creation. During finalization, `CompletedPublicationSaga` stages the canonical result and recoverable sidecars, advances the validated lifecycle record, publishes sidecars before the result becomes readable, then publishes decision memory. The atomically published source of truth is `CompanyAnalyticsResultV1`, containing the exact `CompanyAnalyticsSubmissionV1` and seven authoritative artifacts. The separate quality outcome index can be reconstructed from completed artifacts after a crash; the design does not claim a distributed transaction. Atomic complete import remains available when lifecycle state is unnecessary.
 
 [![Durable Company Analytics lifecycle showing ordered stage commits, checkpoints, pause and recovery, terminal cancellation, finalizing, and completed-only publication](../assets/architecture/company-analytics-lifecycle.png)](../assets/architecture/company-analytics-lifecycle.svg)
 
@@ -198,9 +199,29 @@ The public `run-control.v1` tools operate the 26-stage Company Analytics lifecyc
 - recoverable staging of result/events and derived indexes without claiming a distributed transaction; and
 - completed-only publication.
 
-Inbound adapters create the same Company Analytics run: the CLI exposes `analytics-init`, while MCP and native hosts use `create_company_analytics_run` or the corresponding Python coordinator. Shared `run-control.v1` operations cover start, receipts, commits, pause/resume, status, events, cancellation, finalization, export, and completed reads without duplicating application logic per adapter.
+Every stored aggregate is decoded as `LifecycleRecordV1` on create, read, and update. The typed aggregate validates identity, timestamps, topology, status-dependent fields, and events, while the repository cross-checks the durable revision so malformed or stale state cannot bypass optimistic concurrency.
+
+Inbound adapters create the same Company Analytics run: the CLI exposes `analytics-init`, while MCP and native hosts use `create_company_analytics_run` or the corresponding Python coordinator. Shared command functions and `run-control.v1` coordinator operations cover start, receipts, commits, pause/resume, status, events, cancellation, and finalization. `StockResearchApplication` centralizes completed reads, response assembly, cohort evaluation, and diagnostics; adapters do not duplicate those policies.
 
 Persistence flags describe observed execution, not requested intent. Stateless `analytics-import` has no lifecycle checkpoint or memory publication, so both flags are false. Durable analytics finalization sets checkpointing true. The public coordinator supplies a durable memory store by default. Custom coordinators either provide a store/factory, disable memory explicitly, or fail when memory is requested; they never silently downgrade the capability.
+
+## State operations
+
+`StateLayout` resolves one caller-selected state root and derives every durable location, including the Research Quality directory and decision-memory database. `create_runtime(StateLayout)` is the explicit composition path for isolated applications and owns resource shutdown.
+
+The enforced local process model permits concurrent readers and multiple cooperating writer processes. Lifecycle, result,
+event, staging, and Research Quality mutations share one reentrant, OS-backed advisory writer lock under the state root;
+the quality directory resolves that lock through its parent root. Each file-backed store refreshes its durable snapshot only
+after acquiring the lock, preventing a long-lived process from publishing a cached result/event view or losing an outcome
+append. Lifecycle updates retain their SQLite `BEGIN IMMEDIATE` transaction and optimistic revision predicate inside the
+same writer boundary. Reads remain outside the writer lock and rely on SQLite/WAL or atomic replacement; current-run and
+event projections recheck durable state so long-lived readers observe later publications. Research Quality visibility is
+the deliberate exception: `is_published` and quality projection reads take the shared writer lock before their instance
+lock, so they cannot enter between a staged registration rename and staged-file removal. The persistent lock marker is not
+a lease record and carries no owner data; operating-system descriptor cleanup releases ownership after normal exit,
+exceptions, or process termination.
+
+State adoption is intentionally conservative. The migration planner performs a no-write JSON and SQLite integrity pass, rejects symbolic links, and reports whether existing unversioned artifacts require adoption. Applying that plan requires a complete backup outside the state root before the version manifest is written atomically; it does not rewrite existing artifacts. The `doctor` use case is a separate redacted, read-only inspection path. It reports only bounded health and count fields for root permissions, artifact integrity, schema status, pending staged publications, and the viewer registry—never run identifiers, source content, paths, credentials, or token values.
 
 ## Completed-result projection
 
@@ -222,7 +243,7 @@ research result.
 
 ## Research Quality boundary
 
-Research Quality is an implemented analytics sidecar capability. It owns policy/run provenance, forecasts issued at publication, typed later outcome observations, decision-support status, and deterministic evaluation.
+Research Quality is an implemented analytics sidecar capability. It owns policy/run provenance, forecasts issued at publication, typed later outcome observations, decision-support status, and deterministic evaluation. `QualityScorecard` evaluates one forecast against its active resolved observation. `BinaryCalibrationReport` is a separate evaluation-only report over a caller-approved, fixed historical binary cohort: it enforces one horizon and resolution rule, an evaluation cutoff, distinct instruments, and a minimum sample size before reporting Brier score, log loss, calibration bins, and expected calibration error. It neither fits nor deploys a model and does not mutate the completed result.
 
 It does not own retrieval, provider health workers, prompts, execution, portfolio mutation, or browser-side scoring. The embedded research dossier remains unchanged; the outer analytics submission carries the sidecars described in [Research Quality](RESEARCH_QUALITY.md) and the [active contract set](COMPATIBILITY.md).
 
@@ -237,6 +258,7 @@ It does not own retrieval, provider health workers, prompts, execution, portfoli
 | Embedded research foundation | `src/stock_research_agents/research_contracts.py`, `research_conformance.py`, `workflow/company-research.v1.json` |
 | `run-control.v1` lifecycle | `src/stock_research_agents/company_lifecycle.py` |
 | Application services and composition | `src/stock_research_agents/application.py`, `bootstrap.py`, `application_ports.py` |
+| State layout, migration, and diagnostics | `state.py`, `state_migrations.py`, `diagnostics.py` |
 | Company analytics profile | `src/stock_research_agents/company_analytics_v1/`, `company_analytics.py` |
 | Deterministic analytics | `src/stock_research_agents/analytics_v1/` |
 | Research lab and packs | `src/stock_research_agents/research_lab_v1/` |

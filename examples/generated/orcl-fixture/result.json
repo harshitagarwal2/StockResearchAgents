@@ -1,0 +1,2816 @@
+{
+  "artifacts": [
+    {
+      "content": {
+        "arguments": [
+          {
+            "argument_id": "orcl-argument-bull",
+            "assumption_ids": [
+              "orcl-claim-guidance"
+            ],
+            "claim_ids": [
+              "orcl-claim-bull"
+            ],
+            "concessions": [],
+            "debate": "research",
+            "rebuttal_of": null,
+            "role": "bull_researcher",
+            "round": 1,
+            "turn": 1,
+            "unresolved": [
+              "Licensed consensus unavailable"
+            ]
+          },
+          {
+            "argument_id": "orcl-argument-bear",
+            "assumption_ids": [],
+            "claim_ids": [
+              "orcl-claim-bear"
+            ],
+            "concessions": [
+              "Reported earnings evidence is retained"
+            ],
+            "debate": "research",
+            "rebuttal_of": "orcl-argument-bull",
+            "role": "bear_researcher",
+            "round": 1,
+            "turn": 2,
+            "unresolved": []
+          }
+        ],
+        "as_of_at": "2026-07-31T20:00:00Z",
+        "calculations": [
+          {
+            "constants": [],
+            "deterministic": true,
+            "engine": "fixture-arithmetic.v1",
+            "formula": "orcl-metric-eps * orcl-metric-multiple",
+            "id": "orcl-calc-fair-value",
+            "input_metric_ids": [
+              "orcl-metric-eps",
+              "orcl-metric-multiple"
+            ],
+            "operation": "multiply",
+            "result": 150.0,
+            "rounding_digits": 2,
+            "tolerance": 1e-09,
+            "unit": "USD/share"
+          }
+        ],
+        "claims": [
+          {
+            "confidence": 0.72,
+            "counterclaim_ids": [
+              "orcl-claim-bear"
+            ],
+            "counterevidence_document_ids": [
+              "orcl-doc-market"
+            ],
+            "evidence_document_ids": [
+              "orcl-doc-filing"
+            ],
+            "id": "orcl-claim-bull",
+            "kind": "thesis",
+            "metric_ids": [
+              "orcl-metric-eps"
+            ],
+            "stance": "bull",
+            "statement": "ORCL has a supported constructive scenario."
+          },
+          {
+            "confidence": 0.64,
+            "counterclaim_ids": [
+              "orcl-claim-bull"
+            ],
+            "counterevidence_document_ids": [
+              "orcl-doc-filing"
+            ],
+            "evidence_document_ids": [
+              "orcl-doc-market"
+            ],
+            "id": "orcl-claim-bear",
+            "kind": "thesis",
+            "metric_ids": [
+              "orcl-metric-multiple"
+            ],
+            "stance": "bear",
+            "statement": "ORCL remains exposed to valuation compression."
+          },
+          {
+            "confidence": 0.7,
+            "counterclaim_ids": [],
+            "counterevidence_document_ids": [],
+            "evidence_document_ids": [
+              "orcl-doc-narrative"
+            ],
+            "id": "orcl-claim-guidance",
+            "kind": "guidance",
+            "metric_ids": [
+              "orcl-metric-eps"
+            ],
+            "stance": "neutral",
+            "statement": "The retained issuer evidence supports the declared forward range."
+          }
+        ],
+        "completed_at": "2026-08-01T00:30:00Z",
+        "coverage": [
+          {
+            "area": "financials",
+            "limitation": null,
+            "source_document_ids": [
+              "orcl-doc-filing"
+            ],
+            "status": "complete"
+          },
+          {
+            "area": "narrative",
+            "limitation": null,
+            "source_document_ids": [
+              "orcl-doc-narrative"
+            ],
+            "status": "complete"
+          },
+          {
+            "area": "market",
+            "limitation": null,
+            "source_document_ids": [
+              "orcl-doc-market"
+            ],
+            "status": "complete"
+          },
+          {
+            "area": "transcripts",
+            "limitation": null,
+            "source_document_ids": [
+              "orcl-doc-transcript"
+            ],
+            "status": "complete"
+          },
+          {
+            "area": "licensed_consensus",
+            "limitation": "The host lacked entitlement; no consensus claim was made.",
+            "source_document_ids": [
+              "orcl-doc-licensed-consensus"
+            ],
+            "status": "entitlement_blocked"
+          }
+        ],
+        "documents": [
+          {
+            "entitlement": {
+              "access": "public",
+              "limitation": null,
+              "redistributable": true,
+              "terms_uri": "https://fixtures.example.test/terms"
+            },
+            "extract": "Bounded synthetic extract retained for deterministic conformance testing.",
+            "id": "orcl-doc-filing",
+            "kind": "filing",
+            "locator": {
+              "accession_number": "0000000000-26-000006",
+              "canonical_uri": "https://fixtures.example.test/orcl/filing",
+              "content_sha256": "69684de2a5cb66c6f00ae2d4461e5aaa16c08b56a1d6d38e8c13dcdd2f71e70c",
+              "document_id": "orcl-doc-filing"
+            },
+            "publisher": "Deterministic fixture publisher",
+            "temporal": {
+              "available_at": "2026-07-29T13:05:00Z",
+              "cutoff_at": "2026-07-31T20:00:00Z",
+              "observed_at": "2026-07-29T12:00:00Z",
+              "published_at": "2026-07-29T13:00:00Z",
+              "retrieved_at": "2026-07-30T10:00:00Z"
+            },
+            "title": "ORCL synthetic filing evidence"
+          },
+          {
+            "entitlement": {
+              "access": "public",
+              "limitation": null,
+              "redistributable": true,
+              "terms_uri": "https://fixtures.example.test/terms"
+            },
+            "extract": "Bounded synthetic extract retained for deterministic conformance testing.",
+            "id": "orcl-doc-narrative",
+            "kind": "company",
+            "locator": {
+              "accession_number": null,
+              "canonical_uri": "https://fixtures.example.test/orcl/narrative",
+              "content_sha256": "40996a62fcc4580e95830aa8c6a247fe0a0efb76fd1c79074c582e39f7482282",
+              "document_id": "orcl-doc-narrative"
+            },
+            "publisher": "Deterministic fixture publisher",
+            "temporal": {
+              "available_at": "2026-07-29T13:05:00Z",
+              "cutoff_at": "2026-07-31T20:00:00Z",
+              "observed_at": "2026-07-29T12:00:00Z",
+              "published_at": "2026-07-29T13:00:00Z",
+              "retrieved_at": "2026-07-30T10:00:00Z"
+            },
+            "title": "ORCL synthetic narrative evidence"
+          },
+          {
+            "entitlement": {
+              "access": "public",
+              "limitation": null,
+              "redistributable": true,
+              "terms_uri": "https://fixtures.example.test/terms"
+            },
+            "extract": "Bounded synthetic extract retained for deterministic conformance testing.",
+            "id": "orcl-doc-market",
+            "kind": "market",
+            "locator": {
+              "accession_number": null,
+              "canonical_uri": "https://fixtures.example.test/orcl/market",
+              "content_sha256": "cad6c01ab8a927a6ad724889102bd84ba3c8a2ec8b5deee2f73c49cdabbc6cde",
+              "document_id": "orcl-doc-market"
+            },
+            "publisher": "Deterministic fixture publisher",
+            "temporal": {
+              "available_at": "2026-07-29T13:05:00Z",
+              "cutoff_at": "2026-07-31T20:00:00Z",
+              "observed_at": "2026-07-29T12:00:00Z",
+              "published_at": "2026-07-29T13:00:00Z",
+              "retrieved_at": "2026-07-30T10:00:00Z"
+            },
+            "title": "ORCL synthetic market evidence"
+          },
+          {
+            "entitlement": {
+              "access": "entitlement_blocked",
+              "limitation": "Host entitlement was unavailable at the research cutoff.",
+              "redistributable": false,
+              "terms_uri": "https://fixtures.example.test/terms"
+            },
+            "extract": null,
+            "id": "orcl-doc-licensed-consensus",
+            "kind": "other",
+            "locator": {
+              "accession_number": null,
+              "canonical_uri": "https://fixtures.example.test/orcl/licensed-consensus",
+              "content_sha256": "20884e53c7a637be478f995c4679a3473583dbc95df019e54045c277e343c9f5",
+              "document_id": "orcl-doc-licensed-consensus"
+            },
+            "publisher": "Deterministic fixture publisher",
+            "temporal": {
+              "available_at": "2026-07-29T13:05:00Z",
+              "cutoff_at": "2026-07-31T20:00:00Z",
+              "observed_at": "2026-07-29T12:00:00Z",
+              "published_at": "2026-07-29T13:00:00Z",
+              "retrieved_at": "2026-07-30T10:00:00Z"
+            },
+            "title": "ORCL synthetic licensed consensus evidence"
+          },
+          {
+            "entitlement": {
+              "access": "public",
+              "limitation": null,
+              "redistributable": true,
+              "terms_uri": "https://fixtures.example.test/terms"
+            },
+            "extract": "Bounded synthetic extract retained for deterministic conformance testing.",
+            "id": "orcl-doc-transcript",
+            "kind": "transcript",
+            "locator": {
+              "accession_number": null,
+              "canonical_uri": "https://fixtures.example.test/orcl/transcript",
+              "content_sha256": "4ee21f3f6f5c4a0c24a59f1f807dff277f9785430cd42c5f375225f174a4a42c",
+              "document_id": "orcl-doc-transcript"
+            },
+            "publisher": "Deterministic fixture publisher",
+            "temporal": {
+              "available_at": "2026-07-29T13:05:00Z",
+              "cutoff_at": "2026-07-31T20:00:00Z",
+              "observed_at": "2026-07-29T12:00:00Z",
+              "published_at": "2026-07-29T13:00:00Z",
+              "retrieved_at": "2026-07-30T10:00:00Z"
+            },
+            "title": "ORCL synthetic transcript evidence"
+          }
+        ],
+        "dossier_id": "dossier-orcl-20260731",
+        "entities": [
+          {
+            "id": "orcl-entity-issuer",
+            "kind": "issuer",
+            "name": "Oracle Corporation"
+          },
+          {
+            "id": "orcl-entity-peer",
+            "kind": "peer",
+            "name": "Microsoft Corporation"
+          }
+        ],
+        "evaluation": {
+          "checks": [
+            {
+              "calculation_ids": [
+                "orcl-calc-fair-value"
+              ],
+              "claim_ids": [
+                "orcl-claim-bull",
+                "orcl-claim-bear"
+              ],
+              "document_ids": [
+                "orcl-doc-filing"
+              ],
+              "evaluated_at": "2026-07-31T19:00:00Z",
+              "evaluator": "deterministic-fixture-evaluator",
+              "id": "orcl-evaluation-grounding",
+              "notes": "All referenced identifiers resolve.",
+              "rubric": "Decision-relevant claims retain evidence and calculation links.",
+              "status": "pass"
+            }
+          ],
+          "evaluator": "deterministic-fixture-evaluator",
+          "evaluator_provenance": "Portable deterministic rules; no model arithmetic.",
+          "limitations": [
+            "Licensed consensus was entitlement-blocked."
+          ],
+          "rubric_version": "research-quality.v1"
+        },
+        "events": [
+          {
+            "claim_ids": [
+              "orcl-claim-bull"
+            ],
+            "entity_ids": [
+              "orcl-entity-issuer"
+            ],
+            "evidence_document_ids": [
+              "orcl-doc-filing"
+            ],
+            "id": "orcl-event-filing",
+            "occurred_at": "2026-07-29T13:00:00Z",
+            "ripple_event_ids": [],
+            "status": "historical",
+            "title": "Latest filing became available"
+          }
+        ],
+        "executive_summary": "Synthetic, point-in-time-safe research dossier for ORCL.",
+        "factors": [
+          {
+            "as_of_at": "2026-07-29T13:05:00Z",
+            "delta": null,
+            "direction": "positive",
+            "evidence_document_ids": [
+              "orcl-doc-filing"
+            ],
+            "factor": "quality",
+            "history_document_ids": [
+              "orcl-doc-filing"
+            ],
+            "id": "orcl-factor-quality",
+            "magnitude": "moderate",
+            "methodology": "Deterministic normalization of retained reported metrics.",
+            "methodology_version": "fixture-factor.v1",
+            "prior_snapshot_id": null,
+            "unit": "score",
+            "value": 0.65
+          }
+        ],
+        "filing_changes": [
+          {
+            "change_kind": "mda",
+            "claim_ids": [
+              "orcl-claim-bull"
+            ],
+            "current_document_id": "orcl-doc-filing",
+            "id": "orcl-filing-change",
+            "metric_ids": [
+              "orcl-metric-eps"
+            ],
+            "prior_document_id": null,
+            "summary": "Current-period discussion was evaluated against the declared history window."
+          }
+        ],
+        "filings": [
+          {
+            "accession_number": "0000000000-26-000006",
+            "amendment": false,
+            "document_id": "orcl-doc-filing",
+            "filed_at": "2026-07-29T13:00:00Z",
+            "form": "10-Q",
+            "id": "orcl-filing-record",
+            "period_end": "2026-06-30T00:00:00Z"
+          }
+        ],
+        "guidance": [
+          {
+            "claim_id": "orcl-claim-guidance",
+            "high": 6.6000000000000005,
+            "id": "orcl-guidance-1",
+            "low": 5.699999999999999,
+            "metric": "Normalized earnings per share",
+            "period": "FY2027",
+            "status": "introduced",
+            "unit": "USD/share"
+          }
+        ],
+        "identity": {
+          "asset_type": "equity",
+          "cik": "0001341439",
+          "country": "US",
+          "currency": "USD",
+          "exchange": "NYSE",
+          "instrument_id": "equity:US68389X1054",
+          "issuer_name": "Oracle Corporation",
+          "symbol": "ORCL"
+        },
+        "limitations": [
+          "Fixture values are deterministic and not investment advice."
+        ],
+        "metrics": [
+          {
+            "as_of_at": "2026-07-29T13:05:00Z",
+            "basis": "reported",
+            "calculation_id": null,
+            "id": "orcl-metric-eps",
+            "label": "Normalized earnings per share",
+            "period_end": "2026-07-29T12:00:00Z",
+            "period_start": "2025-08-01T00:00:00Z",
+            "source_document_ids": [
+              "orcl-doc-filing"
+            ],
+            "unit": "USD/share",
+            "value": 6.0
+          },
+          {
+            "as_of_at": "2026-07-29T13:05:00Z",
+            "basis": "assumption",
+            "calculation_id": null,
+            "id": "orcl-metric-multiple",
+            "label": "Selected earnings multiple",
+            "period_end": "2026-07-29T12:00:00Z",
+            "period_start": null,
+            "source_document_ids": [
+              "orcl-doc-market"
+            ],
+            "unit": "x",
+            "value": 25.0
+          },
+          {
+            "as_of_at": "2026-07-29T13:05:00Z",
+            "basis": "calculated",
+            "calculation_id": "orcl-calc-fair-value",
+            "id": "orcl-metric-fair-value",
+            "label": "Recomputed fair value",
+            "period_end": "2026-07-29T12:00:00Z",
+            "period_start": null,
+            "source_document_ids": [
+              "orcl-doc-market"
+            ],
+            "unit": "USD/share",
+            "value": 150.0
+          }
+        ],
+        "monitoring": [
+          {
+            "cadence": "quarterly",
+            "consequence": "Recompute all valuation cases.",
+            "description": "Monitor the selected valuation multiple.",
+            "id": "orcl-monitor-valuation",
+            "related_ids": [
+              "orcl-metric-multiple"
+            ],
+            "trigger": "Multiple moves by more than 20 percent."
+          }
+        ],
+        "peers": [
+          {
+            "evidence_document_ids": [
+              "orcl-doc-market"
+            ],
+            "id": "orcl-peer-1",
+            "methodology": "Normalize currency to USD and compare the same forward period.",
+            "metric_ids": [
+              "orcl-metric-multiple"
+            ],
+            "peer_instrument_id": "equity:US5949181045",
+            "rationale": "Microsoft Corporation is a structurally relevant comparison."
+          }
+        ],
+        "portfolio_context": {
+          "constraints": [
+            "No leverage",
+            "Research output is non-executable"
+          ],
+          "horizon": "3-5 years",
+          "issuer_exposure_percent": 0.0,
+          "non_executable": true,
+          "objective": "Evaluate long-horizon risk-adjusted fit.",
+          "risk_tolerance": "moderate",
+          "sector_exposure_percent": 20.0
+        },
+        "portfolio_impact": {
+          "claim_ids": [
+            "orcl-claim-bull",
+            "orcl-claim-bear"
+          ],
+          "diversification_effect": "neutral",
+          "issuer_exposure_delta_percent": 2.0,
+          "metric_ids": [
+            "orcl-metric-fair-value"
+          ],
+          "non_executable": true,
+          "risk_contribution": "similar",
+          "sector_exposure_delta_percent": 1.0,
+          "thesis": "The security adds measured exposure without granting execution authority."
+        },
+        "prior_outcomes": [
+          {
+            "calibration_score": 0.7,
+            "evaluated_at": "2026-07-29T13:05:00Z",
+            "forecast_at": "2026-01-15T12:00:00Z",
+            "forecast_claim_id": "orcl-claim-bull",
+            "id": "orcl-outcome-1",
+            "notes": "Outcome uses only evidence available by the declared cutoff.",
+            "outcome_document_ids": [
+              "orcl-doc-filing"
+            ],
+            "result": "partially_confirmed"
+          }
+        ],
+        "recommendation": "hold",
+        "research_delta": {
+          "added_document_ids": [
+            "orcl-doc-filing"
+          ],
+          "changed_claim_ids": [
+            "orcl-claim-bull"
+          ],
+          "changed_valuation_ids": [
+            "orcl-valuation-base"
+          ],
+          "previous_dossier_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "summary": "Latest retained filing changed the earnings evidence and base valuation."
+        },
+        "risks": [
+          {
+            "claim_ids": [
+              "orcl-claim-bear"
+            ],
+            "evidence_document_ids": [
+              "orcl-doc-market"
+            ],
+            "id": "orcl-risk-valuation",
+            "impact": "high",
+            "name": "Valuation compression",
+            "probability": 0.35,
+            "thesis": "The selected multiple may contract.",
+            "trigger_metric_ids": [
+              "orcl-metric-multiple"
+            ]
+          }
+        ],
+        "schema_version": "company-research.v1",
+        "status": "completed",
+        "transcripts": [
+          {
+            "document_id": "orcl-doc-transcript",
+            "event_at": "2026-07-29T12:00:00Z",
+            "guidance_claim_ids": [
+              "orcl-claim-guidance"
+            ],
+            "id": "orcl-transcript-record",
+            "segments": [
+              {
+                "claim_ids": [
+                  "orcl-claim-guidance"
+                ],
+                "extract": "A bounded synthetic statement about the declared range.",
+                "id": "orcl-segment-1",
+                "section": "qa",
+                "speaker": "Chief Financial Officer"
+              }
+            ],
+            "speaker_summary": "Management discussed the supported forward range.",
+            "themes": [
+              {
+                "claim_ids": [
+                  "orcl-claim-guidance"
+                ],
+                "id": "orcl-theme-1",
+                "segment_ids": [
+                  "orcl-segment-1"
+                ],
+                "title": "Forward range"
+              }
+            ]
+          }
+        ],
+        "valuations": [
+          {
+            "assumption_claim_ids": [
+              "orcl-claim-guidance"
+            ],
+            "assumptions": [
+              {
+                "claim_ids": [
+                  "orcl-claim-guidance"
+                ],
+                "id": "orcl-assumption-eps",
+                "label": "EPS",
+                "metric_ids": [
+                  "orcl-metric-eps"
+                ],
+                "unit": "USD/share",
+                "value": 6.0
+              },
+              {
+                "claim_ids": [
+                  "orcl-claim-bear"
+                ],
+                "id": "orcl-assumption-multiple",
+                "label": "Multiple",
+                "metric_ids": [
+                  "orcl-metric-multiple"
+                ],
+                "unit": "x",
+                "value": 25.0
+              }
+            ],
+            "calculation_ids": [
+              "orcl-calc-fair-value"
+            ],
+            "currency": "USD",
+            "fair_value": 150.0,
+            "horizon": "12 months",
+            "id": "orcl-valuation-base",
+            "input_metric_ids": [
+              "orcl-metric-eps",
+              "orcl-metric-multiple"
+            ],
+            "methodology": "Normalized earnings multiplied by a selected comparable multiple.",
+            "name": "base",
+            "sensitivity_cells": [
+              {
+                "calculation_ids": [
+                  "orcl-calc-fair-value"
+                ],
+                "column_assumption_id": "orcl-assumption-multiple",
+                "fair_value": 150.0,
+                "id": "orcl-sensitivity-base",
+                "row_assumption_id": "orcl-assumption-eps"
+              }
+            ]
+          }
+        ]
+      },
+      "id": "research.dossier.v1",
+      "kind": "research_dossier.v1",
+      "media_type": "application/vnd.stockresearchagents.research-dossier.v1+json",
+      "schema_version": "1.0.0",
+      "title": "Completed research dossier: ORCL"
+    },
+    {
+      "content": {
+        "analyst_opinions": [],
+        "base_dossier_digest": "2bd547be8d56483aed1b76eaf7d7e7830d57c186e9dedc82e80496a94c0adaaa",
+        "base_submission_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+        "calculation_receipts": [],
+        "catalysts": [],
+        "comparable_observations": [],
+        "comparable_valuations": [],
+        "complete": true,
+        "completed_at": "2026-08-01T00:30:00Z",
+        "consensus": [],
+        "coverage_decision": "supported",
+        "cutoff_at": "2026-07-31T20:00:00Z",
+        "datasets": [],
+        "dcf_models": [],
+        "dcf_valuations": [],
+        "estimates": [],
+        "event_clusters": [],
+        "experiment_specs": [],
+        "experiments": [],
+        "factors": [],
+        "facts": [
+          {
+            "accession_number": "0000000000-26-000006",
+            "amendment_of_fact_id": null,
+            "available_at": "2026-07-29T13:05:00Z",
+            "concept": "revenue",
+            "currency": "USD",
+            "fact_id": "fact.revenue",
+            "filed_at": "2026-07-29T13:00:00Z",
+            "period": {
+              "end_date": "2026-06-30",
+              "fiscal_quarter": 2,
+              "fiscal_year": 2026,
+              "period_id": "2026-q2",
+              "period_type": "quarter",
+              "start_date": "2026-04-01"
+            },
+            "scale": 0,
+            "source_id": "orcl-doc-filing",
+            "unit": "USD",
+            "value": "100"
+          }
+        ],
+        "insider_transactions": [],
+        "limitations": [],
+        "ownership": [],
+        "ratios": [],
+        "restatements": [],
+        "reverse_dcf_results": [],
+        "run_id": "analytics-9198a2d47ec7",
+        "short_interest": [],
+        "source_licenses": [
+          {
+            "access": "public",
+            "checked_at": "2026-08-01T00:30:00Z",
+            "derived_data_rights": "allowed",
+            "limitation": null,
+            "machine_use": "allowed",
+            "permitted_purpose": "research",
+            "policy_sha256": "756acf30808fbebca62069546e708025e221263d441e031cbaea366e7b03a7ce",
+            "receipt_id": "analytics-license.orcl-doc-filing",
+            "redistribution": "bounded_extract",
+            "retention_days": null,
+            "source_id": "orcl-doc-filing",
+            "terms_uri": "https://fixtures.example.test/terms"
+          },
+          {
+            "access": "public",
+            "checked_at": "2026-08-01T00:30:00Z",
+            "derived_data_rights": "allowed",
+            "limitation": null,
+            "machine_use": "allowed",
+            "permitted_purpose": "research",
+            "policy_sha256": "756acf30808fbebca62069546e708025e221263d441e031cbaea366e7b03a7ce",
+            "receipt_id": "analytics-license.orcl-doc-narrative",
+            "redistribution": "bounded_extract",
+            "retention_days": null,
+            "source_id": "orcl-doc-narrative",
+            "terms_uri": "https://fixtures.example.test/terms"
+          },
+          {
+            "access": "public",
+            "checked_at": "2026-08-01T00:30:00Z",
+            "derived_data_rights": "allowed",
+            "limitation": null,
+            "machine_use": "allowed",
+            "permitted_purpose": "research",
+            "policy_sha256": "756acf30808fbebca62069546e708025e221263d441e031cbaea366e7b03a7ce",
+            "receipt_id": "analytics-license.orcl-doc-market",
+            "redistribution": "bounded_extract",
+            "retention_days": null,
+            "source_id": "orcl-doc-market",
+            "terms_uri": "https://fixtures.example.test/terms"
+          },
+          {
+            "access": "entitlement_blocked",
+            "checked_at": "2026-08-01T00:30:00Z",
+            "derived_data_rights": "denied",
+            "limitation": "Host entitlement was unavailable at the research cutoff.",
+            "machine_use": "denied",
+            "permitted_purpose": "none",
+            "policy_sha256": "75cd3036240dc69c8a84ff9f79f5371c371e51c9d75d1059201318f57153ce05",
+            "receipt_id": "analytics-license.orcl-doc-licensed-consensus",
+            "redistribution": "denied",
+            "retention_days": null,
+            "source_id": "orcl-doc-licensed-consensus",
+            "terms_uri": "https://fixtures.example.test/terms"
+          },
+          {
+            "access": "public",
+            "checked_at": "2026-08-01T00:30:00Z",
+            "derived_data_rights": "allowed",
+            "limitation": null,
+            "machine_use": "allowed",
+            "permitted_purpose": "research",
+            "policy_sha256": "756acf30808fbebca62069546e708025e221263d441e031cbaea366e7b03a7ce",
+            "receipt_id": "analytics-license.orcl-doc-transcript",
+            "redistribution": "bounded_extract",
+            "retention_days": null,
+            "source_id": "orcl-doc-transcript",
+            "terms_uri": "https://fixtures.example.test/terms"
+          }
+        ],
+        "splits": [],
+        "statement_snapshots": []
+      },
+      "id": "research.analytics.v1",
+      "kind": "analytics_bundle.v1",
+      "media_type": "application/vnd.stockresearchagents.analytics-bundle.v1+json",
+      "schema_version": "1.0.0",
+      "title": "Deterministic analytics: ORCL"
+    },
+    {
+      "content": {
+        "artifact_kinds": [
+          "research_dossier.v1",
+          "analytics_bundle.v1",
+          "run_card.v1",
+          "hypothesis_ledger.v1",
+          "research_iterations.v1",
+          "research_quality.v1",
+          "forecast_set.v1"
+        ],
+        "complete": true,
+        "completed_at": "2026-08-01T00:30:00Z",
+        "coordinator_commitments": [],
+        "execution_mode": "sequential",
+        "executor_runtime": "fixture-host",
+        "limitations": [],
+        "profile": "company-analytics.v1",
+        "research_pack_id": "initiating-coverage.v1",
+        "run_id": "analytics-9198a2d47ec7",
+        "source_batch_ids": [
+          "source-batch.primary"
+        ],
+        "stages": [
+          {
+            "attempts": 1,
+            "completed_at": "2026-08-01T00:30:00Z",
+            "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+            "limitation": null,
+            "output_digest": "d88b6cdb334c54971051c4a1944077e034ac3c4ec7d74f5a737f6786e65214ae",
+            "stage_id": "research.plan",
+            "started_at": "2026-08-01T00:00:00Z",
+            "status": "completed"
+          },
+          {
+            "attempts": 1,
+            "completed_at": "2026-08-01T00:30:00Z",
+            "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+            "limitation": null,
+            "output_digest": "456d11a962af92d716337654a5bf098b6b350c9663d17226a3bf1583aefcae75",
+            "stage_id": "evidence.official",
+            "started_at": "2026-08-01T00:00:00Z",
+            "status": "completed"
+          },
+          {
+            "attempts": 1,
+            "completed_at": "2026-08-01T00:30:00Z",
+            "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+            "limitation": null,
+            "output_digest": "e75c808366ac9a60aa279c7906ca9dd24dfe56b8b8c80fb5ec88548fa455a8b1",
+            "stage_id": "evidence.market",
+            "started_at": "2026-08-01T00:00:00Z",
+            "status": "completed"
+          },
+          {
+            "attempts": 1,
+            "completed_at": "2026-08-01T00:30:00Z",
+            "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+            "limitation": null,
+            "output_digest": "a81cf0887baa0cd01f7871325b74894ee7fb6dffe773c34be9d84d04012d84a5",
+            "stage_id": "analysis.financial",
+            "started_at": "2026-08-01T00:00:00Z",
+            "status": "completed"
+          },
+          {
+            "attempts": 1,
+            "completed_at": "2026-08-01T00:30:00Z",
+            "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+            "limitation": null,
+            "output_digest": "671c2fd7d46f4432fd903606a58f5331ffeac482f282f3a9d7b08ef259d12521",
+            "stage_id": "analysis.company",
+            "started_at": "2026-08-01T00:00:00Z",
+            "status": "completed"
+          },
+          {
+            "attempts": 1,
+            "completed_at": "2026-08-01T00:30:00Z",
+            "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+            "limitation": null,
+            "output_digest": "085c1ff0af7855593326891546d40a793ec2f9c147b10619ad99da16b2e6f1ec",
+            "stage_id": "audit.evidence",
+            "started_at": "2026-08-01T00:00:00Z",
+            "status": "completed"
+          },
+          {
+            "attempts": 1,
+            "completed_at": "2026-08-01T00:30:00Z",
+            "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+            "limitation": null,
+            "output_digest": "2fd1a528f14ae385cfc23dcf935ad556ea64e0d27611575de2faa4ab047a55f6",
+            "stage_id": "verify.numerical",
+            "started_at": "2026-08-01T00:00:00Z",
+            "status": "completed"
+          },
+          {
+            "attempts": 1,
+            "completed_at": "2026-08-01T00:30:00Z",
+            "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+            "limitation": null,
+            "output_digest": "a4518c757197faccf853a0bf002ce90dfc3c298276d45a582324f668e9558ed9",
+            "stage_id": "debate.bull",
+            "started_at": "2026-08-01T00:00:00Z",
+            "status": "completed"
+          },
+          {
+            "attempts": 1,
+            "completed_at": "2026-08-01T00:30:00Z",
+            "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+            "limitation": null,
+            "output_digest": "ac0c945bb80ce765a61d147e615b6150ae087f92656f2bf7bc5ce6e8667ea65c",
+            "stage_id": "debate.bear",
+            "started_at": "2026-08-01T00:00:00Z",
+            "status": "completed"
+          },
+          {
+            "attempts": 1,
+            "completed_at": "2026-08-01T00:30:00Z",
+            "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+            "limitation": null,
+            "output_digest": "c216e3bc735117060a2be8922a5ed75f3fe596c71f3eb2f8dde363876103a041",
+            "stage_id": "synthesis.valuation",
+            "started_at": "2026-08-01T00:00:00Z",
+            "status": "completed"
+          },
+          {
+            "attempts": 1,
+            "completed_at": "2026-08-01T00:30:00Z",
+            "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+            "limitation": null,
+            "output_digest": "acfe8a3c48b65f04844aa9b81ae6a1d52c075da1c016e360692c10ca64edb99d",
+            "stage_id": "synthesis.risk",
+            "started_at": "2026-08-01T00:00:00Z",
+            "status": "completed"
+          },
+          {
+            "attempts": 1,
+            "completed_at": "2026-08-01T00:30:00Z",
+            "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+            "limitation": null,
+            "output_digest": "0346e7689c71b890195b832982b262f86966b6b8190c96ab90279cc3d591bcd0",
+            "stage_id": "research.delta",
+            "started_at": "2026-08-01T00:00:00Z",
+            "status": "completed"
+          },
+          {
+            "attempts": 1,
+            "completed_at": "2026-08-01T00:30:00Z",
+            "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+            "limitation": null,
+            "output_digest": "b169878d2e302db280bab6678ccdce40e89b2c010e2dd24b9eac2ad0cf4e400a",
+            "stage_id": "research.monitor",
+            "started_at": "2026-08-01T00:00:00Z",
+            "status": "completed"
+          },
+          {
+            "attempts": 1,
+            "completed_at": "2026-08-01T00:30:00Z",
+            "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+            "limitation": null,
+            "output_digest": "c2546f5eef0cda1ffb0709fda28624a6683b568b4376b3d4d7324e0af0106abf",
+            "stage_id": "evaluate.dossier",
+            "started_at": "2026-08-01T00:00:00Z",
+            "status": "completed"
+          },
+          {
+            "attempts": 1,
+            "completed_at": "2026-08-01T00:30:00Z",
+            "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+            "limitation": null,
+            "output_digest": "a9d72907a98d2ce07f6d7882521c4b2e0331c5409d760a94376e5c7df637225a",
+            "stage_id": "assemble.dossier",
+            "started_at": "2026-08-01T00:00:00Z",
+            "status": "completed"
+          },
+          {
+            "attempts": 1,
+            "completed_at": "2026-08-01T00:30:00Z",
+            "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+            "limitation": null,
+            "output_digest": "1bf83db872af701050e0ec364304b5e2a2bcee59db15593f015caa439c34f1a2",
+            "stage_id": "research.hypotheses",
+            "started_at": "2026-08-01T00:00:00Z",
+            "status": "completed"
+          },
+          {
+            "attempts": 1,
+            "completed_at": "2026-08-01T00:30:00Z",
+            "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+            "limitation": null,
+            "output_digest": "30e0c6f56cee5b28d41da2d2386d6ea3cdc89fca9578637e6945a4a9a67983cb",
+            "stage_id": "analytics.fundamentals",
+            "started_at": "2026-08-01T00:00:00Z",
+            "status": "completed"
+          },
+          {
+            "attempts": 1,
+            "completed_at": "2026-08-01T00:30:00Z",
+            "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+            "limitation": null,
+            "output_digest": "2f29a13dc1698f27dd58c440aef48aed2bbd62604f781ad0ca6b5bb4dc4555f2",
+            "stage_id": "analytics.models",
+            "started_at": "2026-08-01T00:00:00Z",
+            "status": "completed"
+          },
+          {
+            "attempts": 1,
+            "completed_at": "2026-08-01T00:30:00Z",
+            "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+            "limitation": null,
+            "output_digest": "4a67e3571dd59cf23a1527e918de694d25a9efc546da7bc11d691882c3dad671",
+            "stage_id": "analytics.consensus",
+            "started_at": "2026-08-01T00:00:00Z",
+            "status": "completed"
+          },
+          {
+            "attempts": 1,
+            "completed_at": "2026-08-01T00:30:00Z",
+            "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+            "limitation": null,
+            "output_digest": "634745b8d7a6580517c3b232768942142963add0f377685dbaab4b1b7c082c67",
+            "stage_id": "analytics.positioning",
+            "started_at": "2026-08-01T00:00:00Z",
+            "status": "completed"
+          },
+          {
+            "attempts": 1,
+            "completed_at": "2026-08-01T00:30:00Z",
+            "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+            "limitation": null,
+            "output_digest": "9614c47d75ce32ab0fd238165d47c52f2c5a02dd03f28d9c9aa97424082361c8",
+            "stage_id": "analytics.events",
+            "started_at": "2026-08-01T00:00:00Z",
+            "status": "completed"
+          },
+          {
+            "attempts": 1,
+            "completed_at": "2026-08-01T00:30:00Z",
+            "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+            "limitation": null,
+            "output_digest": "e789c2286a18c5d37b3e2effefd4fe945baa8376730c8e029c3d279cf155de28",
+            "stage_id": "experiment.plan",
+            "started_at": "2026-08-01T00:00:00Z",
+            "status": "completed"
+          },
+          {
+            "attempts": 1,
+            "completed_at": "2026-08-01T00:30:00Z",
+            "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+            "limitation": null,
+            "output_digest": "c6c1090dbf8791ebb76c3912bc1e1b57defa142af41c07399bb468149c7443ed",
+            "stage_id": "experiment.run",
+            "started_at": "2026-08-01T00:00:00Z",
+            "status": "completed"
+          },
+          {
+            "attempts": 1,
+            "completed_at": "2026-08-01T00:30:00Z",
+            "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+            "limitation": null,
+            "output_digest": "d71f9a3690a5cfff1257e6f6caf6af670bb2a73a2acb3bc440ebd5b027b6e872",
+            "stage_id": "experiment.evaluate",
+            "started_at": "2026-08-01T00:00:00Z",
+            "status": "completed"
+          },
+          {
+            "attempts": 1,
+            "completed_at": "2026-08-01T00:30:00Z",
+            "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+            "limitation": null,
+            "output_digest": "d108ab1fdb75f74a2745b10b9ccfbd1c9d9de676a4d8d521fe83cd1d63dca1bb",
+            "stage_id": "quality.issue",
+            "started_at": "2026-08-01T00:00:00Z",
+            "status": "completed"
+          },
+          {
+            "attempts": 1,
+            "completed_at": "2026-08-01T00:30:00Z",
+            "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+            "limitation": null,
+            "output_digest": "ccbc1a86016c9db8d9bf68132282043f303e1c99cd0fadc5623bc3113742d10f",
+            "stage_id": "publish.completed",
+            "started_at": "2026-08-01T00:00:00Z",
+            "status": "completed"
+          }
+        ],
+        "started_at": "2026-08-01T00:00:00Z",
+        "submission_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+        "workflow_digest": "a63522c6b6702ae9b9b4cee603ce0c4080e9cd96085c07fdaa3584c24b8b41d9"
+      },
+      "id": "research.run-card.v1",
+      "kind": "run_card.v1",
+      "media_type": "application/vnd.stockresearchagents.run-card.v1+json",
+      "schema_version": "1.0.0",
+      "title": "Research run card"
+    },
+    {
+      "content": [
+        {
+          "final_status": "proposed",
+          "hypothesis": {
+            "created_at": "2026-08-01T00:00:00Z",
+            "evidence_ids": [
+              "orcl-doc-filing"
+            ],
+            "expected_observation": "The next primary filing reports evidence consistent with the thesis.",
+            "falsification_criteria": "A subsequent primary filing contradicts the stated operating driver.",
+            "horizon_at": "2027-07-31T20:00:00Z",
+            "hypothesis_id": "hypothesis.primary",
+            "related_hypothesis_ids": [],
+            "statement": "ORCL has a supported constructive scenario."
+          },
+          "run_id": "analytics-9198a2d47ec7",
+          "transitions": [
+            {
+              "changed_at": "2026-08-01T00:00:00Z",
+              "evidence_ids": [
+                "orcl-doc-filing"
+              ],
+              "from_status": null,
+              "hypothesis_id": "hypothesis.primary",
+              "reason": "Registered before the completed synthesis.",
+              "to_status": "proposed",
+              "transition_id": "transition.primary.1"
+            }
+          ]
+        }
+      ],
+      "id": "research.hypotheses.v1",
+      "kind": "hypothesis_ledger.v1",
+      "media_type": "application/vnd.stockresearchagents.hypothesis-ledger.v1+json",
+      "schema_version": "1.0.0",
+      "title": "Hypothesis lifecycle"
+    },
+    {
+      "content": [
+        {
+          "budget_units": 10,
+          "completed_at": "2026-08-01T00:30:00Z",
+          "consumed_units": 6,
+          "decision": "stop_sufficient",
+          "hypothesis_ids": [
+            "hypothesis.primary"
+          ],
+          "iteration_id": "iteration.1",
+          "maximum_correlation": 0.2,
+          "novelty_score": 0.8,
+          "output_digest": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "run_id": "analytics-9198a2d47ec7",
+          "started_at": "2026-08-01T00:00:00Z"
+        }
+      ],
+      "id": "research.iterations.v1",
+      "kind": "research_iterations.v1",
+      "media_type": "application/vnd.stockresearchagents.research-iterations.v1+json",
+      "schema_version": "1.0.0",
+      "title": "Research iteration receipts"
+    },
+    {
+      "content": {
+        "dossier_sha256": "2bd547be8d56483aed1b76eaf7d7e7830d57c186e9dedc82e80496a94c0adaaa",
+        "issued_at": "2026-08-01T00:30:00Z",
+        "limitations": [],
+        "package_identifier": "stock-research-agents",
+        "package_version": "0.1.0",
+        "policy": {
+          "policy_id": "quality-policy.default",
+          "policy_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+          "policy_version": "1"
+        },
+        "receipt_id": "quality.primary",
+        "request_sha256": "06f2c033cb2b1b0a73ebe53b6589dbdb3d9bd82df8403634b70a1477343fa8f1",
+        "rules": [
+          {
+            "detail": "Analytics sidecars reproduced.",
+            "rule_id": "rule.analytics-conformance",
+            "status": "pass"
+          }
+        ],
+        "run_id": "analytics-9198a2d47ec7",
+        "schema_version": "research-quality.v1",
+        "stage_digests": [
+          {
+            "sha256": "d88b6cdb334c54971051c4a1944077e034ac3c4ec7d74f5a737f6786e65214ae",
+            "stage_id": "research.plan"
+          },
+          {
+            "sha256": "456d11a962af92d716337654a5bf098b6b350c9663d17226a3bf1583aefcae75",
+            "stage_id": "evidence.official"
+          },
+          {
+            "sha256": "e75c808366ac9a60aa279c7906ca9dd24dfe56b8b8c80fb5ec88548fa455a8b1",
+            "stage_id": "evidence.market"
+          },
+          {
+            "sha256": "a81cf0887baa0cd01f7871325b74894ee7fb6dffe773c34be9d84d04012d84a5",
+            "stage_id": "analysis.financial"
+          },
+          {
+            "sha256": "671c2fd7d46f4432fd903606a58f5331ffeac482f282f3a9d7b08ef259d12521",
+            "stage_id": "analysis.company"
+          },
+          {
+            "sha256": "085c1ff0af7855593326891546d40a793ec2f9c147b10619ad99da16b2e6f1ec",
+            "stage_id": "audit.evidence"
+          },
+          {
+            "sha256": "2fd1a528f14ae385cfc23dcf935ad556ea64e0d27611575de2faa4ab047a55f6",
+            "stage_id": "verify.numerical"
+          },
+          {
+            "sha256": "a4518c757197faccf853a0bf002ce90dfc3c298276d45a582324f668e9558ed9",
+            "stage_id": "debate.bull"
+          },
+          {
+            "sha256": "ac0c945bb80ce765a61d147e615b6150ae087f92656f2bf7bc5ce6e8667ea65c",
+            "stage_id": "debate.bear"
+          },
+          {
+            "sha256": "c216e3bc735117060a2be8922a5ed75f3fe596c71f3eb2f8dde363876103a041",
+            "stage_id": "synthesis.valuation"
+          },
+          {
+            "sha256": "acfe8a3c48b65f04844aa9b81ae6a1d52c075da1c016e360692c10ca64edb99d",
+            "stage_id": "synthesis.risk"
+          },
+          {
+            "sha256": "0346e7689c71b890195b832982b262f86966b6b8190c96ab90279cc3d591bcd0",
+            "stage_id": "research.delta"
+          },
+          {
+            "sha256": "b169878d2e302db280bab6678ccdce40e89b2c010e2dd24b9eac2ad0cf4e400a",
+            "stage_id": "research.monitor"
+          },
+          {
+            "sha256": "c2546f5eef0cda1ffb0709fda28624a6683b568b4376b3d4d7324e0af0106abf",
+            "stage_id": "evaluate.dossier"
+          },
+          {
+            "sha256": "a9d72907a98d2ce07f6d7882521c4b2e0331c5409d760a94376e5c7df637225a",
+            "stage_id": "assemble.dossier"
+          },
+          {
+            "sha256": "1bf83db872af701050e0ec364304b5e2a2bcee59db15593f015caa439c34f1a2",
+            "stage_id": "research.hypotheses"
+          },
+          {
+            "sha256": "30e0c6f56cee5b28d41da2d2386d6ea3cdc89fca9578637e6945a4a9a67983cb",
+            "stage_id": "analytics.fundamentals"
+          },
+          {
+            "sha256": "2f29a13dc1698f27dd58c440aef48aed2bbd62604f781ad0ca6b5bb4dc4555f2",
+            "stage_id": "analytics.models"
+          },
+          {
+            "sha256": "4a67e3571dd59cf23a1527e918de694d25a9efc546da7bc11d691882c3dad671",
+            "stage_id": "analytics.consensus"
+          },
+          {
+            "sha256": "634745b8d7a6580517c3b232768942142963add0f377685dbaab4b1b7c082c67",
+            "stage_id": "analytics.positioning"
+          },
+          {
+            "sha256": "9614c47d75ce32ab0fd238165d47c52f2c5a02dd03f28d9c9aa97424082361c8",
+            "stage_id": "analytics.events"
+          },
+          {
+            "sha256": "e789c2286a18c5d37b3e2effefd4fe945baa8376730c8e029c3d279cf155de28",
+            "stage_id": "experiment.plan"
+          },
+          {
+            "sha256": "c6c1090dbf8791ebb76c3912bc1e1b57defa142af41c07399bb468149c7443ed",
+            "stage_id": "experiment.run"
+          },
+          {
+            "sha256": "d71f9a3690a5cfff1257e6f6caf6af670bb2a73a2acb3bc440ebd5b027b6e872",
+            "stage_id": "experiment.evaluate"
+          },
+          {
+            "sha256": "d108ab1fdb75f74a2745b10b9ccfbd1c9d9de676a4d8d521fe83cd1d63dca1bb",
+            "stage_id": "quality.issue"
+          },
+          {
+            "sha256": "ccbc1a86016c9db8d9bf68132282043f303e1c99cd0fadc5623bc3113742d10f",
+            "stage_id": "publish.completed"
+          }
+        ],
+        "workflow_sha256": "a63522c6b6702ae9b9b4cee603ce0c4080e9cd96085c07fdaa3584c24b8b41d9"
+      },
+      "id": "research.quality.v1",
+      "kind": "research_quality.v1",
+      "media_type": "application/vnd.stockresearchagents.research-quality.v1+json",
+      "schema_version": "1.0.0",
+      "title": "Research quality receipt"
+    },
+    {
+      "content": [
+        {
+          "benchmark_id": null,
+          "claim_id": "orcl-claim-bull",
+          "direction": null,
+          "evidence_document_ids": [
+            "orcl-doc-filing"
+          ],
+          "forecast_at": "2026-08-01T00:30:00Z",
+          "forecast_id": "analytics-9198a2d47ec7.forecast.orcl.primary",
+          "forecast_kind": "binary_event",
+          "horizon": "one-year",
+          "information_cutoff_at": "2026-07-31T20:00:00Z",
+          "instrument_id": "equity:US68389X1054",
+          "interval_lower": null,
+          "interval_upper": null,
+          "point_estimate": null,
+          "probability": 0.65,
+          "producer_provenance": "fixture-host explicit forecast; not claim confidence",
+          "resolution_rule": "Resolve true only when a retained primary filing explicitly supports the stated driver.",
+          "resolve_after": "2027-08-01T00:00:00Z",
+          "run_id": "analytics-9198a2d47ec7",
+          "schema_version": "research-quality.v1",
+          "target": "The primary operating thesis remains supported at the next annual filing.",
+          "unit": null
+        }
+      ],
+      "id": "research.forecasts.v1",
+      "kind": "forecast_set.v1",
+      "media_type": "application/vnd.stockresearchagents.forecast-set.v1+json",
+      "schema_version": "1.0.0",
+      "title": "Explicit research forecasts"
+    }
+  ],
+  "completed_at": "2026-08-01T00:30:00Z",
+  "non_executable": true,
+  "profile": "company-analytics.v1",
+  "prototype_notice": "Prototype research output only. Not financial advice and never an order, broker instruction, or authorization to trade.",
+  "run_id": "analytics-9198a2d47ec7",
+  "schema_version": "company-analytics-result.v1",
+  "started_at": "2026-08-01T00:00:00Z",
+  "status": "completed",
+  "submission": {
+    "analytics_bundle": {
+      "analyst_opinions": [],
+      "base_dossier_digest": "2bd547be8d56483aed1b76eaf7d7e7830d57c186e9dedc82e80496a94c0adaaa",
+      "base_submission_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+      "calculation_receipts": [],
+      "catalysts": [],
+      "comparable_observations": [],
+      "comparable_valuations": [],
+      "complete": true,
+      "completed_at": "2026-08-01T00:30:00Z",
+      "consensus": [],
+      "coverage_decision": "supported",
+      "cutoff_at": "2026-07-31T20:00:00Z",
+      "datasets": [],
+      "dcf_models": [],
+      "dcf_valuations": [],
+      "estimates": [],
+      "event_clusters": [],
+      "experiment_specs": [],
+      "experiments": [],
+      "factors": [],
+      "facts": [
+        {
+          "accession_number": "0000000000-26-000006",
+          "amendment_of_fact_id": null,
+          "available_at": "2026-07-29T13:05:00Z",
+          "concept": "revenue",
+          "currency": "USD",
+          "fact_id": "fact.revenue",
+          "filed_at": "2026-07-29T13:00:00Z",
+          "period": {
+            "end_date": "2026-06-30",
+            "fiscal_quarter": 2,
+            "fiscal_year": 2026,
+            "period_id": "2026-q2",
+            "period_type": "quarter",
+            "start_date": "2026-04-01"
+          },
+          "scale": 0,
+          "source_id": "orcl-doc-filing",
+          "unit": "USD",
+          "value": "100"
+        }
+      ],
+      "insider_transactions": [],
+      "limitations": [],
+      "ownership": [],
+      "ratios": [],
+      "restatements": [],
+      "reverse_dcf_results": [],
+      "run_id": "analytics-9198a2d47ec7",
+      "short_interest": [],
+      "source_licenses": [
+        {
+          "access": "public",
+          "checked_at": "2026-08-01T00:30:00Z",
+          "derived_data_rights": "allowed",
+          "limitation": null,
+          "machine_use": "allowed",
+          "permitted_purpose": "research",
+          "policy_sha256": "756acf30808fbebca62069546e708025e221263d441e031cbaea366e7b03a7ce",
+          "receipt_id": "analytics-license.orcl-doc-filing",
+          "redistribution": "bounded_extract",
+          "retention_days": null,
+          "source_id": "orcl-doc-filing",
+          "terms_uri": "https://fixtures.example.test/terms"
+        },
+        {
+          "access": "public",
+          "checked_at": "2026-08-01T00:30:00Z",
+          "derived_data_rights": "allowed",
+          "limitation": null,
+          "machine_use": "allowed",
+          "permitted_purpose": "research",
+          "policy_sha256": "756acf30808fbebca62069546e708025e221263d441e031cbaea366e7b03a7ce",
+          "receipt_id": "analytics-license.orcl-doc-narrative",
+          "redistribution": "bounded_extract",
+          "retention_days": null,
+          "source_id": "orcl-doc-narrative",
+          "terms_uri": "https://fixtures.example.test/terms"
+        },
+        {
+          "access": "public",
+          "checked_at": "2026-08-01T00:30:00Z",
+          "derived_data_rights": "allowed",
+          "limitation": null,
+          "machine_use": "allowed",
+          "permitted_purpose": "research",
+          "policy_sha256": "756acf30808fbebca62069546e708025e221263d441e031cbaea366e7b03a7ce",
+          "receipt_id": "analytics-license.orcl-doc-market",
+          "redistribution": "bounded_extract",
+          "retention_days": null,
+          "source_id": "orcl-doc-market",
+          "terms_uri": "https://fixtures.example.test/terms"
+        },
+        {
+          "access": "entitlement_blocked",
+          "checked_at": "2026-08-01T00:30:00Z",
+          "derived_data_rights": "denied",
+          "limitation": "Host entitlement was unavailable at the research cutoff.",
+          "machine_use": "denied",
+          "permitted_purpose": "none",
+          "policy_sha256": "75cd3036240dc69c8a84ff9f79f5371c371e51c9d75d1059201318f57153ce05",
+          "receipt_id": "analytics-license.orcl-doc-licensed-consensus",
+          "redistribution": "denied",
+          "retention_days": null,
+          "source_id": "orcl-doc-licensed-consensus",
+          "terms_uri": "https://fixtures.example.test/terms"
+        },
+        {
+          "access": "public",
+          "checked_at": "2026-08-01T00:30:00Z",
+          "derived_data_rights": "allowed",
+          "limitation": null,
+          "machine_use": "allowed",
+          "permitted_purpose": "research",
+          "policy_sha256": "756acf30808fbebca62069546e708025e221263d441e031cbaea366e7b03a7ce",
+          "receipt_id": "analytics-license.orcl-doc-transcript",
+          "redistribution": "bounded_extract",
+          "retention_days": null,
+          "source_id": "orcl-doc-transcript",
+          "terms_uri": "https://fixtures.example.test/terms"
+        }
+      ],
+      "splits": [],
+      "statement_snapshots": []
+    },
+    "company_research": {
+      "dossier": {
+        "arguments": [
+          {
+            "argument_id": "orcl-argument-bull",
+            "assumption_ids": [
+              "orcl-claim-guidance"
+            ],
+            "claim_ids": [
+              "orcl-claim-bull"
+            ],
+            "concessions": [],
+            "debate": "research",
+            "rebuttal_of": null,
+            "role": "bull_researcher",
+            "round": 1,
+            "turn": 1,
+            "unresolved": [
+              "Licensed consensus unavailable"
+            ]
+          },
+          {
+            "argument_id": "orcl-argument-bear",
+            "assumption_ids": [],
+            "claim_ids": [
+              "orcl-claim-bear"
+            ],
+            "concessions": [
+              "Reported earnings evidence is retained"
+            ],
+            "debate": "research",
+            "rebuttal_of": "orcl-argument-bull",
+            "role": "bear_researcher",
+            "round": 1,
+            "turn": 2,
+            "unresolved": []
+          }
+        ],
+        "as_of_at": "2026-07-31T20:00:00Z",
+        "calculations": [
+          {
+            "constants": [],
+            "deterministic": true,
+            "engine": "fixture-arithmetic.v1",
+            "formula": "orcl-metric-eps * orcl-metric-multiple",
+            "id": "orcl-calc-fair-value",
+            "input_metric_ids": [
+              "orcl-metric-eps",
+              "orcl-metric-multiple"
+            ],
+            "operation": "multiply",
+            "result": 150.0,
+            "rounding_digits": 2,
+            "tolerance": 1e-09,
+            "unit": "USD/share"
+          }
+        ],
+        "claims": [
+          {
+            "confidence": 0.72,
+            "counterclaim_ids": [
+              "orcl-claim-bear"
+            ],
+            "counterevidence_document_ids": [
+              "orcl-doc-market"
+            ],
+            "evidence_document_ids": [
+              "orcl-doc-filing"
+            ],
+            "id": "orcl-claim-bull",
+            "kind": "thesis",
+            "metric_ids": [
+              "orcl-metric-eps"
+            ],
+            "stance": "bull",
+            "statement": "ORCL has a supported constructive scenario."
+          },
+          {
+            "confidence": 0.64,
+            "counterclaim_ids": [
+              "orcl-claim-bull"
+            ],
+            "counterevidence_document_ids": [
+              "orcl-doc-filing"
+            ],
+            "evidence_document_ids": [
+              "orcl-doc-market"
+            ],
+            "id": "orcl-claim-bear",
+            "kind": "thesis",
+            "metric_ids": [
+              "orcl-metric-multiple"
+            ],
+            "stance": "bear",
+            "statement": "ORCL remains exposed to valuation compression."
+          },
+          {
+            "confidence": 0.7,
+            "counterclaim_ids": [],
+            "counterevidence_document_ids": [],
+            "evidence_document_ids": [
+              "orcl-doc-narrative"
+            ],
+            "id": "orcl-claim-guidance",
+            "kind": "guidance",
+            "metric_ids": [
+              "orcl-metric-eps"
+            ],
+            "stance": "neutral",
+            "statement": "The retained issuer evidence supports the declared forward range."
+          }
+        ],
+        "completed_at": "2026-08-01T00:30:00Z",
+        "coverage": [
+          {
+            "area": "financials",
+            "limitation": null,
+            "source_document_ids": [
+              "orcl-doc-filing"
+            ],
+            "status": "complete"
+          },
+          {
+            "area": "narrative",
+            "limitation": null,
+            "source_document_ids": [
+              "orcl-doc-narrative"
+            ],
+            "status": "complete"
+          },
+          {
+            "area": "market",
+            "limitation": null,
+            "source_document_ids": [
+              "orcl-doc-market"
+            ],
+            "status": "complete"
+          },
+          {
+            "area": "transcripts",
+            "limitation": null,
+            "source_document_ids": [
+              "orcl-doc-transcript"
+            ],
+            "status": "complete"
+          },
+          {
+            "area": "licensed_consensus",
+            "limitation": "The host lacked entitlement; no consensus claim was made.",
+            "source_document_ids": [
+              "orcl-doc-licensed-consensus"
+            ],
+            "status": "entitlement_blocked"
+          }
+        ],
+        "documents": [
+          {
+            "entitlement": {
+              "access": "public",
+              "limitation": null,
+              "redistributable": true,
+              "terms_uri": "https://fixtures.example.test/terms"
+            },
+            "extract": "Bounded synthetic extract retained for deterministic conformance testing.",
+            "id": "orcl-doc-filing",
+            "kind": "filing",
+            "locator": {
+              "accession_number": "0000000000-26-000006",
+              "canonical_uri": "https://fixtures.example.test/orcl/filing",
+              "content_sha256": "69684de2a5cb66c6f00ae2d4461e5aaa16c08b56a1d6d38e8c13dcdd2f71e70c",
+              "document_id": "orcl-doc-filing"
+            },
+            "publisher": "Deterministic fixture publisher",
+            "temporal": {
+              "available_at": "2026-07-29T13:05:00Z",
+              "cutoff_at": "2026-07-31T20:00:00Z",
+              "observed_at": "2026-07-29T12:00:00Z",
+              "published_at": "2026-07-29T13:00:00Z",
+              "retrieved_at": "2026-07-30T10:00:00Z"
+            },
+            "title": "ORCL synthetic filing evidence"
+          },
+          {
+            "entitlement": {
+              "access": "public",
+              "limitation": null,
+              "redistributable": true,
+              "terms_uri": "https://fixtures.example.test/terms"
+            },
+            "extract": "Bounded synthetic extract retained for deterministic conformance testing.",
+            "id": "orcl-doc-narrative",
+            "kind": "company",
+            "locator": {
+              "accession_number": null,
+              "canonical_uri": "https://fixtures.example.test/orcl/narrative",
+              "content_sha256": "40996a62fcc4580e95830aa8c6a247fe0a0efb76fd1c79074c582e39f7482282",
+              "document_id": "orcl-doc-narrative"
+            },
+            "publisher": "Deterministic fixture publisher",
+            "temporal": {
+              "available_at": "2026-07-29T13:05:00Z",
+              "cutoff_at": "2026-07-31T20:00:00Z",
+              "observed_at": "2026-07-29T12:00:00Z",
+              "published_at": "2026-07-29T13:00:00Z",
+              "retrieved_at": "2026-07-30T10:00:00Z"
+            },
+            "title": "ORCL synthetic narrative evidence"
+          },
+          {
+            "entitlement": {
+              "access": "public",
+              "limitation": null,
+              "redistributable": true,
+              "terms_uri": "https://fixtures.example.test/terms"
+            },
+            "extract": "Bounded synthetic extract retained for deterministic conformance testing.",
+            "id": "orcl-doc-market",
+            "kind": "market",
+            "locator": {
+              "accession_number": null,
+              "canonical_uri": "https://fixtures.example.test/orcl/market",
+              "content_sha256": "cad6c01ab8a927a6ad724889102bd84ba3c8a2ec8b5deee2f73c49cdabbc6cde",
+              "document_id": "orcl-doc-market"
+            },
+            "publisher": "Deterministic fixture publisher",
+            "temporal": {
+              "available_at": "2026-07-29T13:05:00Z",
+              "cutoff_at": "2026-07-31T20:00:00Z",
+              "observed_at": "2026-07-29T12:00:00Z",
+              "published_at": "2026-07-29T13:00:00Z",
+              "retrieved_at": "2026-07-30T10:00:00Z"
+            },
+            "title": "ORCL synthetic market evidence"
+          },
+          {
+            "entitlement": {
+              "access": "entitlement_blocked",
+              "limitation": "Host entitlement was unavailable at the research cutoff.",
+              "redistributable": false,
+              "terms_uri": "https://fixtures.example.test/terms"
+            },
+            "extract": null,
+            "id": "orcl-doc-licensed-consensus",
+            "kind": "other",
+            "locator": {
+              "accession_number": null,
+              "canonical_uri": "https://fixtures.example.test/orcl/licensed-consensus",
+              "content_sha256": "20884e53c7a637be478f995c4679a3473583dbc95df019e54045c277e343c9f5",
+              "document_id": "orcl-doc-licensed-consensus"
+            },
+            "publisher": "Deterministic fixture publisher",
+            "temporal": {
+              "available_at": "2026-07-29T13:05:00Z",
+              "cutoff_at": "2026-07-31T20:00:00Z",
+              "observed_at": "2026-07-29T12:00:00Z",
+              "published_at": "2026-07-29T13:00:00Z",
+              "retrieved_at": "2026-07-30T10:00:00Z"
+            },
+            "title": "ORCL synthetic licensed consensus evidence"
+          },
+          {
+            "entitlement": {
+              "access": "public",
+              "limitation": null,
+              "redistributable": true,
+              "terms_uri": "https://fixtures.example.test/terms"
+            },
+            "extract": "Bounded synthetic extract retained for deterministic conformance testing.",
+            "id": "orcl-doc-transcript",
+            "kind": "transcript",
+            "locator": {
+              "accession_number": null,
+              "canonical_uri": "https://fixtures.example.test/orcl/transcript",
+              "content_sha256": "4ee21f3f6f5c4a0c24a59f1f807dff277f9785430cd42c5f375225f174a4a42c",
+              "document_id": "orcl-doc-transcript"
+            },
+            "publisher": "Deterministic fixture publisher",
+            "temporal": {
+              "available_at": "2026-07-29T13:05:00Z",
+              "cutoff_at": "2026-07-31T20:00:00Z",
+              "observed_at": "2026-07-29T12:00:00Z",
+              "published_at": "2026-07-29T13:00:00Z",
+              "retrieved_at": "2026-07-30T10:00:00Z"
+            },
+            "title": "ORCL synthetic transcript evidence"
+          }
+        ],
+        "dossier_id": "dossier-orcl-20260731",
+        "entities": [
+          {
+            "id": "orcl-entity-issuer",
+            "kind": "issuer",
+            "name": "Oracle Corporation"
+          },
+          {
+            "id": "orcl-entity-peer",
+            "kind": "peer",
+            "name": "Microsoft Corporation"
+          }
+        ],
+        "evaluation": {
+          "checks": [
+            {
+              "calculation_ids": [
+                "orcl-calc-fair-value"
+              ],
+              "claim_ids": [
+                "orcl-claim-bull",
+                "orcl-claim-bear"
+              ],
+              "document_ids": [
+                "orcl-doc-filing"
+              ],
+              "evaluated_at": "2026-07-31T19:00:00Z",
+              "evaluator": "deterministic-fixture-evaluator",
+              "id": "orcl-evaluation-grounding",
+              "notes": "All referenced identifiers resolve.",
+              "rubric": "Decision-relevant claims retain evidence and calculation links.",
+              "status": "pass"
+            }
+          ],
+          "evaluator": "deterministic-fixture-evaluator",
+          "evaluator_provenance": "Portable deterministic rules; no model arithmetic.",
+          "limitations": [
+            "Licensed consensus was entitlement-blocked."
+          ],
+          "rubric_version": "research-quality.v1"
+        },
+        "events": [
+          {
+            "claim_ids": [
+              "orcl-claim-bull"
+            ],
+            "entity_ids": [
+              "orcl-entity-issuer"
+            ],
+            "evidence_document_ids": [
+              "orcl-doc-filing"
+            ],
+            "id": "orcl-event-filing",
+            "occurred_at": "2026-07-29T13:00:00Z",
+            "ripple_event_ids": [],
+            "status": "historical",
+            "title": "Latest filing became available"
+          }
+        ],
+        "executive_summary": "Synthetic, point-in-time-safe research dossier for ORCL.",
+        "factors": [
+          {
+            "as_of_at": "2026-07-29T13:05:00Z",
+            "delta": null,
+            "direction": "positive",
+            "evidence_document_ids": [
+              "orcl-doc-filing"
+            ],
+            "factor": "quality",
+            "history_document_ids": [
+              "orcl-doc-filing"
+            ],
+            "id": "orcl-factor-quality",
+            "magnitude": "moderate",
+            "methodology": "Deterministic normalization of retained reported metrics.",
+            "methodology_version": "fixture-factor.v1",
+            "prior_snapshot_id": null,
+            "unit": "score",
+            "value": 0.65
+          }
+        ],
+        "filing_changes": [
+          {
+            "change_kind": "mda",
+            "claim_ids": [
+              "orcl-claim-bull"
+            ],
+            "current_document_id": "orcl-doc-filing",
+            "id": "orcl-filing-change",
+            "metric_ids": [
+              "orcl-metric-eps"
+            ],
+            "prior_document_id": null,
+            "summary": "Current-period discussion was evaluated against the declared history window."
+          }
+        ],
+        "filings": [
+          {
+            "accession_number": "0000000000-26-000006",
+            "amendment": false,
+            "document_id": "orcl-doc-filing",
+            "filed_at": "2026-07-29T13:00:00Z",
+            "form": "10-Q",
+            "id": "orcl-filing-record",
+            "period_end": "2026-06-30T00:00:00Z"
+          }
+        ],
+        "guidance": [
+          {
+            "claim_id": "orcl-claim-guidance",
+            "high": 6.6000000000000005,
+            "id": "orcl-guidance-1",
+            "low": 5.699999999999999,
+            "metric": "Normalized earnings per share",
+            "period": "FY2027",
+            "status": "introduced",
+            "unit": "USD/share"
+          }
+        ],
+        "identity": {
+          "asset_type": "equity",
+          "cik": "0001341439",
+          "country": "US",
+          "currency": "USD",
+          "exchange": "NYSE",
+          "instrument_id": "equity:US68389X1054",
+          "issuer_name": "Oracle Corporation",
+          "symbol": "ORCL"
+        },
+        "limitations": [
+          "Fixture values are deterministic and not investment advice."
+        ],
+        "metrics": [
+          {
+            "as_of_at": "2026-07-29T13:05:00Z",
+            "basis": "reported",
+            "calculation_id": null,
+            "id": "orcl-metric-eps",
+            "label": "Normalized earnings per share",
+            "period_end": "2026-07-29T12:00:00Z",
+            "period_start": "2025-08-01T00:00:00Z",
+            "source_document_ids": [
+              "orcl-doc-filing"
+            ],
+            "unit": "USD/share",
+            "value": 6.0
+          },
+          {
+            "as_of_at": "2026-07-29T13:05:00Z",
+            "basis": "assumption",
+            "calculation_id": null,
+            "id": "orcl-metric-multiple",
+            "label": "Selected earnings multiple",
+            "period_end": "2026-07-29T12:00:00Z",
+            "period_start": null,
+            "source_document_ids": [
+              "orcl-doc-market"
+            ],
+            "unit": "x",
+            "value": 25.0
+          },
+          {
+            "as_of_at": "2026-07-29T13:05:00Z",
+            "basis": "calculated",
+            "calculation_id": "orcl-calc-fair-value",
+            "id": "orcl-metric-fair-value",
+            "label": "Recomputed fair value",
+            "period_end": "2026-07-29T12:00:00Z",
+            "period_start": null,
+            "source_document_ids": [
+              "orcl-doc-market"
+            ],
+            "unit": "USD/share",
+            "value": 150.0
+          }
+        ],
+        "monitoring": [
+          {
+            "cadence": "quarterly",
+            "consequence": "Recompute all valuation cases.",
+            "description": "Monitor the selected valuation multiple.",
+            "id": "orcl-monitor-valuation",
+            "related_ids": [
+              "orcl-metric-multiple"
+            ],
+            "trigger": "Multiple moves by more than 20 percent."
+          }
+        ],
+        "peers": [
+          {
+            "evidence_document_ids": [
+              "orcl-doc-market"
+            ],
+            "id": "orcl-peer-1",
+            "methodology": "Normalize currency to USD and compare the same forward period.",
+            "metric_ids": [
+              "orcl-metric-multiple"
+            ],
+            "peer_instrument_id": "equity:US5949181045",
+            "rationale": "Microsoft Corporation is a structurally relevant comparison."
+          }
+        ],
+        "portfolio_context": {
+          "constraints": [
+            "No leverage",
+            "Research output is non-executable"
+          ],
+          "horizon": "3-5 years",
+          "issuer_exposure_percent": 0.0,
+          "non_executable": true,
+          "objective": "Evaluate long-horizon risk-adjusted fit.",
+          "risk_tolerance": "moderate",
+          "sector_exposure_percent": 20.0
+        },
+        "portfolio_impact": {
+          "claim_ids": [
+            "orcl-claim-bull",
+            "orcl-claim-bear"
+          ],
+          "diversification_effect": "neutral",
+          "issuer_exposure_delta_percent": 2.0,
+          "metric_ids": [
+            "orcl-metric-fair-value"
+          ],
+          "non_executable": true,
+          "risk_contribution": "similar",
+          "sector_exposure_delta_percent": 1.0,
+          "thesis": "The security adds measured exposure without granting execution authority."
+        },
+        "prior_outcomes": [
+          {
+            "calibration_score": 0.7,
+            "evaluated_at": "2026-07-29T13:05:00Z",
+            "forecast_at": "2026-01-15T12:00:00Z",
+            "forecast_claim_id": "orcl-claim-bull",
+            "id": "orcl-outcome-1",
+            "notes": "Outcome uses only evidence available by the declared cutoff.",
+            "outcome_document_ids": [
+              "orcl-doc-filing"
+            ],
+            "result": "partially_confirmed"
+          }
+        ],
+        "recommendation": "hold",
+        "research_delta": {
+          "added_document_ids": [
+            "orcl-doc-filing"
+          ],
+          "changed_claim_ids": [
+            "orcl-claim-bull"
+          ],
+          "changed_valuation_ids": [
+            "orcl-valuation-base"
+          ],
+          "previous_dossier_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "summary": "Latest retained filing changed the earnings evidence and base valuation."
+        },
+        "risks": [
+          {
+            "claim_ids": [
+              "orcl-claim-bear"
+            ],
+            "evidence_document_ids": [
+              "orcl-doc-market"
+            ],
+            "id": "orcl-risk-valuation",
+            "impact": "high",
+            "name": "Valuation compression",
+            "probability": 0.35,
+            "thesis": "The selected multiple may contract.",
+            "trigger_metric_ids": [
+              "orcl-metric-multiple"
+            ]
+          }
+        ],
+        "schema_version": "company-research.v1",
+        "status": "completed",
+        "transcripts": [
+          {
+            "document_id": "orcl-doc-transcript",
+            "event_at": "2026-07-29T12:00:00Z",
+            "guidance_claim_ids": [
+              "orcl-claim-guidance"
+            ],
+            "id": "orcl-transcript-record",
+            "segments": [
+              {
+                "claim_ids": [
+                  "orcl-claim-guidance"
+                ],
+                "extract": "A bounded synthetic statement about the declared range.",
+                "id": "orcl-segment-1",
+                "section": "qa",
+                "speaker": "Chief Financial Officer"
+              }
+            ],
+            "speaker_summary": "Management discussed the supported forward range.",
+            "themes": [
+              {
+                "claim_ids": [
+                  "orcl-claim-guidance"
+                ],
+                "id": "orcl-theme-1",
+                "segment_ids": [
+                  "orcl-segment-1"
+                ],
+                "title": "Forward range"
+              }
+            ]
+          }
+        ],
+        "valuations": [
+          {
+            "assumption_claim_ids": [
+              "orcl-claim-guidance"
+            ],
+            "assumptions": [
+              {
+                "claim_ids": [
+                  "orcl-claim-guidance"
+                ],
+                "id": "orcl-assumption-eps",
+                "label": "EPS",
+                "metric_ids": [
+                  "orcl-metric-eps"
+                ],
+                "unit": "USD/share",
+                "value": 6.0
+              },
+              {
+                "claim_ids": [
+                  "orcl-claim-bear"
+                ],
+                "id": "orcl-assumption-multiple",
+                "label": "Multiple",
+                "metric_ids": [
+                  "orcl-metric-multiple"
+                ],
+                "unit": "x",
+                "value": 25.0
+              }
+            ],
+            "calculation_ids": [
+              "orcl-calc-fair-value"
+            ],
+            "currency": "USD",
+            "fair_value": 150.0,
+            "horizon": "12 months",
+            "id": "orcl-valuation-base",
+            "input_metric_ids": [
+              "orcl-metric-eps",
+              "orcl-metric-multiple"
+            ],
+            "methodology": "Normalized earnings multiplied by a selected comparable multiple.",
+            "name": "base",
+            "sensitivity_cells": [
+              {
+                "calculation_ids": [
+                  "orcl-calc-fair-value"
+                ],
+                "column_assumption_id": "orcl-assumption-multiple",
+                "fair_value": 150.0,
+                "id": "orcl-sensitivity-base",
+                "row_assumption_id": "orcl-assumption-eps"
+              }
+            ]
+          }
+        ]
+      },
+      "request": {
+        "cutoff_at": "2026-07-31T20:00:00Z",
+        "identity": {
+          "asset_type": "equity",
+          "cik": "0001341439",
+          "country": "US",
+          "currency": "USD",
+          "exchange": "NYSE",
+          "instrument_id": "equity:US68389X1054",
+          "issuer_name": "Oracle Corporation",
+          "symbol": "ORCL"
+        },
+        "non_executable": true,
+        "output_language": "en-US",
+        "portfolio_context": {
+          "constraints": [
+            "No leverage",
+            "Research output is non-executable"
+          ],
+          "horizon": "3-5 years",
+          "issuer_exposure_percent": 0.0,
+          "non_executable": true,
+          "objective": "Evaluate long-horizon risk-adjusted fit.",
+          "risk_tolerance": "moderate",
+          "sector_exposure_percent": 20.0
+        },
+        "request_id": "request-orcl-20260731",
+        "requested_at": "2026-08-01T00:00:00Z",
+        "research_mode": "fixture",
+        "research_plan": {
+          "coverage_dimensions": [
+            {
+              "area": "financials",
+              "entitlement_policy": "public_only",
+              "minimum_source_count": 1,
+              "preferred_source_kinds": [
+                "filing"
+              ],
+              "required": true
+            },
+            {
+              "area": "narrative",
+              "entitlement_policy": "public_only",
+              "minimum_source_count": 1,
+              "preferred_source_kinds": [
+                "company"
+              ],
+              "required": true
+            },
+            {
+              "area": "market",
+              "entitlement_policy": "public_only",
+              "minimum_source_count": 1,
+              "preferred_source_kinds": [
+                "market"
+              ],
+              "required": true
+            },
+            {
+              "area": "transcripts",
+              "entitlement_policy": "public_only",
+              "minimum_source_count": 1,
+              "preferred_source_kinds": [
+                "transcript"
+              ],
+              "required": true
+            },
+            {
+              "area": "licensed_consensus",
+              "entitlement_policy": "caller_entitled_allowed",
+              "minimum_source_count": 1,
+              "preferred_source_kinds": [
+                "other"
+              ],
+              "required": true
+            }
+          ],
+          "history_windows": [
+            {
+              "area": "financials",
+              "end_at": "2026-07-31T20:00:00Z",
+              "expansion_reasons": [
+                "Detect trend breaks"
+              ],
+              "latest_data_checks": [
+                "Confirm latest filing availability"
+              ],
+              "minimum_periods": 3,
+              "start_at": "2024-01-01T00:00:00Z",
+              "stop_conditions": [
+                "Three comparable periods retained"
+              ]
+            }
+          ],
+          "latest_data_checks": [
+            "Reconcile sources available by cutoff"
+          ],
+          "objectives": [
+            {
+              "decision_relevance": "Supports a non-executable portfolio research decision.",
+              "id": "objective-orcl",
+              "question": "What is the evidence-grounded risk/reward for ORCL?",
+              "required_claim_kinds": [
+                "fact",
+                "thesis"
+              ]
+            }
+          ],
+          "stop_conditions": [
+            "Required dimensions resolved or limitations declared"
+          ]
+        },
+        "schema_version": "company-research.v1"
+      },
+      "schema_version": "company-research.v1",
+      "workflow_id": "stockresearchagents.company-research.v1"
+    },
+    "forecasts": [
+      {
+        "benchmark_id": null,
+        "claim_id": "orcl-claim-bull",
+        "direction": null,
+        "evidence_document_ids": [
+          "orcl-doc-filing"
+        ],
+        "forecast_at": "2026-08-01T00:30:00Z",
+        "forecast_id": "analytics-9198a2d47ec7.forecast.orcl.primary",
+        "forecast_kind": "binary_event",
+        "horizon": "one-year",
+        "information_cutoff_at": "2026-07-31T20:00:00Z",
+        "instrument_id": "equity:US68389X1054",
+        "interval_lower": null,
+        "interval_upper": null,
+        "point_estimate": null,
+        "probability": 0.65,
+        "producer_provenance": "fixture-host explicit forecast; not claim confidence",
+        "resolution_rule": "Resolve true only when a retained primary filing explicitly supports the stated driver.",
+        "resolve_after": "2027-08-01T00:00:00Z",
+        "run_id": "analytics-9198a2d47ec7",
+        "schema_version": "research-quality.v1",
+        "target": "The primary operating thesis remains supported at the next annual filing.",
+        "unit": null
+      }
+    ],
+    "hypothesis_ledgers": [
+      {
+        "final_status": "proposed",
+        "hypothesis": {
+          "created_at": "2026-08-01T00:00:00Z",
+          "evidence_ids": [
+            "orcl-doc-filing"
+          ],
+          "expected_observation": "The next primary filing reports evidence consistent with the thesis.",
+          "falsification_criteria": "A subsequent primary filing contradicts the stated operating driver.",
+          "horizon_at": "2027-07-31T20:00:00Z",
+          "hypothesis_id": "hypothesis.primary",
+          "related_hypothesis_ids": [],
+          "statement": "ORCL has a supported constructive scenario."
+        },
+        "run_id": "analytics-9198a2d47ec7",
+        "transitions": [
+          {
+            "changed_at": "2026-08-01T00:00:00Z",
+            "evidence_ids": [
+              "orcl-doc-filing"
+            ],
+            "from_status": null,
+            "hypothesis_id": "hypothesis.primary",
+            "reason": "Registered before the completed synthesis.",
+            "to_status": "proposed",
+            "transition_id": "transition.primary.1"
+          }
+        ]
+      }
+    ],
+    "quality_receipt": {
+      "dossier_sha256": "2bd547be8d56483aed1b76eaf7d7e7830d57c186e9dedc82e80496a94c0adaaa",
+      "issued_at": "2026-08-01T00:30:00Z",
+      "limitations": [],
+      "package_identifier": "stock-research-agents",
+      "package_version": "0.1.0",
+      "policy": {
+        "policy_id": "quality-policy.default",
+        "policy_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "policy_version": "1"
+      },
+      "receipt_id": "quality.primary",
+      "request_sha256": "06f2c033cb2b1b0a73ebe53b6589dbdb3d9bd82df8403634b70a1477343fa8f1",
+      "rules": [
+        {
+          "detail": "Analytics sidecars reproduced.",
+          "rule_id": "rule.analytics-conformance",
+          "status": "pass"
+        }
+      ],
+      "run_id": "analytics-9198a2d47ec7",
+      "schema_version": "research-quality.v1",
+      "stage_digests": [
+        {
+          "sha256": "d88b6cdb334c54971051c4a1944077e034ac3c4ec7d74f5a737f6786e65214ae",
+          "stage_id": "research.plan"
+        },
+        {
+          "sha256": "456d11a962af92d716337654a5bf098b6b350c9663d17226a3bf1583aefcae75",
+          "stage_id": "evidence.official"
+        },
+        {
+          "sha256": "e75c808366ac9a60aa279c7906ca9dd24dfe56b8b8c80fb5ec88548fa455a8b1",
+          "stage_id": "evidence.market"
+        },
+        {
+          "sha256": "a81cf0887baa0cd01f7871325b74894ee7fb6dffe773c34be9d84d04012d84a5",
+          "stage_id": "analysis.financial"
+        },
+        {
+          "sha256": "671c2fd7d46f4432fd903606a58f5331ffeac482f282f3a9d7b08ef259d12521",
+          "stage_id": "analysis.company"
+        },
+        {
+          "sha256": "085c1ff0af7855593326891546d40a793ec2f9c147b10619ad99da16b2e6f1ec",
+          "stage_id": "audit.evidence"
+        },
+        {
+          "sha256": "2fd1a528f14ae385cfc23dcf935ad556ea64e0d27611575de2faa4ab047a55f6",
+          "stage_id": "verify.numerical"
+        },
+        {
+          "sha256": "a4518c757197faccf853a0bf002ce90dfc3c298276d45a582324f668e9558ed9",
+          "stage_id": "debate.bull"
+        },
+        {
+          "sha256": "ac0c945bb80ce765a61d147e615b6150ae087f92656f2bf7bc5ce6e8667ea65c",
+          "stage_id": "debate.bear"
+        },
+        {
+          "sha256": "c216e3bc735117060a2be8922a5ed75f3fe596c71f3eb2f8dde363876103a041",
+          "stage_id": "synthesis.valuation"
+        },
+        {
+          "sha256": "acfe8a3c48b65f04844aa9b81ae6a1d52c075da1c016e360692c10ca64edb99d",
+          "stage_id": "synthesis.risk"
+        },
+        {
+          "sha256": "0346e7689c71b890195b832982b262f86966b6b8190c96ab90279cc3d591bcd0",
+          "stage_id": "research.delta"
+        },
+        {
+          "sha256": "b169878d2e302db280bab6678ccdce40e89b2c010e2dd24b9eac2ad0cf4e400a",
+          "stage_id": "research.monitor"
+        },
+        {
+          "sha256": "c2546f5eef0cda1ffb0709fda28624a6683b568b4376b3d4d7324e0af0106abf",
+          "stage_id": "evaluate.dossier"
+        },
+        {
+          "sha256": "a9d72907a98d2ce07f6d7882521c4b2e0331c5409d760a94376e5c7df637225a",
+          "stage_id": "assemble.dossier"
+        },
+        {
+          "sha256": "1bf83db872af701050e0ec364304b5e2a2bcee59db15593f015caa439c34f1a2",
+          "stage_id": "research.hypotheses"
+        },
+        {
+          "sha256": "30e0c6f56cee5b28d41da2d2386d6ea3cdc89fca9578637e6945a4a9a67983cb",
+          "stage_id": "analytics.fundamentals"
+        },
+        {
+          "sha256": "2f29a13dc1698f27dd58c440aef48aed2bbd62604f781ad0ca6b5bb4dc4555f2",
+          "stage_id": "analytics.models"
+        },
+        {
+          "sha256": "4a67e3571dd59cf23a1527e918de694d25a9efc546da7bc11d691882c3dad671",
+          "stage_id": "analytics.consensus"
+        },
+        {
+          "sha256": "634745b8d7a6580517c3b232768942142963add0f377685dbaab4b1b7c082c67",
+          "stage_id": "analytics.positioning"
+        },
+        {
+          "sha256": "9614c47d75ce32ab0fd238165d47c52f2c5a02dd03f28d9c9aa97424082361c8",
+          "stage_id": "analytics.events"
+        },
+        {
+          "sha256": "e789c2286a18c5d37b3e2effefd4fe945baa8376730c8e029c3d279cf155de28",
+          "stage_id": "experiment.plan"
+        },
+        {
+          "sha256": "c6c1090dbf8791ebb76c3912bc1e1b57defa142af41c07399bb468149c7443ed",
+          "stage_id": "experiment.run"
+        },
+        {
+          "sha256": "d71f9a3690a5cfff1257e6f6caf6af670bb2a73a2acb3bc440ebd5b027b6e872",
+          "stage_id": "experiment.evaluate"
+        },
+        {
+          "sha256": "d108ab1fdb75f74a2745b10b9ccfbd1c9d9de676a4d8d521fe83cd1d63dca1bb",
+          "stage_id": "quality.issue"
+        },
+        {
+          "sha256": "ccbc1a86016c9db8d9bf68132282043f303e1c99cd0fadc5623bc3113742d10f",
+          "stage_id": "publish.completed"
+        }
+      ],
+      "workflow_sha256": "a63522c6b6702ae9b9b4cee603ce0c4080e9cd96085c07fdaa3584c24b8b41d9"
+    },
+    "research_iterations": [
+      {
+        "budget_units": 10,
+        "completed_at": "2026-08-01T00:30:00Z",
+        "consumed_units": 6,
+        "decision": "stop_sufficient",
+        "hypothesis_ids": [
+          "hypothesis.primary"
+        ],
+        "iteration_id": "iteration.1",
+        "maximum_correlation": 0.2,
+        "novelty_score": 0.8,
+        "output_digest": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "run_id": "analytics-9198a2d47ec7",
+        "started_at": "2026-08-01T00:00:00Z"
+      }
+    ],
+    "run_card": {
+      "artifact_kinds": [
+        "research_dossier.v1",
+        "analytics_bundle.v1",
+        "run_card.v1",
+        "hypothesis_ledger.v1",
+        "research_iterations.v1",
+        "research_quality.v1",
+        "forecast_set.v1"
+      ],
+      "complete": true,
+      "completed_at": "2026-08-01T00:30:00Z",
+      "coordinator_commitments": [],
+      "execution_mode": "sequential",
+      "executor_runtime": "fixture-host",
+      "limitations": [],
+      "profile": "company-analytics.v1",
+      "research_pack_id": "initiating-coverage.v1",
+      "run_id": "analytics-9198a2d47ec7",
+      "source_batch_ids": [
+        "source-batch.primary"
+      ],
+      "stages": [
+        {
+          "attempts": 1,
+          "completed_at": "2026-08-01T00:30:00Z",
+          "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+          "limitation": null,
+          "output_digest": "d88b6cdb334c54971051c4a1944077e034ac3c4ec7d74f5a737f6786e65214ae",
+          "stage_id": "research.plan",
+          "started_at": "2026-08-01T00:00:00Z",
+          "status": "completed"
+        },
+        {
+          "attempts": 1,
+          "completed_at": "2026-08-01T00:30:00Z",
+          "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+          "limitation": null,
+          "output_digest": "456d11a962af92d716337654a5bf098b6b350c9663d17226a3bf1583aefcae75",
+          "stage_id": "evidence.official",
+          "started_at": "2026-08-01T00:00:00Z",
+          "status": "completed"
+        },
+        {
+          "attempts": 1,
+          "completed_at": "2026-08-01T00:30:00Z",
+          "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+          "limitation": null,
+          "output_digest": "e75c808366ac9a60aa279c7906ca9dd24dfe56b8b8c80fb5ec88548fa455a8b1",
+          "stage_id": "evidence.market",
+          "started_at": "2026-08-01T00:00:00Z",
+          "status": "completed"
+        },
+        {
+          "attempts": 1,
+          "completed_at": "2026-08-01T00:30:00Z",
+          "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+          "limitation": null,
+          "output_digest": "a81cf0887baa0cd01f7871325b74894ee7fb6dffe773c34be9d84d04012d84a5",
+          "stage_id": "analysis.financial",
+          "started_at": "2026-08-01T00:00:00Z",
+          "status": "completed"
+        },
+        {
+          "attempts": 1,
+          "completed_at": "2026-08-01T00:30:00Z",
+          "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+          "limitation": null,
+          "output_digest": "671c2fd7d46f4432fd903606a58f5331ffeac482f282f3a9d7b08ef259d12521",
+          "stage_id": "analysis.company",
+          "started_at": "2026-08-01T00:00:00Z",
+          "status": "completed"
+        },
+        {
+          "attempts": 1,
+          "completed_at": "2026-08-01T00:30:00Z",
+          "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+          "limitation": null,
+          "output_digest": "085c1ff0af7855593326891546d40a793ec2f9c147b10619ad99da16b2e6f1ec",
+          "stage_id": "audit.evidence",
+          "started_at": "2026-08-01T00:00:00Z",
+          "status": "completed"
+        },
+        {
+          "attempts": 1,
+          "completed_at": "2026-08-01T00:30:00Z",
+          "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+          "limitation": null,
+          "output_digest": "2fd1a528f14ae385cfc23dcf935ad556ea64e0d27611575de2faa4ab047a55f6",
+          "stage_id": "verify.numerical",
+          "started_at": "2026-08-01T00:00:00Z",
+          "status": "completed"
+        },
+        {
+          "attempts": 1,
+          "completed_at": "2026-08-01T00:30:00Z",
+          "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+          "limitation": null,
+          "output_digest": "a4518c757197faccf853a0bf002ce90dfc3c298276d45a582324f668e9558ed9",
+          "stage_id": "debate.bull",
+          "started_at": "2026-08-01T00:00:00Z",
+          "status": "completed"
+        },
+        {
+          "attempts": 1,
+          "completed_at": "2026-08-01T00:30:00Z",
+          "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+          "limitation": null,
+          "output_digest": "ac0c945bb80ce765a61d147e615b6150ae087f92656f2bf7bc5ce6e8667ea65c",
+          "stage_id": "debate.bear",
+          "started_at": "2026-08-01T00:00:00Z",
+          "status": "completed"
+        },
+        {
+          "attempts": 1,
+          "completed_at": "2026-08-01T00:30:00Z",
+          "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+          "limitation": null,
+          "output_digest": "c216e3bc735117060a2be8922a5ed75f3fe596c71f3eb2f8dde363876103a041",
+          "stage_id": "synthesis.valuation",
+          "started_at": "2026-08-01T00:00:00Z",
+          "status": "completed"
+        },
+        {
+          "attempts": 1,
+          "completed_at": "2026-08-01T00:30:00Z",
+          "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+          "limitation": null,
+          "output_digest": "acfe8a3c48b65f04844aa9b81ae6a1d52c075da1c016e360692c10ca64edb99d",
+          "stage_id": "synthesis.risk",
+          "started_at": "2026-08-01T00:00:00Z",
+          "status": "completed"
+        },
+        {
+          "attempts": 1,
+          "completed_at": "2026-08-01T00:30:00Z",
+          "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+          "limitation": null,
+          "output_digest": "0346e7689c71b890195b832982b262f86966b6b8190c96ab90279cc3d591bcd0",
+          "stage_id": "research.delta",
+          "started_at": "2026-08-01T00:00:00Z",
+          "status": "completed"
+        },
+        {
+          "attempts": 1,
+          "completed_at": "2026-08-01T00:30:00Z",
+          "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+          "limitation": null,
+          "output_digest": "b169878d2e302db280bab6678ccdce40e89b2c010e2dd24b9eac2ad0cf4e400a",
+          "stage_id": "research.monitor",
+          "started_at": "2026-08-01T00:00:00Z",
+          "status": "completed"
+        },
+        {
+          "attempts": 1,
+          "completed_at": "2026-08-01T00:30:00Z",
+          "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+          "limitation": null,
+          "output_digest": "c2546f5eef0cda1ffb0709fda28624a6683b568b4376b3d4d7324e0af0106abf",
+          "stage_id": "evaluate.dossier",
+          "started_at": "2026-08-01T00:00:00Z",
+          "status": "completed"
+        },
+        {
+          "attempts": 1,
+          "completed_at": "2026-08-01T00:30:00Z",
+          "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+          "limitation": null,
+          "output_digest": "a9d72907a98d2ce07f6d7882521c4b2e0331c5409d760a94376e5c7df637225a",
+          "stage_id": "assemble.dossier",
+          "started_at": "2026-08-01T00:00:00Z",
+          "status": "completed"
+        },
+        {
+          "attempts": 1,
+          "completed_at": "2026-08-01T00:30:00Z",
+          "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+          "limitation": null,
+          "output_digest": "1bf83db872af701050e0ec364304b5e2a2bcee59db15593f015caa439c34f1a2",
+          "stage_id": "research.hypotheses",
+          "started_at": "2026-08-01T00:00:00Z",
+          "status": "completed"
+        },
+        {
+          "attempts": 1,
+          "completed_at": "2026-08-01T00:30:00Z",
+          "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+          "limitation": null,
+          "output_digest": "30e0c6f56cee5b28d41da2d2386d6ea3cdc89fca9578637e6945a4a9a67983cb",
+          "stage_id": "analytics.fundamentals",
+          "started_at": "2026-08-01T00:00:00Z",
+          "status": "completed"
+        },
+        {
+          "attempts": 1,
+          "completed_at": "2026-08-01T00:30:00Z",
+          "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+          "limitation": null,
+          "output_digest": "2f29a13dc1698f27dd58c440aef48aed2bbd62604f781ad0ca6b5bb4dc4555f2",
+          "stage_id": "analytics.models",
+          "started_at": "2026-08-01T00:00:00Z",
+          "status": "completed"
+        },
+        {
+          "attempts": 1,
+          "completed_at": "2026-08-01T00:30:00Z",
+          "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+          "limitation": null,
+          "output_digest": "4a67e3571dd59cf23a1527e918de694d25a9efc546da7bc11d691882c3dad671",
+          "stage_id": "analytics.consensus",
+          "started_at": "2026-08-01T00:00:00Z",
+          "status": "completed"
+        },
+        {
+          "attempts": 1,
+          "completed_at": "2026-08-01T00:30:00Z",
+          "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+          "limitation": null,
+          "output_digest": "634745b8d7a6580517c3b232768942142963add0f377685dbaab4b1b7c082c67",
+          "stage_id": "analytics.positioning",
+          "started_at": "2026-08-01T00:00:00Z",
+          "status": "completed"
+        },
+        {
+          "attempts": 1,
+          "completed_at": "2026-08-01T00:30:00Z",
+          "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+          "limitation": null,
+          "output_digest": "9614c47d75ce32ab0fd238165d47c52f2c5a02dd03f28d9c9aa97424082361c8",
+          "stage_id": "analytics.events",
+          "started_at": "2026-08-01T00:00:00Z",
+          "status": "completed"
+        },
+        {
+          "attempts": 1,
+          "completed_at": "2026-08-01T00:30:00Z",
+          "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+          "limitation": null,
+          "output_digest": "e789c2286a18c5d37b3e2effefd4fe945baa8376730c8e029c3d279cf155de28",
+          "stage_id": "experiment.plan",
+          "started_at": "2026-08-01T00:00:00Z",
+          "status": "completed"
+        },
+        {
+          "attempts": 1,
+          "completed_at": "2026-08-01T00:30:00Z",
+          "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+          "limitation": null,
+          "output_digest": "c6c1090dbf8791ebb76c3912bc1e1b57defa142af41c07399bb468149c7443ed",
+          "stage_id": "experiment.run",
+          "started_at": "2026-08-01T00:00:00Z",
+          "status": "completed"
+        },
+        {
+          "attempts": 1,
+          "completed_at": "2026-08-01T00:30:00Z",
+          "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+          "limitation": null,
+          "output_digest": "d71f9a3690a5cfff1257e6f6caf6af670bb2a73a2acb3bc440ebd5b027b6e872",
+          "stage_id": "experiment.evaluate",
+          "started_at": "2026-08-01T00:00:00Z",
+          "status": "completed"
+        },
+        {
+          "attempts": 1,
+          "completed_at": "2026-08-01T00:30:00Z",
+          "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+          "limitation": null,
+          "output_digest": "d108ab1fdb75f74a2745b10b9ccfbd1c9d9de676a4d8d521fe83cd1d63dca1bb",
+          "stage_id": "quality.issue",
+          "started_at": "2026-08-01T00:00:00Z",
+          "status": "completed"
+        },
+        {
+          "attempts": 1,
+          "completed_at": "2026-08-01T00:30:00Z",
+          "input_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+          "limitation": null,
+          "output_digest": "ccbc1a86016c9db8d9bf68132282043f303e1c99cd0fadc5623bc3113742d10f",
+          "stage_id": "publish.completed",
+          "started_at": "2026-08-01T00:00:00Z",
+          "status": "completed"
+        }
+      ],
+      "started_at": "2026-08-01T00:00:00Z",
+      "submission_digest": "85e97206bdf8abf30ea03321ebe3606cb9c753bcb8c83abfb103605cff1236a1",
+      "workflow_digest": "a63522c6b6702ae9b9b4cee603ce0c4080e9cd96085c07fdaa3584c24b8b41d9"
+    },
+    "schema_version": "company-analytics.v1",
+    "source_lineage": {
+      "bindings": [
+        {
+          "analytics_license_receipt_id": "analytics-license.orcl-doc-filing",
+          "analytics_source_id": "orcl-doc-filing",
+          "binding_id": "lineage.orcl-doc-filing",
+          "canonical_uri": "https://fixtures.example.test/orcl/filing",
+          "content_sha256": "69684de2a5cb66c6f00ae2d4461e5aaa16c08b56a1d6d38e8c13dcdd2f71e70c",
+          "content_sha256_scope": "normalized_source_record",
+          "dossier_document_id": "orcl-doc-filing",
+          "entitlement_access": "public",
+          "license_receipt_id": "license.orcl-doc-filing",
+          "redistributable": true,
+          "source_batch_id": "source-batch.primary",
+          "source_observation_id": "observation.orcl-doc-filing",
+          "terms_uri": "https://fixtures.example.test/terms"
+        },
+        {
+          "analytics_license_receipt_id": "analytics-license.orcl-doc-narrative",
+          "analytics_source_id": "orcl-doc-narrative",
+          "binding_id": "lineage.orcl-doc-narrative",
+          "canonical_uri": "https://fixtures.example.test/orcl/narrative",
+          "content_sha256": "40996a62fcc4580e95830aa8c6a247fe0a0efb76fd1c79074c582e39f7482282",
+          "content_sha256_scope": "normalized_source_record",
+          "dossier_document_id": "orcl-doc-narrative",
+          "entitlement_access": "public",
+          "license_receipt_id": "license.orcl-doc-narrative",
+          "redistributable": true,
+          "source_batch_id": "source-batch.primary",
+          "source_observation_id": "observation.orcl-doc-narrative",
+          "terms_uri": "https://fixtures.example.test/terms"
+        },
+        {
+          "analytics_license_receipt_id": "analytics-license.orcl-doc-market",
+          "analytics_source_id": "orcl-doc-market",
+          "binding_id": "lineage.orcl-doc-market",
+          "canonical_uri": "https://fixtures.example.test/orcl/market",
+          "content_sha256": "cad6c01ab8a927a6ad724889102bd84ba3c8a2ec8b5deee2f73c49cdabbc6cde",
+          "content_sha256_scope": "normalized_source_record",
+          "dossier_document_id": "orcl-doc-market",
+          "entitlement_access": "public",
+          "license_receipt_id": "license.orcl-doc-market",
+          "redistributable": true,
+          "source_batch_id": "source-batch.primary",
+          "source_observation_id": "observation.orcl-doc-market",
+          "terms_uri": "https://fixtures.example.test/terms"
+        },
+        {
+          "analytics_license_receipt_id": "analytics-license.orcl-doc-licensed-consensus",
+          "analytics_source_id": "orcl-doc-licensed-consensus",
+          "binding_id": "lineage.orcl-doc-licensed-consensus",
+          "canonical_uri": "https://fixtures.example.test/orcl/licensed-consensus",
+          "content_sha256": "20884e53c7a637be478f995c4679a3473583dbc95df019e54045c277e343c9f5",
+          "content_sha256_scope": "normalized_source_record",
+          "dossier_document_id": "orcl-doc-licensed-consensus",
+          "entitlement_access": "entitlement_blocked",
+          "license_receipt_id": "license.orcl-doc-licensed-consensus",
+          "redistributable": false,
+          "source_batch_id": "source-batch.primary",
+          "source_observation_id": "observation.orcl-doc-licensed-consensus",
+          "terms_uri": "https://fixtures.example.test/terms"
+        },
+        {
+          "analytics_license_receipt_id": "analytics-license.orcl-doc-transcript",
+          "analytics_source_id": "orcl-doc-transcript",
+          "binding_id": "lineage.orcl-doc-transcript",
+          "canonical_uri": "https://fixtures.example.test/orcl/transcript",
+          "content_sha256": "4ee21f3f6f5c4a0c24a59f1f807dff277f9785430cd42c5f375225f174a4a42c",
+          "content_sha256_scope": "normalized_source_record",
+          "dossier_document_id": "orcl-doc-transcript",
+          "entitlement_access": "public",
+          "license_receipt_id": "license.orcl-doc-transcript",
+          "redistributable": true,
+          "source_batch_id": "source-batch.primary",
+          "source_observation_id": "observation.orcl-doc-transcript",
+          "terms_uri": "https://fixtures.example.test/terms"
+        }
+      ],
+      "schema_version": "source-lineage-crosswalk.v1"
+    },
+    "workflow_id": "stockresearchagents.company-analytics.v1"
+  },
+  "warnings": [
+    "Fixture values are deterministic and not investment advice."
+  ]
+}

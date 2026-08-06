@@ -16,6 +16,27 @@ def test_research_data_integration_metadata_is_standalone_and_receipt_gated() ->
     manifest = load_research_data_tools_manifest()
 
     assert manifest["id"] == "stockresearchagents.research-data-tools.v1"
+    assert manifest["source_portfolio"] == {
+        "type": "SourcePortfolioReceipt",
+        "version": "1.0.0",
+        "implementation_status": "implemented_host_configured",
+        "mcp_name": "research_data_collect_source_portfolio",
+        "default_exposed": False,
+        "required_fields": [
+            "version",
+            "capability",
+            "query",
+            "status",
+            "attempts",
+            "batches",
+            "coverage_gaps",
+            "exact_duplicate_clusters",
+            "portfolio_sha256",
+        ],
+        "min_routes": 2,
+        "provider_batches_merged": False,
+        "entitlements_preserved": True,
+    }
     assert manifest["kind"] == "integration_metadata"
     assert manifest["provider_neutral"] is True
     assert manifest["exposure"] == {

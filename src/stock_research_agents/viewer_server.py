@@ -359,13 +359,10 @@ def _handler(
                     result = active_store.get_result(run_id) if run_id else None
                     events = active_store.get_events(run_id) if run_id else None
                     if not isinstance(result, CompanyAnalyticsResultV1) or events is None:
-                        if parts[3] == "semantics":
-                            payload = {
-                                "ok": False,
-                                "error": {"code": "run_not_found", "run_id": requested_run_id},
-                            }
-                        else:
-                            payload = {"ok": False, "view": None}
+                        payload = {
+                            "ok": False,
+                            "error": {"code": "run_not_found", "run_id": requested_run_id},
+                        }
                         status = HTTPStatus.NOT_FOUND
                     elif parts[3] == "semantics":
                         payload = build_completed_run_semantics(result, events).to_dict()

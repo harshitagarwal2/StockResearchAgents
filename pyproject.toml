@@ -17,6 +17,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 dependencies = ["mcp>=2.0,<3"]
@@ -25,7 +26,7 @@ dependencies = ["mcp>=2.0,<3"]
 Homepage = "https://github.com/harshitagarwal2/StockResearchAgents"
 Repository = "https://github.com/harshitagarwal2/StockResearchAgents"
 Issues = "https://github.com/harshitagarwal2/StockResearchAgents/issues"
-Changelog = "https://github.com/harshitagarwal2/StockResearchAgents/releases"
+Changelog = "https://github.com/harshitagarwal2/StockResearchAgents/blob/main/CHANGELOG.md"
 
 [project.scripts]
 stock-research-agents = "stock_research_agents.cli:main"
@@ -33,7 +34,14 @@ stock-research-agents-mcp = "stock_research_agents.mcp_server:main"
 stock-research-data-mcp = "stock_research_agents_host.research_data_mcp:main"
 
 [project.optional-dependencies]
-dev = ["mypy>=1.13", "pytest>=8", "ruff>=0.9"]
+dev = [
+    "coverage[toml]>=7.6,<8",
+    "hypothesis>=6.130,<7",
+    "mypy>=1.13",
+    "pytest>=8",
+    "pytest-timeout>=2.3,<3",
+    "ruff>=0.9",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -42,7 +50,7 @@ where = ["src"]
 version = {attr = "stock_research_agents._version.__version__"}
 
 [tool.setuptools.package-data]
-stock_research_agents = ["web/*.html", "web/*.js", "web/*.css", "workflow/*.json"]
+stock_research_agents = ["web/*.html", "web/*.js", "web/*.css", "web/*.svg", "workflow/*.json"]
 
 [tool.ruff]
 target-version = "py311"
@@ -50,3 +58,29 @@ line-length = 120
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+addopts = "--strict-config --strict-markers"
+faulthandler_timeout = 60
+timeout = 60
+filterwarnings = [
+    "error::ResourceWarning",
+    "error::pytest.PytestUnraisableExceptionWarning",
+    "error::pytest.PytestUnhandledThreadExceptionWarning",
+    "error::DeprecationWarning:stock_research_agents.*",
+    "error::DeprecationWarning:stock_research_agents_host.*",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["stock_research_agents", "stock_research_agents_host"]
+
+[tool.coverage.report]
+fail_under = 78
+show_missing = true
+skip_covered = true
+exclude_also = [
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+]

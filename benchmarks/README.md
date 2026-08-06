@@ -1,6 +1,6 @@
 # Company analytics conformance benchmarks
 
-These fixtures are small, synthetic oracle cases for deterministic analytics behavior. They were authored specifically for `stock-research-agents`, are released under the repository's MIT license, and contain no market data, proprietary research, or copied benchmark records.
+These fixtures are small, synthetic oracle cases for deterministic analytics behavior. They were authored specifically for `stock-research-agents`, are released under the repository's Apache License 2.0, and contain no market data, proprietary research, or copied benchmark records.
 
 In particular, no fixture or expected result was copied or derived from QF-Bench, Seeking Alpha, vendor feeds, or any other proprietary or restricted dataset. Company names and prices are intentionally fictional.
 
@@ -13,4 +13,3 @@ In particular, no fixture or expected result was copied or derived from QF-Bench
 | `forecast_scoring.v1.json` | Resolved forecast outcomes produce deterministic kind-specific scorecards |
 
 The OHLCV fixture is deliberately a pre-contract adapter oracle. Analytics v1 does not currently publish an OHLCV bar class or normalizer, so the test harness validates the minimum boundary policy a future host adapter must implement. It does not claim that production normalization already exists.
-

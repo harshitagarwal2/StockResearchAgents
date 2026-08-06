@@ -180,6 +180,39 @@ def load_research_data_tools_manifest(path: str | Path = RESEARCH_DATA_TOOLS_MAN
     if not isinstance(semantics, dict) or not normalized_fields.issubset(semantics):
         raise ValueError("SourceBatch field semantics are incomplete")
 
+    source_portfolio = raw.get("source_portfolio")
+    portfolio_fields = {
+        "version",
+        "capability",
+        "query",
+        "status",
+        "attempts",
+        "batches",
+        "coverage_gaps",
+        "exact_duplicate_clusters",
+        "portfolio_sha256",
+    }
+    if not isinstance(source_portfolio, dict):
+        raise ValueError("research data tools require additive SourcePortfolioReceipt metadata")
+    if (
+        source_portfolio.get("type") != "SourcePortfolioReceipt"
+        or source_portfolio.get("version") != "1.0.0"
+        or source_portfolio.get("implementation_status") != "implemented_host_configured"
+        or source_portfolio.get("mcp_name") != "research_data_collect_source_portfolio"
+        or source_portfolio.get("default_exposed") is not False
+        or source_portfolio.get("min_routes") != 2
+        or source_portfolio.get("provider_batches_merged") is not False
+        or source_portfolio.get("entitlements_preserved") is not True
+    ):
+        raise ValueError("SourcePortfolioReceipt must remain additive, host-configured, and entitlement-preserving")
+    required_portfolio_fields = source_portfolio.get("required_fields")
+    if (
+        not isinstance(required_portfolio_fields, list)
+        or len(required_portfolio_fields) != len(portfolio_fields)
+        or set(required_portfolio_fields) != portfolio_fields
+    ):
+        raise ValueError("SourcePortfolioReceipt required fields are incomplete")
+
     batch_status = raw.get("batch_status")
     if not isinstance(batch_status, dict) or batch_status.get("field") != "status":
         raise ValueError("SourceBatch requires a typed status field")

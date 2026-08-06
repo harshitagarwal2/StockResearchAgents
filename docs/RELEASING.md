@@ -10,7 +10,7 @@
 One stable version produces one Python source distribution, one universal wheel, one GitHub Release, and one matching primary MCP Registry metadata record:
 
 ```text
-version tag -> verified wheel/sdist -> PyPI -> GitHub Release -> MCP Registry metadata
+version tag -> independently verified wheel/sdist -> SPDX SBOM + attestations -> PyPI -> GitHub Release -> MCP Registry metadata
 ```
 
 The package is the primary artifact. GitHub Releases provide human-readable notes and checksum-verifiable downloads. The MCP Registry provides discovery only and is published only after PyPI accepts the matching public package.
@@ -40,8 +40,10 @@ uv run ruff check .
 uv run ruff format --check .
 uv run pytest -q
 uv run python scripts/check_docs.py
-uv run python -m build
-uv run twine check --strict dist/*
+uv run --with build python -m build
+uv run --with twine twine check --strict dist/*
+uv run python scripts/smoke_installed_distribution.py dist/*.whl dist/*.tar.gz
+uv run python scripts/build_release_sbom.py dist/*.whl dist/*.tar.gz --lock-file uv.lock --output dist/sbom.spdx.json
 ```
 
 6. Commit the version and changelog, create an annotated tag, and push it:
@@ -51,7 +53,9 @@ git tag -a v<VERSION> -m "v<VERSION>"
 git push origin v<VERSION>
 ```
 
-The tag invokes `.github/workflows/release.yml`. It rebuilds and tests the artifact, creates `SHA256SUMS`, publishes through the `pypi` environment, creates the GitHub Release from those exact files, and finally publishes `server.json` to the official MCP Registry.
+The tag invokes `.github/workflows/release.yml`. It rebuilds and tests on the supported Python line, installs the wheel and source distribution independently outside the checkout, creates a deterministic SPDX SBOM and `SHA256SUMS`, and generates GitHub build-provenance and SBOM attestations before publication. Only then does it publish through the protected `pypi` environment, create the GitHub Release from those exact files, and publish `server.json` to the official MCP Registry. The registry publisher is version-pinned and checksum-verified.
+
+The separate supply-chain workflow reviews dependency changes on pull requests, audits the locked runtime dependency set, and runs a pinned GitHub Actions workflow auditor. These gates complement repository secret scanning; they do not authorize live-provider access or certify investment performance.
 
 ## TestPyPI preflight
 
@@ -61,7 +65,7 @@ The workflow checks the package/tag identity, runs the full deterministic valida
 
 ## Verify a release artifact
 
-For a GitHub Release download, compare the file checksum to the attached `SHA256SUMS` before installing it. For the normal path, install the exact PyPI version through `uv tool`, `pipx`, or `pip` as described in [Harnesses](HOSTS.md).
+For a GitHub Release download, compare the wheel or source-distribution checksum to the attached `SHA256SUMS`, inspect the SPDX SBOM, and verify the GitHub artifact attestation before installing it. For the normal path, install the exact PyPI version through `uv tool`, `pipx`, or `pip` as described in [Harnesses](HOSTS.md).
 
 Do not delete or retag a public release to repair it. PyPI and the MCP Registry treat published versions as immutable. Publish a new patch version with corrected notes or code instead.
 

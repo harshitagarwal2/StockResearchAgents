@@ -1,82 +1,77 @@
-%%{init: {"theme":"base","fontFamily":"Avenir Next, Segoe UI, sans-serif","themeVariables":{"fontFamily":"Avenir Next, Segoe UI, sans-serif","primaryColor":"#eef3ff","primaryTextColor":"#071c26","primaryBorderColor":"#2257ff","lineColor":"#516a75","secondaryColor":"#e5f7f5","tertiaryColor":"#fff4df","background":"#f5f8f9","clusterBkg":"#ffffff","clusterBorder":"#96aab2"},"flowchart":{"curve":"linear","htmlLabels":true}}}%%
+%%{init: {"theme":"base","fontFamily":"Avenir Next, Segoe UI, sans-serif","themeVariables":{"fontFamily":"Avenir Next, Segoe UI, sans-serif","primaryColor":"#eef3ff","primaryTextColor":"#071c26","primaryBorderColor":"#2257ff","lineColor":"#516a75","secondaryColor":"#e5f7f5","tertiaryColor":"#fff4df","background":"#f5f8f9","clusterBkg":"#ffffff","clusterBorder":"#96aab2"},"flowchart":{"curve":"basis","htmlLabels":true}}}%%
 flowchart TB
   accTitle: SOLID ports-and-adapters architecture for Company Analytics
-  accDescr: Harness-neutral caller adapters invoke StockResearchAgents coordination services. A separate stock-research-data MCP and caller-owned licensed adapters normalize evidence through SourcePort. Deterministic validation accepts only a complete CompanyAnalyticsSubmissionV1 before publishing CompanyAnalyticsResultV1 and projecting completed-result clients.
+  accDescr: Host retrieval adapters implement SourcePort outside the core; direct capability calls return one SourceBatch, while optional portfolio collection fans out across at least two routes and returns a separate SourcePortfolioReceipt. Inbound adapters use StockResearchApplication for completed reads, responses, cohort evaluation, and diagnostics, and use dedicated application command functions for plan, import, and lifecycle mutations. ApplicationRuntime composes focused ports, CompanyAnalyticsCoordinator, and CompletedPublicationSaga. Domain contracts own deterministic validation, and only completed results reach projections.
 
-  subgraph H["Caller-owned mechanisms"]
+  subgraph REQUEST["Caller-owned request path"]
     direction LR
-    WEB["Web / browser / licensed providers"]
-    DATA["Research-data MCP adapters<br/><small>implemented public tools · caller-owned</small>"]
-    AGENT["Codex, generic agents,<br/>or supplied sequential executor"]
+    PROVIDERS["Public / browser / licensed providers"]
+    SOURCE["Host SourcePort<br/><small>one route → one SourceBatch</small>"]
+    PORTFOLIO["Optional portfolio collector<br/><small>2+ routes → separate receipt</small>"]
+    CALLER["Caller runtime<br/><small>terminal submission assembly</small>"]
+    INBOUND["Inbound adapter<br/><small>harness · coordination MCP · CLI · Python</small>"]
+    PROVIDERS --> SOURCE --> CALLER --> INBOUND
+    SOURCE -. explicitly configured routes .-> PORTFOLIO --> CALLER
   end
 
-  subgraph IN["Inbound adapters"]
+  subgraph USECASES["Application boundary"]
     direction LR
-    SKILL["Codex skill"]
-    MCP["Coordination MCP<br/><small>no research-data tools</small>"]
-    CLI["CLI / Python"]
+    FACADE["StockResearchApplication<br/><small>completed reads · response · cohort · doctor</small>"]
+    COMMANDS["Application command functions<br/><small>plan · import · lifecycle mutations</small>"]
+    COORD["CompanyAnalyticsCoordinator<br/><small>lifecycle sequencing</small>"]
+    QUERY["Completed query / response"]
+    FACADE --> QUERY
+    COMMANDS --> COORD
+  end
+  INBOUND --> FACADE
+  INBOUND --> COMMANDS
+
+  subgraph TRUTH["Domain-owned truth"]
+    direction LR
+    ANALYTICS["CompanyAnalyticsSubmissionV1"]
+    RESEARCH["CompanyResearchSubmissionV1<br/>+ ResearchDossierV1"]
+    CALC["Deterministic analytics"]
+    QUALITY["Research Quality<br/><small>QualityScorecard · BinaryCalibrationReport</small>"]
+    CONFORM{"Deterministic validation<br/><small>time · references · licensing · calculations · safety</small>"}
+    ANALYTICS --> RESEARCH --> CONFORM
+    ANALYTICS --> CALC --> CONFORM
+    ANALYTICS --> QUALITY --> CONFORM
+  end
+  COMMANDS --> ANALYTICS
+
+  subgraph PUBLICATION["Recoverable completed publication"]
+    direction LR
+    SAGA["CompletedPublicationSaga<br/><small>result · sidecar · memory ordering</small>"]
+    RESULT[["CompanyAnalyticsResultV1<br/><small>completed source of truth</small>"]]
+    READ["RunView · CLI · MCP · exports · loopback viewer"]
+    SAGA --> RESULT --> READ
+    RESULT --> QUERY --> READ
+  end
+  CONFORM --> SAGA
+
+  subgraph INFRA["Focused ports, adapters, and state operations"]
+    direction LR
+    LAYOUT["StateLayout<br/><small>one durable root</small>"]
+    RUNTIME["ApplicationRuntime<br/><small>constructs · injects · closes</small>"]
+    PORTS["Focused ports<br/><small>lifecycle · result · quality · history</small>"]
+    STORES["Durable adapters<br/><small>SQLite/WAL · atomic bundles · journals</small>"]
+    OPS["State safety<br/><small>backup-first migration · redacted doctor</small>"]
+    LAYOUT --> RUNTIME --> PORTS --> STORES
+    LAYOUT -. inspect / adopt .-> OPS
   end
 
-  subgraph APP["Application services"]
-    direction LR
-    PREP["Prepare analytics"]
-    LIFE["run-control.v1"]
-    IMPORT["Validate and publish"]
-    OUTCOME["Append outcome"]
-    CONFORM["Deterministic<br/>validation"]
-  end
-
-  subgraph DOMAIN["Domain and contracts"]
-    direction LR
-    Research["Embedded CompanyResearchSubmissionV1<br/>+ ResearchDossierV1"]
-    Analytics["CompanyAnalyticsSubmissionV1"]
-    ANALYTICS["Deterministic analytics"]
-    QUALITY["Research Quality"]
-    POLICY["Temporal, licensing, and safety policy"]
-  end
-
-  subgraph PORTS["Narrow outbound ports"]
-    direction LR
-    SOURCE["SourcePort.fetch(capability, typed query)"]
-    RESULTS["Publication / result store"]
-    QSTORE["Recoverable quality index"]
-  end
-
-  subgraph READ["Completed-only read side"]
-    direction LR
-    VIEW["RunView projection"]
-    UI["CLI, MCP, exports, loopback viewer"]
-  end
-
-  WEB --> DATA
-  DATA --> SOURCE
-  AGENT --> SKILL
-  SKILL --> PREP
-  MCP --> PREP
-  CLI --> PREP
-  PREP --> Analytics
-  PREP --> LIFE
-  SOURCE --> AGENT
-  AGENT --> LIFE
-  LIFE --> IMPORT
-  IMPORT --> Analytics
-  Analytics --> Research
-  Analytics --> ANALYTICS
-  Analytics --> QUALITY
-  POLICY --> Analytics
-  IMPORT --> RESULTS
-  RESULTS -. "reconstruct" .-> QSTORE
-  OUTCOME --> QSTORE
-  Analytics --> CONFORM
-  RESULTS --> VIEW
-  QSTORE --> VIEW
-  VIEW --> UI
+  RUNTIME -. injects .-> FACADE
+  COORD --> PORTS
+  SAGA --> PORTS
+  STORES -. completed bundles .-> RESULT
 
   classDef host fill:#fff4df,stroke:#ad6500,color:#071c26,stroke-width:2px;
   classDef adapter fill:#eef3ff,stroke:#2257ff,color:#071c26,stroke-width:2px;
   classDef domain fill:#e5f7f5,stroke:#00746e,color:#071c26,stroke-width:2px;
   classDef port fill:#ffffff,stroke:#516a75,color:#071c26,stroke-width:2px;
-  class WEB,DATA,AGENT host;
-  class SKILL,MCP,CLI,VIEW,UI adapter;
-  class PREP,IMPORT,OUTCOME,CONFORM,Research,Analytics,ANALYTICS,QUALITY,POLICY domain;
-  class SOURCE,RESULTS,QSTORE port;
+  classDef artifact fill:#ffffff,stroke:#1231a6,color:#071c26,stroke-width:3px;
+  class PROVIDERS,SOURCE,PORTFOLIO,CALLER host;
+  class INBOUND,FACADE,COMMANDS,COORD,QUERY,SAGA adapter;
+  class ANALYTICS,RESEARCH,CALC,QUALITY,CONFORM domain;
+  class LAYOUT,RUNTIME,PORTS,STORES,OPS,READ port;
+  class RESULT artifact;

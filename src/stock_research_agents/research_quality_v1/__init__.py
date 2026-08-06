@@ -1,5 +1,12 @@
 """Versioned, provider-neutral Research Quality v1 sidecar contracts."""
 
+from .cohorts import (
+    BinaryCalibrationPolicy,
+    BinaryCalibrationReport,
+    CalibrationBin,
+    evaluate_binary_calibration,
+    evaluate_binary_calibration_payload,
+)
 from .conformance import QualityConformanceIssue, QualityConformanceReport, validate_quality_bundle
 from .contracts import (
     QUALITY_SCHEMA_VERSION,
@@ -33,4 +40,9 @@ __all__ = [
     "canonical_json",
     "score_forecast",
     "validate_quality_bundle",
+    "BinaryCalibrationPolicy",
+    "BinaryCalibrationReport",
+    "CalibrationBin",
+    "evaluate_binary_calibration",
+    "evaluate_binary_calibration_payload",
 ]

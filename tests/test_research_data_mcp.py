@@ -28,13 +28,16 @@ from stock_research_agents_host.contracts import (
     source_query_from_dict,
 )
 from stock_research_agents_host.research_data_mcp import (
+    PORTFOLIO_TOOL_NAME,
     PUBLIC_ADAPTER_RECEIPT,
     TOOL_NAMES,
     AdapterConformanceReceipt,
     ResearchDataService,
+    SourcePortfolioService,
     create_default_server,
     create_server,
 )
+from stock_research_agents_host.source_portfolio import SourcePortfolioCollector, SourcePortfolioReceipt
 
 NOW = "2026-08-03T12:00:00+00:00"
 
@@ -1008,6 +1011,51 @@ def test_default_server_exposes_exact_public_read_only_tool_set() -> None:
         assert tool.annotations is not None
         assert tool.annotations.read_only_hint is True
         assert tool.annotations.destructive_hint is False
+
+
+def test_configured_portfolio_tool_returns_additive_terminal_receipt() -> None:
+    adapter = _adapter({})
+    collector = SourcePortfolioCollector()
+    collector.register("company_news", "gdelt", "public-news", FakeSourcePort(), required=True)
+    collector.register("company_news", "licensed-wire", "licensed-news", FakeSourcePort())
+    server = create_server(adapter, (PUBLIC_ADAPTER_RECEIPT,), portfolio_collector=collector)
+    tool = next(tool for tool in server._tool_manager.list_tools() if tool.name == PORTFOLIO_TOOL_NAME)
+    fields: dict[str, object] = {
+        "symbol": "ORCL",
+        "published_after": "2026-07-01T00:00:00+00:00",
+        "published_before": "2026-08-01T23:59:59+00:00",
+        "max_items": 10,
+    }
+
+    wire = tool.fn(capability="company_news", fields=fields)
+    receipt = SourcePortfolioReceipt.from_dict(wire)
+
+    assert receipt.version == "1.0.0"
+    assert [attempt.route_id for attempt in receipt.attempts] == ["gdelt", "licensed-wire"]
+    assert len(receipt.batches) == 2
+    assert [batch.entitlement.license_receipt_id for batch in receipt.batches] == [
+        "licensed-host-v1",
+        "licensed-host-v1",
+    ]
+    assert tool.parameters["required"] == ["capability", "fields"]
+    assert tool.annotations is not None and tool.annotations.read_only_hint is True
+
+
+def test_portfolio_service_requires_multiple_explicit_routes() -> None:
+    collector = SourcePortfolioCollector()
+    collector.register("company_news", "only", "public-news", FakeSourcePort())
+    service = SourcePortfolioService(collector)
+
+    with pytest.raises(ValueError, match="at least two configured provider routes"):
+        service.execute(
+            "company_news",
+            {
+                "symbol": "ORCL",
+                "published_after": "2026-07-01T00:00:00+00:00",
+                "published_before": "2026-08-01T23:59:59+00:00",
+                "max_items": 10,
+            },
+        )
 
 
 def test_conformant_host_can_register_all_exact_manifest_tool_schemas() -> None:

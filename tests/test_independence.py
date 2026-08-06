@@ -36,7 +36,7 @@ def _structured_strings(value: Any) -> Iterator[str]:
         for key, child in value.items():
             yield str(key)
             yield from _structured_strings(child)
-    elif isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+    elif isinstance(value, Sequence) and not isinstance(value, str | bytes | bytearray):
         for child in value:
             yield from _structured_strings(child)
 
@@ -68,7 +68,7 @@ def _machine_identifiers(value: Any) -> Iterator[str]:
             } and isinstance(child, str):
                 yield child
             yield from _machine_identifiers(child)
-    elif isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+    elif isinstance(value, Sequence) and not isinstance(value, str | bytes | bytearray):
         for child in value:
             yield from _machine_identifiers(child)
 
@@ -204,7 +204,7 @@ def test_source_ast_has_no_external_runtime_imports_or_legacy_entry_points() -> 
             for imported_root in imported_roots & _FORBIDDEN_RUNTIME_IMPORTS:
                 forbidden_imports.append(f"{relative}:{node.lineno}:{imported_root}")
 
-            if isinstance(node, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)) and node.name in {
+            if isinstance(node, ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef) and node.name in {
                 "AnalystReport",
                 "ExecutionConfig",
                 "LegacyTradingAgentsAdapter",

@@ -20,8 +20,9 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
+from threading import RLock, Thread
 from typing import Literal
-from urllib.error import URLError
+from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlencode
 from urllib.request import HTTPRedirectHandler, ProxyHandler, Request, build_opener
 
@@ -43,6 +44,8 @@ _VIEWER_PROTOCOL_VERSION = "viewer-protocol.v1"
 _VIEWER_REGISTRY_SCHEMA = "viewer-daemon-registry.v1"
 _HEALTH_RETRY_ATTEMPTS = 4
 _HEALTH_RETRY_DELAY_SECONDS = 0.1
+_LOCAL_VIEWER_PROCESSES: dict[int, subprocess.Popen[bytes]] = {}
+_LOCAL_VIEWER_PROCESSES_LOCK = RLock()
 
 
 @dataclass(frozen=True, slots=True)
@@ -273,6 +276,9 @@ def _fetch_json(
             if len(content) > _MAX_PROBE_RESPONSE_BYTES:
                 return None
             payload = json.loads(content)
+    except HTTPError as exc:
+        exc.close()
+        return None
     except (URLError, OSError, TimeoutError, ValueError, json.JSONDecodeError):
         return None
     return payload if isinstance(payload, dict) else None
@@ -445,9 +451,7 @@ def _child_environment(state_dir: Path) -> dict[str, str]:
 
 
 def _idle_ttl_seconds() -> float:
-    raw = os.environ.get("STOCKRESEARCHAGENTS_PRESENTATION_IDLE_TTL_SECONDS") or os.environ.get(
-        "STOCKRESEARCHAGENTS_PRESENTATION_IDLE_TTL_SECONDS"
-    )
+    raw = os.environ.get("STOCKRESEARCHAGENTS_PRESENTATION_IDLE_TTL_SECONDS")
     if raw is None:
         return _DEFAULT_IDLE_TTL_SECONDS
     try:
@@ -455,6 +459,28 @@ def _idle_ttl_seconds() -> float:
     except ValueError:
         return _DEFAULT_IDLE_TTL_SECONDS
     return value if value > 0 else _DEFAULT_IDLE_TTL_SECONDS
+
+
+def _reap_local_viewer(process: subprocess.Popen[bytes]) -> None:
+    """Retain and reap a locally spawned detached viewer without blocking callers."""
+    try:
+        process.wait()
+    finally:
+        with _LOCAL_VIEWER_PROCESSES_LOCK:
+            if _LOCAL_VIEWER_PROCESSES.get(process.pid) is process:
+                _LOCAL_VIEWER_PROCESSES.pop(process.pid, None)
+
+
+def _track_local_viewer(process: subprocess.Popen[bytes]) -> subprocess.Popen[bytes]:
+    with _LOCAL_VIEWER_PROCESSES_LOCK:
+        _LOCAL_VIEWER_PROCESSES[process.pid] = process
+    Thread(
+        target=_reap_local_viewer,
+        args=(process,),
+        name=f"stockresearchagents-viewer-reaper-{process.pid}",
+        daemon=True,
+    ).start()
+    return process
 
 
 def _spawn_viewer(
@@ -468,28 +494,30 @@ def _spawn_viewer(
     try:
         if hasattr(os, "fchmod"):
             os.fchmod(descriptor, 0o600)
-        return subprocess.Popen(  # noqa: S603 - fixed interpreter/module and validated local arguments
-            [
-                sys.executable,
-                "-m",
-                "stock_research_agents.viewer_daemon",
-                "--state-dir",
-                str(state_dir),
-                "--registry",
-                str(registry_path),
-                "--state-fingerprint",
-                fingerprint,
-                "--instance-id",
-                instance_id,
-                "--idle-ttl",
-                str(_idle_ttl_seconds()),
-            ],
-            stdin=subprocess.DEVNULL,
-            stdout=descriptor,
-            stderr=subprocess.STDOUT,
-            env=_child_environment(state_dir),
-            close_fds=True,
-            start_new_session=True,
+        return _track_local_viewer(
+            subprocess.Popen(  # noqa: S603 - fixed interpreter/module and validated local arguments
+                [
+                    sys.executable,
+                    "-m",
+                    "stock_research_agents.viewer_daemon",
+                    "--state-dir",
+                    str(state_dir),
+                    "--registry",
+                    str(registry_path),
+                    "--state-fingerprint",
+                    fingerprint,
+                    "--instance-id",
+                    instance_id,
+                    "--idle-ttl",
+                    str(_idle_ttl_seconds()),
+                ],
+                stdin=subprocess.DEVNULL,
+                stdout=descriptor,
+                stderr=subprocess.STDOUT,
+                env=_child_environment(state_dir),
+                close_fds=True,
+                start_new_session=True,
+            )
         )
     finally:
         os.close(descriptor)

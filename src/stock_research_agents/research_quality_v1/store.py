@@ -8,6 +8,8 @@ import tempfile
 from pathlib import Path
 from threading import RLock
 
+from ..state import DEFAULT_STATE_LAYOUT
+from ..state_write_lock import state_write_lock
 from .conformance import validate_quality_bundle
 from .contracts import (
     Forecast,
@@ -17,16 +19,6 @@ from .contracts import (
     canonical_json,
 )
 from .scoring import QualityScorecard, score_forecast
-
-
-def _default_quality_dir() -> Path:
-    configured = os.environ.get("STOCKRESEARCHAGENTS_STATE_DIR")
-    if configured:
-        return Path(configured).expanduser() / "quality"
-    xdg_state_home = os.environ.get("XDG_STATE_HOME")
-    if xdg_state_home:
-        return Path(xdg_state_home).expanduser() / "stock-research-agents" / "quality"
-    return Path.home() / ".local" / "state" / "stock-research-agents" / "quality"
 
 
 def _atomic_write(path: Path, payload: object) -> None:
@@ -96,6 +88,19 @@ class QualityStore:
                         self._observations[forecast_id] = observations
         self._loaded = True
 
+    def _writer_root(self) -> Path | None:
+        return None if self._state_dir is None else self._state_dir.parent
+
+    def _refresh_durable_snapshot(self) -> None:
+        if self._state_dir is None:
+            self._ensure_loaded()
+            return
+        self._registrations.clear()
+        self._staged_registrations.clear()
+        self._observations.clear()
+        self._loaded = False
+        self._ensure_loaded()
+
     @staticmethod
     def _load_observation(value: object, forecast_id: str) -> OutcomeObservation:
         if isinstance(value, dict) and value.get("forecast_id") != forecast_id:
@@ -130,8 +135,8 @@ class QualityStore:
                 "quality registration is not conformant: "
                 + "; ".join(f"{issue.path}: {issue.detail}" for issue in report.issues)
             )
-        with self._lock:
-            self._ensure_loaded()
+        with state_write_lock(self._writer_root()), self._lock:
+            self._refresh_durable_snapshot()
             current = self._registrations.get(receipt.run_id)
             candidate = (receipt, tuple(forecasts))
             if current is not None:
@@ -145,7 +150,10 @@ class QualityStore:
                 raise ValueError(f"quality run already has a different staged registration: {receipt.run_id}")
             known_forecasts = {
                 forecast.forecast_id
-                for _, registered_forecasts in (*self._registrations.values(), *self._staged_registrations.values())
+                for _, registered_forecasts in (
+                    *self._registrations.values(),
+                    *self._staged_registrations.values(),
+                )
                 for forecast in registered_forecasts
             }
             overlap = known_forecasts & {forecast.forecast_id for forecast in forecasts}
@@ -160,8 +168,8 @@ class QualityStore:
 
     def publish_registration(self, run_id: str) -> None:
         """Make one staged registration visible; retry is idempotent after crashes."""
-        with self._lock:
-            self._ensure_loaded()
+        with state_write_lock(self._writer_root()), self._lock:
+            self._refresh_durable_snapshot()
             if run_id in self._registrations:
                 return
             candidate = self._staged_registrations.get(run_id)
@@ -187,8 +195,8 @@ class QualityStore:
 
     def is_published(self, run_id: str) -> bool:
         """Return whether a registration crossed its visibility boundary."""
-        with self._lock:
-            self._ensure_loaded()
+        with state_write_lock(self._writer_root()), self._lock:
+            self._refresh_durable_snapshot()
             return run_id in self._registrations
 
     def _forecast(self, forecast_id: str) -> Forecast:
@@ -200,8 +208,8 @@ class QualityStore:
 
     def append_outcome(self, observation: OutcomeObservation) -> QualityScorecard:
         """Append one resolution/correction and persist its derived scorecard."""
-        with self._lock:
-            self._ensure_loaded()
+        with state_write_lock(self._writer_root()), self._lock:
+            self._refresh_durable_snapshot()
             forecast = self._forecast(observation.forecast_id)
             observations = self._observations.get(observation.forecast_id, ())
             if observations and observations[-1].observation_id == observation.observation_id:
@@ -236,8 +244,8 @@ class QualityStore:
 
     def projection(self, run_id: str) -> dict[str, object] | None:
         """Return completed quality records and stored scorecards without UI calculations."""
-        with self._lock:
-            self._ensure_loaded()
+        with state_write_lock(self._writer_root()), self._lock:
+            self._refresh_durable_snapshot()
             registration = self._registrations.get(run_id)
             if registration is None:
                 return None
@@ -261,4 +269,4 @@ class QualityStore:
             }
 
 
-QUALITY_STORE = QualityStore(_default_quality_dir())
+QUALITY_STORE = QualityStore(DEFAULT_STATE_LAYOUT.quality_dir)

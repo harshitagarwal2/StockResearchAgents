@@ -8,8 +8,14 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, cast
 
-from .application import CompletedPublicationService, CompletedRunQueryService
-from .bootstrap import DEFAULT_RUNTIME
+from .application import (
+    CompletedPublicationResponse,
+    CompletedPublicationService,
+    CompletedRunQueryService,
+    StockResearchApplication,
+)
+from .application_ports import CompletedPresenter
+from .bootstrap import DEFAULT_RUNTIME, ensure_default_runtime_state
 from .company_analytics import (
     get_company_research_quality,
     prepare_company_analytics,
@@ -22,6 +28,7 @@ from .company_lifecycle import (
     require_completed_publication,
 )
 from .conformance import evaluate_validation, validation_digest
+from .contracts import RunEvent
 from .export import export_run_bundle
 from .report_server import create_report_server, present_completed_run
 from .research_quality_v1 import OutcomeObservation
@@ -84,6 +91,13 @@ def _add_commands(commands: argparse._SubParsersAction[argparse.ArgumentParser])
     )
     quality_show.add_argument("run_id")
     quality_show.add_argument("--output")
+
+    quality_cohort = commands.add_parser(
+        "quality-cohort",
+        help="Evaluate one strict binary forecast-calibration cohort",
+    )
+    quality_cohort.add_argument("--input", required=True, help="BinaryCalibrationEvaluationRequest JSON")
+    quality_cohort.add_argument("--output")
 
     def revision_command(name: str, help_text: str) -> argparse.ArgumentParser:
         command = commands.add_parser(name, help=help_text)
@@ -159,10 +173,12 @@ def _parser() -> argparse.ArgumentParser:
     viewer = commands.add_parser("report", help="Serve the completed Research Dossier Viewer on loopback")
     viewer.add_argument("--host", default="127.0.0.1")
     viewer.add_argument("--port", default=8765, type=int)
+    doctor = commands.add_parser("doctor", help="Report redacted, read-only durable-state health")
+    doctor.add_argument("--output")
     return parser
 
 
-def _emit(payload: dict[str, object], output: str | None = None) -> None:
+def _emit(payload: object, output: str | None = None) -> None:
     rendered = json.dumps(payload, default=str, indent=2)
     if output is None:
         print(rendered)
@@ -174,18 +190,25 @@ def _emit(payload: dict[str, object], output: str | None = None) -> None:
 
 
 def _completed_publication_payload(
-    result: Any,
-    events: tuple[Any, ...],
+    result: CompanyAnalyticsResultV1,
+    events: tuple[RunEvent, ...],
     *,
     store: RunStore | None = None,
     coordinator: Any = None,
     foreground_report: bool = False,
-) -> dict[str, object]:
+    application: StockResearchApplication | None = None,
+) -> CompletedPublicationResponse:
     """Return one generic completed result plus its presentation receipt."""
+    if application is not None and store is None and coordinator is None:
+        return application.completed_response(
+            result,
+            events,
+            presentation_mode="path_only" if foreground_report else None,
+        )
     publication_store = RUN_STORE if store is None else store
     return CompletedPublicationService(
         result_store=publication_store,
-        presenter=present_completed_run,
+        presenter=cast(CompletedPresenter, present_completed_run),
         view_builder=build_run_view,
         coordinator=coordinator,
     ).response(
@@ -195,7 +218,13 @@ def _completed_publication_payload(
     )
 
 
-def _completed_run_query(coordinator: Any = None) -> CompletedRunQueryService:
+def _completed_run_query(
+    coordinator: Any = None,
+    *,
+    application: StockResearchApplication | None = None,
+) -> CompletedRunQueryService:
+    if application is not None and coordinator is None:
+        return application.completed_runs()
     return CompletedRunQueryService(
         RUN_STORE,
         coordinator=COMPANY_ANALYTICS_COORDINATOR if coordinator is None else coordinator,
@@ -203,8 +232,18 @@ def _completed_run_query(coordinator: Any = None) -> CompletedRunQueryService:
     )
 
 
-def _serve_report(host: str, port: int, run_id: str | None = None) -> None:
-    server = create_report_server(host, port)
+def _serve_report(
+    host: str,
+    port: int,
+    run_id: str | None = None,
+    *,
+    application: StockResearchApplication | None = None,
+) -> None:
+    store = RUN_STORE if application is None else application.result_store
+    if not isinstance(store, RunStore):
+        raise ValueError("foreground report serving requires the bundled RunStore adapter")
+    coordinator = COMPANY_ANALYTICS_COORDINATOR if application is None else application.coordinator
+    server = create_report_server(host, port, store=store, coordinator=coordinator)
     bound_host = str(server.server_address[0])
     bound_port = int(server.server_address[1])
     suffix = f"?run={run_id}" if run_id else ""
@@ -249,12 +288,24 @@ def _analytics_plan(args: argparse.Namespace) -> int:
     return 0
 
 
-def _analytics_import(args: argparse.Namespace) -> int:
+def _analytics_import(
+    args: argparse.Namespace,
+    application: StockResearchApplication,
+    *,
+    injected: bool,
+) -> int:
     try:
         payload = _read_json(args.input)
         if not isinstance(payload, dict):
             raise ValueError("company analytics submission root must be a JSON object")
-        result, events = submit_company_analytics(payload)
+        if injected:
+            result, events = submit_company_analytics(
+                payload,
+                store=application.result_store,
+                quality_store=application.quality_store,
+            )
+        else:
+            result, events = submit_company_analytics(payload)
     except (OSError, json.JSONDecodeError, TypeError, ValueError) as exc:
         _emit(
             {
@@ -274,22 +325,46 @@ def _analytics_import(args: argparse.Namespace) -> int:
             args.output,
         )
         return 2
-    response = _completed_publication_payload(result, events, foreground_report=args.report)
+    response = _completed_publication_payload(
+        result,
+        events,
+        foreground_report=args.report,
+        application=application,
+    )
     _emit(response, args.output)
     if args.report:
-        _serve_report(args.host, args.port, result.run_id)
+        _serve_report(args.host, args.port, result.run_id, application=application)
     return 0
 
 
-def _quality_command(args: argparse.Namespace) -> int:
+def _quality_command(
+    args: argparse.Namespace,
+    application: StockResearchApplication,
+    *,
+    injected: bool,
+) -> int:
     try:
-        if args.command == "quality-outcome":
+        if args.command == "quality-cohort":
+            response = application.evaluate_quality_cohort(_read_json(args.input))
+        elif args.command == "quality-outcome":
             observation = OutcomeObservation.from_dict(_read_json(args.input))
-            _completed_run_query().resolve(observation.forecast_id.split(".", 1)[0])
-            response = record_company_forecast_outcome(observation)
+            _completed_run_query(application=application).resolve(observation.forecast_id.split(".", 1)[0])
+            response = (
+                record_company_forecast_outcome(observation, quality_store=application.quality_store)
+                if injected
+                else record_company_forecast_outcome(observation)
+            )
         else:
-            run_id = _completed_run_query().resolve(args.run_id)
-            response = get_company_research_quality(run_id)
+            run_id = _completed_run_query(application=application).resolve(args.run_id)
+            response = (
+                get_company_research_quality(
+                    run_id,
+                    quality_store=application.quality_store,
+                    run_store=application.result_store,
+                )
+                if injected
+                else get_company_research_quality(run_id)
+            )
         _emit(response, args.output)
         return 0
     except (KeyError, OSError, json.JSONDecodeError, TypeError, ValueError) as exc:
@@ -315,12 +390,12 @@ def _read_json(path: str) -> Any:
     return json.loads(Path(path).expanduser().read_text(encoding="utf-8"))
 
 
-def _analytics_init(args: argparse.Namespace) -> int:
+def _analytics_init(args: argparse.Namespace, application: StockResearchApplication) -> int:
     try:
         payload = _read_json(args.input)
         if not isinstance(payload, dict):
             raise ValueError("company analytics request must be a JSON object")
-        control = COMPANY_ANALYTICS_COORDINATOR.create(
+        control = application.coordinator.create(
             payload,
             research_pack_id=args.pack,
             decision_memory_enabled=args.decision_memory_enabled,
@@ -344,9 +419,9 @@ def _analytics_init(args: argparse.Namespace) -> int:
         return 2
 
 
-def _lifecycle_command(args: argparse.Namespace) -> int:
+def _lifecycle_command(args: argparse.Namespace, application: StockResearchApplication) -> int:
     try:
-        coordinator = COMPANY_ANALYTICS_COORDINATOR
+        coordinator = application.coordinator
         if args.command == "run-start":
             response = coordinator.start(args.run_id, args.revision)
         elif args.command == "run-receipts":
@@ -372,11 +447,14 @@ def _lifecycle_command(args: argparse.Namespace) -> int:
             response = coordinator.resume(args.run_id, args.revision)
         elif args.command == "run-finalize":
             result, events = coordinator.finalize(args.run_id, args.revision)
-            response = _completed_publication_payload(
-                result,
-                events,
-                store=getattr(coordinator, "result_store", RUN_STORE),
-                coordinator=coordinator,
+            response = cast(
+                dict[str, Any],
+                _completed_publication_payload(
+                    result,
+                    events,
+                    store=getattr(coordinator, "result_store", RUN_STORE),
+                    coordinator=coordinator,
+                ),
             )
         elif args.command == "run-control":
             response = {"ok": True, "control": coordinator.control(args.run_id)}
@@ -401,7 +479,7 @@ def _lifecycle_command(args: argparse.Namespace) -> int:
                 ),
             }
         elif args.command == "run-export":
-            run_id, export_result, export_events = _completed_run_query(coordinator).require(args.run_id)
+            run_id, export_result, export_events = _completed_run_query(application=application).require(args.run_id)
             if not isinstance(export_result, CompanyAnalyticsResultV1) or export_events is None:
                 raise ValueError(f"completed run not found: {run_id}")
             lifecycle_run_id = publication_lifecycle_run_id(export_events)
@@ -421,7 +499,9 @@ def _lifecycle_command(args: argparse.Namespace) -> int:
             )
             response = {"ok": True, "export": export_receipt.to_dict()}
         elif args.command == "run-validate":
-            run_id, validation_result, validation_events = _completed_run_query(coordinator).require(args.run_id)
+            run_id, validation_result, validation_events = _completed_run_query(application=application).require(
+                args.run_id
+            )
             if not isinstance(validation_result, CompanyAnalyticsResultV1) or validation_events is None:
                 raise ValueError(f"completed run not found: {run_id}")
             report = evaluate_validation(validation_result, validation_events)
@@ -431,7 +511,9 @@ def _lifecycle_command(args: argparse.Namespace) -> int:
                 "digest": validation_digest(report),
             }
         elif args.command == "run-semantics":
-            run_id, semantics_result, semantics_events = _completed_run_query(coordinator).require(args.run_id)
+            run_id, semantics_result, semantics_events = _completed_run_query(application=application).require(
+                args.run_id
+            )
             if not isinstance(semantics_result, CompanyAnalyticsResultV1) or semantics_events is None:
                 raise ValueError(f"completed run not found: {run_id}")
             response = build_completed_run_semantics(semantics_result, semantics_events).to_dict()
@@ -475,20 +557,40 @@ def _lifecycle_command(args: argparse.Namespace) -> int:
         return 2
 
 
-def main(argv: Sequence[str] | None = None) -> int:
+def _default_application() -> StockResearchApplication:
+    """Build a facade from compatibility globals so existing monkeypatch seams remain valid."""
+    return StockResearchApplication(
+        coordinator=COMPANY_ANALYTICS_COORDINATOR,
+        result_store=RUN_STORE,
+        quality_store=DEFAULT_RUNTIME.quality_store,
+        presenter=cast(CompletedPresenter, present_completed_run),
+        view_builder=build_run_view,
+        state_layout=DEFAULT_RUNTIME.state_layout,
+    )
+
+
+def main(
+    argv: Sequence[str] | None = None,
+    *,
+    application: StockResearchApplication | None = None,
+) -> int:
     parser = _parser()
     args = parser.parse_args(argv)
     if args.command == "analytics-plan":
         return _analytics_plan(args)
 
-    if args.command == "analytics-import":
-        return _analytics_import(args)
+    if application is None and args.command != "doctor":
+        ensure_default_runtime_state()
+    active_application = application or _default_application()
 
-    if args.command in {"quality-outcome", "quality-show"}:
-        return _quality_command(args)
+    if args.command == "analytics-import":
+        return _analytics_import(args, active_application, injected=application is not None)
+
+    if args.command in {"quality-outcome", "quality-show", "quality-cohort"}:
+        return _quality_command(args, active_application, injected=application is not None)
 
     if args.command == "analytics-init":
-        return _analytics_init(args)
+        return _analytics_init(args, active_application)
 
     lifecycle_commands = {
         "run-start",
@@ -508,9 +610,28 @@ def main(argv: Sequence[str] | None = None) -> int:
         "memory-outcome",
     }
     if args.command in lifecycle_commands:
-        return _lifecycle_command(args)
+        return _lifecycle_command(args, active_application)
 
-    _serve_report(args.host, args.port)
+    if args.command == "doctor":
+        try:
+            _emit(active_application.operational_diagnostics(), args.output)
+            return 0
+        except (OSError, RuntimeError, ValueError) as exc:
+            _emit(
+                {
+                    "ok": False,
+                    "guidance": {
+                        "code": "operational_diagnostics_failed",
+                        "message": str(exc),
+                        "steps": ["Verify the configured state root is readable and retry."],
+                        "retryable": True,
+                    },
+                },
+                args.output,
+            )
+            return 2
+
+    _serve_report(args.host, args.port, application=active_application)
     return 0
 
 

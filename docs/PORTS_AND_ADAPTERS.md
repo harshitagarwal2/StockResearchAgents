@@ -25,9 +25,9 @@ completed publication -> projection -> harness-native/Python/MCP/CLI/browser rea
 | Layer | Owns | Must not own |
 | --- | --- | --- |
 | Domain | Strict contracts, value objects, policies, deterministic calculators, validation | Network clients, model clients, persistence, UI |
-| Application | Prepare/import use cases, profile-driven lifecycle, publication orchestration, quality outcome commands | Concrete provider selection or browser sessions |
+| Application | `StockResearchApplication` completed-read/response/cohort/diagnostic facade; separate prepare/import command functions; profile-driven lifecycle and publication orchestration | Concrete provider selection or browser sessions |
 | Inbound adapters | Codex and other harness adapters, Python, coordination MCP, CLI | Business-rule duplication |
-| Outbound ports | `SourcePort.fetch(capability, typed_query)` plus focused `LifecycleRepository`, `ResultPublicationPort`, `DecisionMemoryPort`, and `QualityIndexPort` interfaces | Vendor-specific payload or storage semantics |
+| Outbound ports | Host-side `SourcePort.fetch(capability, typed_query)` plus core-facing `LifecycleRepository`, `ResultPublicationPort`, `DecisionMemoryPort`, and `QualityIndexPort` interfaces | Vendor-specific payload or storage semantics |
 | Outbound adapters | Host web/browser/provider bridges, fixture/replay/router source adapters, SQLite/filesystem | New domain truth |
 | Read model | Completed `RunView`, exports, loopback viewer | Retrieval, calculation, lifecycle control, credentials |
 | Presentation adapter | Completed-run path/URL discovery and shared loopback viewer lifecycle | Research publication, browser opening, model or provider work |
@@ -40,11 +40,15 @@ completed publication -> projection -> harness-native/Python/MCP/CLI/browser rea
 - **Interface segregation:** retrieval, publication, result storage, quality outcomes, and projections use focused interfaces; a host does not implement a universal service object.
 - **Dependency inversion:** application services depend on contracts and ports. Codex and other harnesses, Python, MCP, CLI, storage, and provider details depend on the application boundary.
 
+`ResultPublicationPort` adapters need only publish and read completed results; they do not expose filesystem or viewer lifecycle operations. Every completed result can receive a `path_only` presentation receipt. Automatic loopback viewer startup is a bundled `RunStore` capability; a different conforming result adapter receives an explicit `automatic_presentation_requires_run_store` unavailable receipt in `auto` mode while its completed result and view response remain valid.
+
 ## Extension recipes
 
 ### Add a source adapter
 
-Implement `SourcePort.fetch(capability, typed_query)`, normalize bounded observations, preserve cutoff/availability and entitlement, and return explicit unavailable/denied results. Keep credentials and raw licensed bodies inside the host adapter. Reject explicit credential fields and credential-bearing signed URLs before dispatch. Fixture, replay, and router adapters must remain substitutable. Add replay fixtures before a live smoke test.
+Implement `SourcePort.fetch(capability, typed_query)`, normalize bounded observations, preserve cutoff/availability and entitlement, and return one `SourceBatch` or an explicit unavailable/denied result. Keep credentials and raw licensed bodies inside the host adapter. Reject explicit credential fields and credential-bearing signed URLs before dispatch. Fixture, replay, and router adapters must remain substitutable. Add replay fixtures before a live smoke test.
+
+Direct capability tools stop at that single-port `SourceBatch` response. Portfolio collection is a separate optional host composition: when explicitly supplied to the research-data MCP, `SourcePortfolioCollector` requires at least two configured routes and returns `SourcePortfolioReceipt` with batches, attempts, entitlement, duplicate, and coverage metadata kept separate. The default public server does not register the portfolio tool. Neither host receipt type becomes a core-domain submission; callers translate retained batch identity into the terminal lineage crosswalk and declare decision-relevant receipt gaps as dossier limitations.
 
 Concrete research-data MCP servers are outbound host adapters around that port, not StockResearchAgents domain services. Register a tool only when its adapter implements the versioned request/response, entitlement, completeness, pagination, and failure contract. Coordination and retrieval remain separate servers: the research-data server registers seven public SEC/GDELT/World Bank/Polymarket tools, while licensed prices/indicators and lawful social sources still require host adapters. The Polymarket tool provides read-only current market context, not forecast truth or an executable trading action. Registration proves the contract and adapter boundary, not live availability. See [Research-data MCP adapters](RESEARCH_DATA_MCP.md).
 
@@ -83,7 +87,9 @@ raw URL. Multicast, IPv6 site-local, private, loopback, link-local, reserved,
 and unspecified addresses fail attestation; otherwise the adapter rejects the
 page.
 
-The application-facing interfaces live in `application_ports.py` and are segregated by reader/writer role for lifecycle, completed results, research history, and Research Quality. `CompanyAnalyticsCoordinator` receives the combined ports through its constructor. `bootstrap.py` is the production composition root; SQLite/WAL lifecycle, filesystem result publication, research history, and Research Quality stores remain infrastructure choices rather than lifecycle or transport dependencies. Shared completed-result query and response assembly lives in `application.py`, so CLI and MCP adapters translate inputs and outputs instead of duplicating application orchestration.
+The application-facing interfaces live in `application_ports.py` and are segregated by reader/writer role for lifecycle, completed results, research history, and Research Quality. `ApplicationRuntime` is the production composition root: `create_runtime(StateLayout)` builds the SQLite/WAL lifecycle repository, filesystem result publication, Research Quality store, memory repository factory, and `CompanyAnalyticsCoordinator`, and owns their shutdown. `StockResearchApplication` is the injected transport-neutral facade for completed reads and responses, cohort evaluation, and diagnostics. CLI and MCP plan, import, and lifecycle mutations currently use dedicated application command functions or the injected coordinator directly; they are not represented as facade methods. During durable finalization, the coordinator delegates ordered, recoverable result/sidecar/memory publication to `CompletedPublicationSaga`. Shared completed-result query and response assembly lives in `application.py`, so inbound adapters translate those inputs and outputs instead of duplicating policy. Deterministic analytics and conformance stay in the domain layer; the application layer sequences them but does not redefine their rules.
+
+Durable repositories accept and return a validated `LifecycleRecordV1`, including a revision cross-check at the SQLite boundary. Operational maintenance remains outside domain validation: `StateLayout` derives all durable paths, migration is dry-run and backup-first before atomic schema adoption, and `doctor` exposes only redacted, read-only health summaries.
 
 ### Add a harness adapter
 
@@ -94,6 +100,8 @@ Stateless adapters may schedule dependency-ready stages concurrently. Durable ad
 ### Add analytics
 
 Introduce a typed sidecar contract and deterministic calculator/validator. Preserve Decimal inputs, units, periods, information vintages, implementation digests, and licenses. Extend the outer profile rather than modifying the base research dossier.
+
+Per-forecast and cohort evaluation are deliberately different contracts. `QualityScorecard` scores one forecast against one active resolved observation. `BinaryCalibrationReport` evaluates a fixed, caller-approved historical binary cohort only after cutoff, horizon, resolution-rule, distinct-instrument, and minimum-sample checks; it reports aggregate calibration metrics without fitting, ranking, or deploying a model.
 
 ### Add a presentation
 

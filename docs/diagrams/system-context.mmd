@@ -1,44 +1,78 @@
 %%{init: {"theme":"base","fontFamily":"Avenir Next, Segoe UI, sans-serif","themeVariables":{"fontFamily":"Avenir Next, Segoe UI, sans-serif","primaryColor":"#eef3ff","primaryTextColor":"#071c26","primaryBorderColor":"#2257ff","lineColor":"#516a75","secondaryColor":"#e5f7f5","tertiaryColor":"#fff4df","background":"#f5f8f9","clusterBkg":"#ffffff","clusterBorder":"#96aab2"},"flowchart":{"curve":"basis","htmlLabels":true}}}%%
 flowchart TB
-  accTitle: StockResearchAgents system context
-  accDescr: A caller runtime coordinates the public company-analytics.v1 profile through the coordination MCP and retrieves typed evidence through a separate stock-research-data MCP. StockResearchAgents validates the outer CompanyAnalyticsSubmissionV1, including its embedded CompanyResearchSubmissionV1 and ResearchDossierV1 foundation, before publishing CompanyAnalyticsResultV1 for projection-only viewers and exports.
+  accTitle: StockResearchAgents system context and authority boundaries
+  accDescr: A caller runtime owns models, credentials, retrieval, and scheduling. The separate research-data MCP returns a direct SourceBatch by default and an optional SourcePortfolioReceipt only when a portfolio collector is explicitly configured. CLI, Python, and coordination MCP adapters use StockResearchApplication for completed reads, responses, cohort evaluation, and diagnostics, while dedicated application command functions own plan, import, and lifecycle mutations. ApplicationRuntime composes the coordinator and durable stores from StateLayout, while domain-owned deterministic validation and CompletedPublicationSaga gate completed publication.
 
-  S["External evidence<br/><small>filings · market · news · macro</small>"]
-  H["Caller runtime<br/><small>reasoning · credentials · entitlements · scheduling</small>"]
-  DATA["stock-research-data MCP<br/><small>typed SourceBatch retrieval · no coordination</small>"]
-  COORD["Coordination MCP<br/><small>company-analytics.v1 · run-control.v1</small>"]
+  E["External evidence<br/><small>public or caller-entitled</small>"]
+  H["Caller runtime<br/><small>models · credentials · entitlements · scheduling</small>"]
 
-  subgraph P["STOCKRESEARCHAGENTS · no credentials · no broker authority"]
+  subgraph HOST["Host retrieval boundary"]
     direction LR
-    C["CompanyAnalyticsSubmissionV1<br/><small>outer public submission</small>"]
-    R["CompanyResearchSubmissionV1<br/><small>embedded ResearchDossierV1</small>"]
-    V{"Validation<br/>and publication gate"}
-    L["run-control.v1<br/><small>stage boundaries · recovery</small>"]
-    Q["Research Quality<br/><small>policy · forecasts · outcomes · scoring</small>"]
-    D[["Completed Research Dossier"]]
-    C --> R --> V
-    L --> V
-    Q -. quality receipt .-> V
-    V -->|accepted| D
+    DATA["stock-research-data MCP"]
+    DIRECT["Direct SourcePort<br/><small>default · one SourceBatch</small>"]
+    PORTFOLIO["Optional SourcePortfolioCollector<br/><small>configured only · 2+ routes · receipt</small>"]
+    DATA --> DIRECT
+    DATA -. when explicitly configured .-> PORTFOLIO
   end
 
-  U["Research Dossier Viewer<br/><small>completed only · read only</small>"]
-  X["Completed exports<br/><small>JSON · Markdown</small>"]
+  E --> DATA
+  DIRECT --> H
+  PORTFOLIO --> H
 
-  S --> DATA --> H
+  subgraph IN["Inbound adapters"]
+    direction LR
+    COORD["Coordination MCP"]
+    CLI["CLI"]
+    PY["Python API"]
+  end
   H --> COORD
-  COORD -->|outer submission| C
-  COORD -->|ordered stage commits| L
-  D --> U
-  D --> X
+  H --> CLI
+  H --> PY
+
+  subgraph CORE["STOCKRESEARCHAGENTS · no credentials · no broker authority"]
+    direction TB
+    APP["StockResearchApplication<br/><small>completed reads · response · cohort · doctor</small>"]
+    COMMANDS["Application command functions<br/><small>plan · import · lifecycle mutations</small>"]
+    RUNTIME["ApplicationRuntime<br/><small>composition + resource lifetime</small>"]
+    LAYOUT["StateLayout<br/><small>one durable root</small>"]
+    LIFE["CompanyAnalyticsCoordinator<br/><small>run-control.v1 · validated LifecycleRecordV1</small>"]
+    DOMAIN["Domain contracts + deterministic validation<br/><small>company-analytics.v1 · analytics · quality policy</small>"]
+    SAGA["CompletedPublicationSaga<br/><small>recoverable result · sidecar · memory ordering</small>"]
+    STORES["Durable adapters<br/><small>SQLite/WAL · atomic bundles · quality · memory</small>"]
+    DONE[["CompanyAnalyticsResultV1<br/><small>completed source of truth</small>"]]
+    LAYOUT --> RUNTIME
+    RUNTIME --> APP
+    RUNTIME --> LIFE
+    RUNTIME --> STORES
+    APP --> LIFE
+    COMMANDS --> LIFE
+    COMMANDS --> DOMAIN
+    LIFE --> DOMAIN --> SAGA
+    SAGA --> STORES
+    SAGA --> DONE
+  end
+
+  COORD --> APP
+  COORD --> COMMANDS
+  CLI --> APP
+  CLI --> COMMANDS
+  PY --> APP
+  PY --> COMMANDS
+
+  OPS["State operations<br/><small>backup-first migration · redacted read-only doctor</small>"]
+  OPS -. inspect / adopt .-> LAYOUT
+
+  DONE --> U["Research Dossier Viewer<br/><small>completed only · read only</small>"]
+  DONE --> X["Completed exports<br/><small>JSON · Markdown · MCP</small>"]
 
   classDef host fill:#fff4df,stroke:#ad6500,color:#071c26,stroke-width:2px;
-  classDef port fill:#eef3ff,stroke:#2257ff,color:#071c26,stroke-width:2px;
-  classDef quality fill:#e5f7f5,stroke:#00746e,color:#071c26,stroke-width:2px;
+  classDef adapter fill:#eef3ff,stroke:#2257ff,color:#071c26,stroke-width:2px;
+  classDef domain fill:#e5f7f5,stroke:#00746e,color:#071c26,stroke-width:2px;
+  classDef state fill:#f2f5f6,stroke:#516a75,color:#071c26,stroke-width:2px;
   classDef artifact fill:#ffffff,stroke:#1231a6,color:#071c26,stroke-width:3px;
-  classDef view fill:#ffffff,stroke:#516a75,color:#071c26,stroke-width:2px;
-  class S,H,DATA host;
-  class COORD,C,R,L,V port;
-  class Q quality;
-  class D artifact;
-  class U,X view;
+  class E,H,DATA,DIRECT,PORTFOLIO host;
+  class COORD,CLI,PY,APP,COMMANDS,LIFE,SAGA adapter;
+  class DOMAIN domain;
+  class RUNTIME,LAYOUT,STORES,OPS state;
+  class DONE artifact;
+  class U,X state;
